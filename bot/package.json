@@ -1,0 +1,39 @@
+{
+  "name": "kingpin-bot",
+  "version": "1.0.0",
+  "description": "Multi-platform chatbot for Kingpin RPG game (Kick, Twitch, Discord)",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "chatbot",
+    "kick",
+    "twitch",
+    "discord",
+    "rpg"
+  ],
+  "author": "SimianMonke",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "pusher-js": "^8.4.0-rc2",
+    "tmi.js": "^1.8.5",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/tmi.js": "^1.8.6",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

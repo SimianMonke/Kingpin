@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/daily",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/weekly",
+      "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/cron/heist-check",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/gambling",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/business-revenue",
+      "schedule": "0 */3 * * *"
+    }
+  ]
+}

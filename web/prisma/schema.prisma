@@ -1,0 +1,784 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model achievements {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique @db.VarChar(200)
+  key               String              @unique @db.VarChar(100)
+  description       String
+  category          String              @db.VarChar(50)
+  tier              String              @db.VarChar(50)
+  requirement_type  String              @db.VarChar(50)
+  requirement_value BigInt
+  reward_wealth     Int?                @default(0)
+  reward_xp         Int?                @default(0)
+  reward_title      String?             @db.VarChar(100)
+  reward_item_id    Int?
+  icon_url          String?             @db.VarChar(500)
+  is_hidden         Boolean?            @default(false)
+  display_order     Int?                @default(0)
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  items             items?              @relation(fields: [reward_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_achievements user_achievements[]
+}
+
+model active_buffs {
+  id           Int       @id @default(autoincrement())
+  user_id      Int?
+  buff_type    String    @db.VarChar(50)
+  multiplier   Decimal?  @db.Decimal(5, 2)
+  description  String?
+  is_active    Boolean?  @default(true)
+  expires_at   DateTime? @db.Timestamp(6)
+  activated_at DateTime? @default(now()) @db.Timestamp(6)
+  users        users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, buff_type])
+}
+
+model black_market_inventory {
+  id               Int       @id @default(autoincrement())
+  item_id          Int
+  stock_quantity   Int
+  original_stock   Int
+  price            Int
+  rotation_id      Int
+  available_from   DateTime  @db.Timestamp(6)
+  available_until  DateTime  @db.Timestamp(6)
+  is_featured      Boolean?  @default(false)
+  discount_percent Int?      @default(0)
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  items            items     @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model bot_config {
+  config_key   String    @id @db.VarChar(100)
+  config_value String
+  description  String?
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model chat_messages {
+  message_id          Int       @id @default(autoincrement())
+  user_id             Int?
+  platform            String    @db.VarChar(20)
+  platform_message_id String?   @db.VarChar(100)
+  channel_id          String?   @db.VarChar(100)
+  message_content     String?
+  is_command          Boolean?  @default(false)
+  command_name        String?   @db.VarChar(50)
+  created_at          DateTime? @default(now()) @db.Timestamp(6)
+  users               users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model coin_flip_challenges {
+  challenge_id                                    Int       @id @default(autoincrement())
+  challenger_id                                   Int
+  acceptor_id                                     Int?
+  wager_amount                                    BigInt
+  challenger_call                                 String?   @db.VarChar(10)
+  result                                          String?   @db.VarChar(10)
+  winner_id                                       Int?
+  status                                          String?   @default("open") @db.VarChar(20)
+  expires_at                                      DateTime  @db.Timestamp(6)
+  created_at                                      DateTime? @default(now()) @db.Timestamp(6)
+  resolved_at                                     DateTime? @db.Timestamp(6)
+  users_coin_flip_challenges_acceptor_idTousers   users?    @relation("coin_flip_challenges_acceptor_idTousers", fields: [acceptor_id], references: [id], onUpdate: NoAction)
+  users_coin_flip_challenges_challenger_idTousers users     @relation("coin_flip_challenges_challenger_idTousers", fields: [challenger_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([acceptor_id], map: "idx_coinflip_acceptor")
+  @@index([challenger_id], map: "idx_coinflip_challenger")
+  @@index([status, expires_at], map: "idx_coinflip_status_expires")
+}
+
+model cooldowns {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  command_type      String    @db.VarChar(50)
+  target_identifier String?   @db.VarChar(255)
+  expires_at        DateTime  @db.Timestamp(6)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, command_type, target_identifier])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model crate_loot_tables {
+  loot_table_id         Int         @id @default(autoincrement())
+  crate_tier            String      @unique @db.VarChar(20)
+  common_item_chance    Decimal     @default(0) @db.Decimal(5, 2)
+  uncommon_item_chance  Decimal     @default(0) @db.Decimal(5, 2)
+  rare_item_chance      Decimal     @default(0) @db.Decimal(5, 2)
+  legendary_item_chance Decimal     @default(0) @db.Decimal(5, 2)
+  created_at            DateTime?   @default(now()) @db.Timestamp(6)
+  crate_types           crate_types @relation(fields: [crate_tier], references: [tier], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model crate_opens {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int?
+  crate_tier           String    @db.VarChar(20)
+  drop_type            String    @db.VarChar(20)
+  item_id              Int?
+  item_tier            String?   @db.VarChar(20)
+  wealth_amount        Int?
+  title_name           String?   @db.VarChar(100)
+  title_was_duplicate  Boolean?
+  duplicate_conversion Int?
+  opened_at            DateTime? @default(now()) @db.Timestamp(6)
+  items                items?    @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model crate_titles {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique @db.VarChar(100)
+  tier            String    @db.VarChar(20)
+  duplicate_value Int
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model crate_types {
+  crate_type_id     Int                @id @default(autoincrement())
+  tier              String             @unique @db.VarChar(20)
+  display_name      String             @db.VarChar(50)
+  weapon_chance     Decimal            @db.Decimal(5, 2)
+  armor_chance      Decimal            @db.Decimal(5, 2)
+  wealth_chance     Decimal            @db.Decimal(5, 2)
+  title_chance      Decimal            @db.Decimal(5, 2)
+  wealth_min        Int
+  wealth_max        Int
+  color_hex         String?            @db.VarChar(7)
+  icon_emoji        String?            @db.VarChar(20)
+  description       String?
+  display_order     Int?               @default(0)
+  created_at        DateTime?          @default(now()) @db.Timestamp(6)
+  crate_loot_tables crate_loot_tables?
+}
+
+model discord_activity_channels {
+  channel_id               Int       @id @default(autoincrement())
+  discord_guild_id         String    @db.VarChar(50)
+  discord_channel_id       String    @db.VarChar(50)
+  added_by_discord_user_id String?   @db.VarChar(50)
+  added_at                 DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([discord_guild_id, discord_channel_id])
+}
+
+model discord_server_config {
+  config_id           Int       @id @default(autoincrement())
+  discord_guild_id    String    @unique @db.VarChar(50)
+  commands_channel_id String?   @db.VarChar(50)
+  feed_channel_id     String?   @db.VarChar(50)
+  admin_webhook_url   String?
+  is_active           Boolean?  @default(true)
+  created_at          DateTime? @default(now()) @db.Timestamp(6)
+  updated_at          DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model event_batch_queue {
+  queue_id      Int       @id @default(autoincrement())
+  event_type    String    @db.VarChar(50)
+  platform      String    @db.VarChar(20)
+  payload       Json
+  batch_key     String    @db.VarChar(100)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  process_after DateTime  @db.Timestamp(6)
+}
+
+model factions {
+  id                     Int           @id @default(autoincrement())
+  name                   String        @unique @db.VarChar(100)
+  description            String?
+  color_hex              String?       @db.VarChar(7)
+  motto                  String?       @db.VarChar(200)
+  total_members          Int?          @default(0)
+  territories_controlled Int?          @default(0)
+  created_at             DateTime?     @default(now()) @db.Timestamp(6)
+  territories            territories[]
+  users                  users[]
+}
+
+model gambling_sessions {
+  session_id   Int       @id @default(autoincrement())
+  user_id      Int
+  game_type    String    @db.VarChar(20)
+  wager_amount BigInt
+  result       String?   @db.VarChar(20)
+  payout       BigInt?   @default(0)
+  multiplier   Decimal?  @db.Decimal(10, 2)
+  details      Json?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  resolved_at  DateTime? @db.Timestamp(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([game_type, result], map: "idx_gambling_sessions_game_result")
+  @@index([user_id, created_at], map: "idx_gambling_sessions_user_created")
+  @@index([user_id, game_type], map: "idx_gambling_sessions_user_game")
+}
+
+model game_events {
+  id                                      Int       @id @default(autoincrement())
+  user_id                                 Int?
+  event_type                              String    @db.VarChar(50)
+  wealth_change                           BigInt?   @default(0)
+  xp_change                               Int?      @default(0)
+  target_user_id                          Int?
+  tier                                    String?   @db.VarChar(50)
+  event_description                       String?
+  success                                 Boolean?  @default(true)
+  was_busted                              Boolean?  @default(false)
+  created_at                              DateTime? @default(now()) @db.Timestamp(6)
+  users_game_events_target_user_idTousers users?    @relation("game_events_target_user_idTousers", fields: [target_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_game_events_user_idTousers        users?    @relation("game_events_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model hall_of_fame_records {
+  id                                                   Int       @id @default(autoincrement())
+  record_type                                          String    @unique @db.VarChar(50)
+  user_id                                              Int?
+  record_value                                         BigInt
+  achieved_at                                          DateTime? @default(now()) @db.Timestamp(6)
+  previous_holder_id                                   Int?
+  previous_value                                       BigInt?
+  users_hall_of_fame_records_previous_holder_idTousers users?    @relation("hall_of_fame_records_previous_holder_idTousers", fields: [previous_holder_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_hall_of_fame_records_user_idTousers            users?    @relation("hall_of_fame_records_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model heist_events {
+  heist_id           Int                 @id @default(autoincrement())
+  session_id         Int?
+  event_type         String              @db.VarChar(20)
+  difficulty         String              @db.VarChar(10)
+  prompt             String
+  correct_answer     String              @db.VarChar(200)
+  started_at         DateTime            @db.Timestamp(6)
+  time_limit_seconds Int
+  ended_at           DateTime?           @db.Timestamp(6)
+  winner_user_id     Int?
+  winner_platform    String?             @db.VarChar(20)
+  winning_answer     String?             @db.VarChar(200)
+  response_time_ms   Int?
+  crate_tier         String?             @db.VarChar(20)
+  created_at         DateTime?           @default(now()) @db.Timestamp(6)
+  streaming_sessions streaming_sessions? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users              users?              @relation(fields: [winner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model heist_quick_grab_pool {
+  grab_id      Int       @id @default(autoincrement())
+  phrase       String    @unique @db.VarChar(50)
+  times_used   Int?      @default(0)
+  last_used_at DateTime? @db.Timestamp(6)
+  is_active    Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model heist_recent_events {
+  recent_id  Int       @id @default(autoincrement())
+  event_type String    @db.VarChar(20)
+  content_id Int
+  used_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model heist_riddle_pool {
+  riddle_id         Int       @id @default(autoincrement())
+  riddle            String
+  answer            String    @db.VarChar(200)
+  alternate_answers String?
+  times_used        Int?      @default(0)
+  last_used_at      DateTime? @db.Timestamp(6)
+  is_active         Boolean?  @default(true)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model heist_schedule {
+  schedule_id        Int                 @id @default(autoincrement())
+  session_id         Int?                @unique
+  next_heist_at      DateTime            @db.Timestamp(6)
+  is_active          Boolean?            @default(true)
+  created_at         DateTime?           @default(now()) @db.Timestamp(6)
+  streaming_sessions streaming_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model heist_trivia_pool {
+  trivia_id         Int       @id @default(autoincrement())
+  category          String    @db.VarChar(50)
+  question          String
+  answer            String    @db.VarChar(200)
+  alternate_answers String?
+  times_used        Int?      @default(0)
+  last_used_at      DateTime? @db.Timestamp(6)
+  is_active         Boolean?  @default(true)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model heist_word_scramble_pool {
+  scramble_id  Int       @id @default(autoincrement())
+  scrambled    String    @db.VarChar(100)
+  answer       String    @db.VarChar(100)
+  times_used   Int?      @default(0)
+  last_used_at DateTime? @db.Timestamp(6)
+  is_active    Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model items {
+  id                       Int                        @id @default(autoincrement())
+  name                     String                     @unique @db.VarChar(100)
+  type                     String                     @db.VarChar(50)
+  tier                     String                     @db.VarChar(50)
+  base_durability          Int?                       @default(100)
+  rob_bonus                Decimal?                   @db.Decimal(5, 2)
+  defense_bonus            Decimal?                   @db.Decimal(5, 2)
+  revenue_min              Int?
+  revenue_max              Int?
+  insurance_percent        Decimal?                   @db.Decimal(5, 2)
+  purchase_price           Int
+  sell_price               Int?
+  description              String?
+  flavor_text              String?
+  created_at               DateTime?                  @default(now()) @db.Timestamp(6)
+  daily_revenue_potential  Int?
+  upkeep_cost              Int?
+  operating_cost           Int?
+  achievements             achievements[]
+  black_market_inventory   black_market_inventory[]
+  business_revenue_history business_revenue_history[]
+  crate_opens              crate_opens[]
+  player_shop_inventory    player_shop_inventory[]
+  user_inventory           user_inventory[]
+}
+
+model leaderboard_history {
+  history_id                                      Int       @id @default(autoincrement())
+  period_type                                     String    @db.VarChar(20)
+  period_start                                    DateTime  @db.Date
+  period_end                                      DateTime  @db.Date
+  category                                        String    @db.VarChar(50)
+  winner_user_id                                  Int?
+  winner_username                                 String?   @db.VarChar(100)
+  winner_value                                    BigInt
+  second_user_id                                  Int?
+  second_username                                 String?   @db.VarChar(100)
+  second_value                                    BigInt?
+  third_user_id                                   Int?
+  third_username                                  String?   @db.VarChar(100)
+  third_value                                     BigInt?
+  total_participants                              Int?      @default(0)
+  recorded_at                                     DateTime? @default(now()) @db.Timestamp(6)
+  users_leaderboard_history_second_user_idTousers users?    @relation("leaderboard_history_second_user_idTousers", fields: [second_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_leaderboard_history_third_user_idTousers  users?    @relation("leaderboard_history_third_user_idTousers", fields: [third_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_leaderboard_history_winner_user_idTousers users?    @relation("leaderboard_history_winner_user_idTousers", fields: [winner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([period_type, period_start, category])
+}
+
+model leaderboard_snapshots {
+  id                    Int       @id @default(autoincrement())
+  user_id               Int
+  period_type           String    @db.VarChar(20)
+  period_start          DateTime  @db.Date
+  period_end            DateTime  @db.Date
+  wealth_earned         BigInt?   @default(0)
+  xp_earned             BigInt?   @default(0)
+  messages_sent         Int?      @default(0)
+  watch_time_minutes    Int?      @default(0)
+  play_count            Int?      @default(0)
+  rob_count             Int?      @default(0)
+  rob_success_count     Int?      @default(0)
+  checkins              Int?      @default(0)
+  crates_opened         Int?      @default(0)
+  subs_count            Int?      @default(0)
+  gift_subs_given       Int?      @default(0)
+  bits_donated          Int?      @default(0)
+  kicks_sent            Int?      @default(0)
+  donations_usd         Decimal?  @default(0) @db.Decimal(10, 2)
+  total_contributed_usd Decimal?  @default(0) @db.Decimal(10, 2)
+  created_at            DateTime? @default(now()) @db.Timestamp(6)
+  users                 users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, period_type, period_start])
+}
+
+model lottery_draws {
+  draw_id         Int               @id @default(autoincrement())
+  draw_type       String            @db.VarChar(20)
+  prize_pool      BigInt?           @default(0)
+  winning_numbers String?           @db.VarChar(50)
+  winner_id       Int?
+  winner_payout   BigInt?
+  status          String?           @default("open") @db.VarChar(20)
+  draw_at         DateTime          @db.Timestamp(6)
+  created_at      DateTime?         @default(now()) @db.Timestamp(6)
+  completed_at    DateTime?         @db.Timestamp(6)
+  lottery_tickets lottery_tickets[]
+
+  @@index([status, draw_at], map: "idx_lottery_status_draw")
+  @@index([draw_type, status], map: "idx_lottery_type_status")
+}
+
+model lottery_tickets {
+  ticket_id     Int           @id @default(autoincrement())
+  user_id       Int
+  draw_id       Int
+  numbers       String        @db.VarChar(50)
+  cost          BigInt
+  created_at    DateTime?     @default(now()) @db.Timestamp(6)
+  lottery_draws lottery_draws @relation(fields: [draw_id], references: [draw_id], onDelete: Cascade, onUpdate: NoAction)
+  users         users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, draw_id, numbers])
+  @@index([draw_id], map: "idx_lottery_tickets_draw")
+  @@index([user_id], map: "idx_lottery_tickets_user")
+}
+
+model mission_completions {
+  completion_id   Int       @id @default(autoincrement())
+  user_id         Int?
+  completion_type String    @db.VarChar(10)
+  completed_date  DateTime  @db.Date
+  mission_ids     Int[]
+  total_wealth    Int
+  total_xp        Int
+  bonus_wealth    Int
+  bonus_xp        Int
+  crate_awarded   String?   @db.VarChar(20)
+  player_tier     String    @db.VarChar(20)
+  completed_at    DateTime? @default(now()) @db.Timestamp(6)
+  users           users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model mission_templates {
+  id                   String          @id @db.VarChar(20)
+  mission_type         String          @db.VarChar(10)
+  category             String          @db.VarChar(20)
+  difficulty           String          @db.VarChar(10)
+  name                 String          @db.VarChar(100)
+  description          String
+  objective_type       String          @db.VarChar(50)
+  objective_base_value Int
+  is_luck_based        Boolean?        @default(false)
+  requires_item        String?         @db.VarChar(50)
+  reward_wealth        Int
+  reward_xp            Int
+  created_at           DateTime?       @default(now()) @db.Timestamp(6)
+  user_missions        user_missions[]
+}
+
+model monetization_events {
+  id                                                 Int                     @id @default(autoincrement())
+  user_id                                            Int?
+  platform                                           String                  @db.VarChar(20)
+  event_type                                         String                  @db.VarChar(50)
+  quantity                                           Int?                    @default(1)
+  amount_usd                                         Decimal?                @db.Decimal(10, 2)
+  tier                                               String?                 @db.VarChar(20)
+  recipient_user_id                                  Int?
+  recipient_username                                 String?                 @db.VarChar(100)
+  wealth_rewarded                                    BigInt                  @default(0)
+  xp_rewarded                                        Int                     @default(0)
+  raw_event_data                                     Json?
+  external_event_id                                  String?                 @unique @db.VarChar(255)
+  processed                                          Boolean?                @default(true)
+  created_at                                         DateTime?               @default(now()) @db.Timestamp(6)
+  users_monetization_events_recipient_user_idTousers users?                  @relation("monetization_events_recipient_user_idTousers", fields: [recipient_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_monetization_events_user_idTousers           users?                  @relation("monetization_events_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  session_contributions                              session_contributions[]
+}
+
+model oauth_link_states {
+  state_id   Int       @id @default(autoincrement())
+  state      String    @unique @db.VarChar(64)
+  user_id    Int
+  platform   String    @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  expires_at DateTime  @db.Timestamp(6)
+
+  @@index([expires_at], map: "idx_oauth_link_expires")
+  @@index([state], map: "idx_oauth_link_state")
+}
+
+model player_gambling_stats {
+  stats_id            Int       @id @default(autoincrement())
+  user_id             Int       @unique
+  total_wagered       BigInt?   @default(0)
+  total_won           BigInt?   @default(0)
+  total_lost          BigInt?   @default(0)
+  net_profit          BigInt?   @default(0)
+  slots_played        Int?      @default(0)
+  slots_won           Int?      @default(0)
+  blackjack_played    Int?      @default(0)
+  blackjack_won       Int?      @default(0)
+  coinflips_played    Int?      @default(0)
+  coinflips_won       Int?      @default(0)
+  lottery_tickets     Int?      @default(0)
+  lottery_wins        Int?      @default(0)
+  current_win_streak  Int?      @default(0)
+  current_loss_streak Int?      @default(0)
+  best_win_streak     Int?      @default(0)
+  worst_loss_streak   Int?      @default(0)
+  biggest_win         BigInt?   @default(0)
+  biggest_loss        BigInt?   @default(0)
+  jackpots_hit        Int?      @default(0)
+  jackpot_total       BigInt?   @default(0)
+  updated_at          DateTime? @default(now()) @db.Timestamp(6)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model player_shop_inventory {
+  id           Int       @id @default(autoincrement())
+  user_id      Int
+  item_id      Int
+  price        Int
+  generated_at DateTime? @default(now()) @db.Timestamp(6)
+  is_purchased Boolean?  @default(false)
+  purchased_at DateTime? @db.Timestamp(6)
+  items        items     @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model reward_config {
+  id              Int       @id @default(autoincrement())
+  platform        String    @db.VarChar(20)
+  event_type      String    @db.VarChar(50)
+  wealth_per_unit Int
+  xp_per_unit     Int
+  tier_multiplier Json?
+  description     String?
+  is_active       Boolean?  @default(true)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([platform, event_type])
+}
+
+model session_contributions {
+  id                    Int                  @id @default(autoincrement())
+  session_id            Int?
+  user_id               Int?
+  platform              String               @db.VarChar(20)
+  contribution_type     String               @db.VarChar(50)
+  quantity              Int?                 @default(1)
+  usd_value             Decimal              @db.Decimal(10, 2)
+  monetization_event_id Int?
+  created_at            DateTime?            @default(now()) @db.Timestamp(6)
+  monetization_events   monetization_events? @relation(fields: [monetization_event_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  streaming_sessions    streaming_sessions?  @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                 users?               @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model slot_jackpots {
+  jackpot_id        Int       @id @default(autoincrement())
+  current_pool      BigInt?   @default(10000)
+  last_winner_id    Int?
+  last_win_amount   BigInt?
+  last_won_at       DateTime? @db.Timestamp(6)
+  contribution_rate Decimal?  @default(0.02) @db.Decimal(5, 4)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model streaming_sessions {
+  id                         Int                     @id @default(autoincrement())
+  session_title              String?                 @db.VarChar(255)
+  platform                   String                  @db.VarChar(20)
+  is_active                  Boolean?                @default(true)
+  current_juicernaut_user_id Int?
+  started_at                 DateTime?               @default(now()) @db.Timestamp(6)
+  ended_at                   DateTime?               @db.Timestamp(6)
+  total_contributions_usd    Decimal?                @default(0) @db.Decimal(10, 2)
+  total_viewers_peak         Int?                    @default(0)
+  total_messages             Int?                    @default(0)
+  heist_events               heist_events[]
+  heist_schedule             heist_schedule?
+  session_contributions      session_contributions[]
+  users                      users?                  @relation(fields: [current_juicernaut_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model territories {
+  id                     Int       @id @default(autoincrement())
+  name                   String    @unique @db.VarChar(100)
+  description            String?
+  controlling_faction_id Int?
+  is_contested           Boolean?  @default(false)
+  buff_type              String?   @db.VarChar(50)
+  buff_value             Int?
+  last_evaluated_at      DateTime? @db.Timestamp(6)
+  control_changed_at     DateTime? @db.Timestamp(6)
+  factions               factions? @relation(fields: [controlling_faction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_achievements {
+  id               Int          @id @default(autoincrement())
+  user_id          Int
+  achievement_id   Int
+  current_progress BigInt?      @default(0)
+  is_completed     Boolean?     @default(false)
+  started_at       DateTime?    @default(now()) @db.Timestamp(6)
+  completed_at     DateTime?    @db.Timestamp(6)
+  updated_at       DateTime?    @default(now()) @db.Timestamp(6)
+  achievements     achievements @relation(fields: [achievement_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users            users        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, achievement_id])
+}
+
+model user_crates {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  tier              String    @db.VarChar(20)
+  is_escrowed       Boolean?  @default(false)
+  escrow_expires_at DateTime? @db.Timestamp(6)
+  acquired_at       DateTime? @default(now()) @db.Timestamp(6)
+  source            String?   @db.VarChar(50)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_inventory {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  item_id           Int
+  durability        Int
+  is_equipped       Boolean?  @default(false)
+  slot              String?   @db.VarChar(50)
+  is_escrowed       Boolean?  @default(false)
+  escrow_expires_at DateTime? @db.Timestamp(6)
+  acquired_at       DateTime? @default(now()) @db.Timestamp(6)
+  equipped_at       DateTime? @db.Timestamp(6)
+  items             items     @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_missions {
+  id                Int                @id @default(autoincrement())
+  user_id           Int
+  template_id       String?            @db.VarChar(20)
+  mission_type      String             @db.VarChar(10)
+  assigned_tier     String             @db.VarChar(20)
+  tier_multiplier   Decimal            @db.Decimal(3, 2)
+  objective_value   Int
+  reward_wealth     Int
+  reward_xp         Int
+  current_progress  Int?               @default(0)
+  is_completed      Boolean?           @default(false)
+  completed_at      DateTime?          @db.Timestamp(6)
+  assigned_at       DateTime?          @default(now()) @db.Timestamp(6)
+  expires_at        DateTime           @db.Timestamp(6)
+  status            String?            @default("active") @db.VarChar(20)
+  mission_templates mission_templates? @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users             users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_notifications {
+  notification_id   Int       @id @default(autoincrement())
+  user_id           Int?
+  notification_type String    @db.VarChar(50)
+  title             String    @db.VarChar(200)
+  message           String
+  icon              String?   @db.VarChar(50)
+  link_type         String?   @db.VarChar(50)
+  link_id           String?   @db.VarChar(100)
+  is_seen           Boolean?  @default(false)
+  seen_at           DateTime? @db.Timestamp(6)
+  is_dismissed      Boolean?  @default(false)
+  dismissed_at      DateTime? @db.Timestamp(6)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  expires_at        DateTime? @db.Timestamp(6)
+  users             users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_titles {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  title       String    @db.VarChar(100)
+  is_equipped Boolean?  @default(false)
+  unlocked_at DateTime? @default(now()) @db.Timestamp(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, title])
+}
+
+model users {
+  id                                                                  Int                        @id @default(autoincrement())
+  kick_user_id                                                        String?                    @unique @db.VarChar(255)
+  twitch_user_id                                                      String?                    @unique @db.VarChar(255)
+  discord_user_id                                                     String?                    @unique @db.VarChar(50)
+  username                                                            String                     @db.VarChar(100)
+  display_name                                                        String?                    @db.VarChar(100)
+  kingpin_name                                                        String?                    @db.VarChar(100)
+  wealth                                                              BigInt?                    @default(0)
+  xp                                                                  BigInt?                    @default(0)
+  level                                                               Int?                       @default(1)
+  status_tier                                                         String?                    @default("Rookie") @db.VarChar(50)
+  hp                                                                  Int?                       @default(100)
+  checkin_streak                                                      Int?                       @default(0)
+  last_checkin_date                                                   DateTime?                  @db.Date
+  total_play_count                                                    Int?                       @default(0)
+  wins                                                                Int?                       @default(0)
+  losses                                                              Int?                       @default(0)
+  faction_id                                                          Int?
+  joined_faction_at                                                   DateTime?                  @db.Timestamp(6)
+  discord_username                                                    String?                    @db.VarChar(100)
+  discord_linked_at                                                   DateTime?                  @db.Timestamp(6)
+  created_at                                                          DateTime?                  @default(now()) @db.Timestamp(6)
+  updated_at                                                          DateTime?                  @default(now()) @db.Timestamp(6)
+  last_seen                                                           DateTime?                  @default(now()) @db.Timestamp(6)
+  upkeep_debt_days                                                    Int?                       @default(0)
+  last_upkeep_check                                                   DateTime?                  @db.Timestamp(6)
+  active_buffs                                                        active_buffs[]
+  business_revenue_history                                            business_revenue_history[]
+  chat_messages                                                       chat_messages[]
+  coin_flip_challenges_coin_flip_challenges_acceptor_idTousers        coin_flip_challenges[]     @relation("coin_flip_challenges_acceptor_idTousers")
+  coin_flip_challenges_coin_flip_challenges_challenger_idTousers      coin_flip_challenges[]     @relation("coin_flip_challenges_challenger_idTousers")
+  cooldowns                                                           cooldowns[]
+  crate_opens                                                         crate_opens[]
+  gambling_sessions                                                   gambling_sessions[]
+  game_events_game_events_target_user_idTousers                       game_events[]              @relation("game_events_target_user_idTousers")
+  game_events_game_events_user_idTousers                              game_events[]              @relation("game_events_user_idTousers")
+  hall_of_fame_records_hall_of_fame_records_previous_holder_idTousers hall_of_fame_records[]     @relation("hall_of_fame_records_previous_holder_idTousers")
+  hall_of_fame_records_hall_of_fame_records_user_idTousers            hall_of_fame_records[]     @relation("hall_of_fame_records_user_idTousers")
+  heist_events                                                        heist_events[]
+  leaderboard_history_leaderboard_history_second_user_idTousers       leaderboard_history[]      @relation("leaderboard_history_second_user_idTousers")
+  leaderboard_history_leaderboard_history_third_user_idTousers        leaderboard_history[]      @relation("leaderboard_history_third_user_idTousers")
+  leaderboard_history_leaderboard_history_winner_user_idTousers       leaderboard_history[]      @relation("leaderboard_history_winner_user_idTousers")
+  leaderboard_snapshots                                               leaderboard_snapshots[]
+  lottery_tickets                                                     lottery_tickets[]
+  mission_completions                                                 mission_completions[]
+  monetization_events_monetization_events_recipient_user_idTousers    monetization_events[]      @relation("monetization_events_recipient_user_idTousers")
+  monetization_events_monetization_events_user_idTousers              monetization_events[]      @relation("monetization_events_user_idTousers")
+  player_gambling_stats                                               player_gambling_stats?
+  player_shop_inventory                                               player_shop_inventory[]
+  session_contributions                                               session_contributions[]
+  streaming_sessions                                                  streaming_sessions[]
+  user_achievements                                                   user_achievements[]
+  user_crates                                                         user_crates[]
+  user_inventory                                                      user_inventory[]
+  user_missions                                                       user_missions[]
+  user_notifications                                                  user_notifications[]
+  user_titles                                                         user_titles[]
+  factions                                                            factions?                  @relation(fields: [faction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model business_revenue_history {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  item_id        Int
+  business_name  String    @db.VarChar(100)
+  gross_revenue  Int
+  operating_cost Int
+  net_revenue    Int
+  collected_at   DateTime? @default(now()) @db.Timestamptz(6)
+  period_type    String?   @default("scheduled") @db.VarChar(20)
+  items          items     @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, collected_at(sort: Desc)], map: "idx_business_revenue_user_date")
+}
