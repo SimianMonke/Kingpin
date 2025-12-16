@@ -8,11 +8,13 @@ export default defineConfig({
     include: ['**/*.test.ts'],
     exclude: ['node_modules', '.next'],
     testTimeout: 30000,
-    isolate: false,
+    mockReset: true,
+    clearMocks: true,
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@/lib/db': path.resolve(__dirname, './src/lib/__mocks__/db.ts'),
     },
   },
 })
