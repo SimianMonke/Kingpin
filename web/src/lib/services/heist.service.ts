@@ -20,28 +20,28 @@ import { DiscordService } from './discord.service'
 
 export interface HeistEventInfo {
   id: number
-  sessionId: number
-  eventType: string
+  session_id: number
+  event_type: string
   difficulty: string
   prompt: string
-  correctAnswer: string
-  startedAt: Date
-  timeLimitSeconds: number
-  endedAt: Date | null
-  isActive: boolean
+  correct_answer: string
+  started_at: Date
+  time_limit_seconds: number
+  ended_at: Date | null
+  is_active: boolean
   timeRemainingMs: number
   winner?: {
     id: number
     username: string
     platform: string
-    responseTimeMs: number
-    crateTier: string
+    response_time_ms: number
+    crate_tier: string
   }
 }
 
 export interface HeistScheduleInfo {
-  sessionId: number
-  nextHeistAt: Date
+  session_id: number
+  next_heist_at: Date
   timeUntilMs: number
 }
 
@@ -57,26 +57,26 @@ export interface AnswerCheckResult {
   winner?: boolean
   alreadyWon?: boolean
   expired?: boolean
-  crateTier?: string
-  responseTimeMs?: number
+  crate_tier?: string
+  response_time_ms?: number
   error?: string
 }
 
 export interface HeistHistoryItem {
   id: number
-  eventType: string
+  event_type: string
   difficulty: string
   prompt: string
-  correctAnswer: string
-  startedAt: Date
-  endedAt: Date | null
+  correct_answer: string
+  started_at: Date
+  ended_at: Date | null
   winner?: {
     id: number
     username: string
     platform: string
-    responseTimeMs: number
+    response_time_ms: number
   }
-  crateTier: string | null
+  crate_tier: string | null
 }
 
 export interface GeneratedEvent {
@@ -84,7 +84,7 @@ export interface GeneratedEvent {
   difficulty: HeistDifficulty
   prompt: string
   answer: string
-  contentId: number // For no-repeat tracking
+  content_id: number // For no-repeat tracking
 }
 
 // =============================================================================
@@ -150,43 +150,43 @@ export const HeistService = {
   /**
    * Get active heist event for a session
    */
-  async getActiveHeist(sessionId: number): Promise<HeistEventInfo | null> {
-    const heist = await prisma.heistEvent.findFirst({
+  async getActiveHeist(session_id: number): Promise<HeistEventInfo | null> {
+    const heist = await prisma.heist_events.findFirst({
       where: {
-        sessionId,
-        endedAt: null,
+        session_id,
+        ended_at: null,
       },
       include: {
-        winner: true,
+        users: true,
       },
     })
 
     if (!heist) return null
 
     const now = Date.now()
-    const endTime = heist.startedAt.getTime() + heist.timeLimitSeconds * 1000
+    const endTime = heist.started_at.getTime() + heist.time_limit_seconds * 1000
     const timeRemainingMs = Math.max(0, endTime - now)
-    const isActive = timeRemainingMs > 0 && !heist.winnerUserId
+    const is_active = timeRemainingMs > 0 && !heist.winner_user_id
 
     return {
-      id: heist.id,
-      sessionId: heist.sessionId,
-      eventType: heist.eventType,
+      id: heist.heist_id,
+      session_id: heist.session_id ?? 0,
+      event_type: heist.event_type,
       difficulty: heist.difficulty,
       prompt: heist.prompt,
-      correctAnswer: heist.correctAnswer,
-      startedAt: heist.startedAt,
-      timeLimitSeconds: heist.timeLimitSeconds,
-      endedAt: heist.endedAt,
-      isActive,
+      correct_answer: heist.correct_answer,
+      started_at: heist.started_at,
+      time_limit_seconds: heist.time_limit_seconds,
+      ended_at: heist.ended_at,
+      is_active,
       timeRemainingMs,
-      winner: heist.winner
+      winner: heist.users
         ? {
-            id: heist.winner.id,
-            username: heist.winner.username,
-            platform: heist.winnerPlatform || 'unknown',
-            responseTimeMs: heist.responseTimeMs || 0,
-            crateTier: heist.crateTier || '',
+            id: heist.users.id,
+            username: heist.users.username,
+            platform: heist.winner_platform || 'unknown',
+            response_time_ms: heist.response_time_ms || 0,
+            crate_tier: heist.crate_tier || '',
           }
         : undefined,
     }
@@ -196,8 +196,8 @@ export const HeistService = {
    * Get any active heist (across all sessions)
    */
   async getAnyActiveHeist(): Promise<HeistEventInfo | null> {
-    const session = await prisma.streamingSession.findFirst({
-      where: { isActive: true },
+    const session = await prisma.streaming_sessions.findFirst({
+      where: { is_active: true },
     })
 
     if (!session) return null
@@ -207,48 +207,48 @@ export const HeistService = {
   /**
    * Get heist schedule for a session
    */
-  async getHeistSchedule(sessionId: number): Promise<HeistScheduleInfo | null> {
-    const schedule = await prisma.heistSchedule.findFirst({
-      where: { sessionId },
-      orderBy: { nextHeistAt: 'desc' },
+  async getHeistSchedule(session_id: number): Promise<HeistScheduleInfo | null> {
+    const schedule = await prisma.heist_schedule.findFirst({
+      where: { session_id },
+      orderBy: { next_heist_at: 'desc' },
     })
 
     if (!schedule) return null
 
     return {
-      sessionId: schedule.sessionId,
-      nextHeistAt: schedule.nextHeistAt,
-      timeUntilMs: Math.max(0, schedule.nextHeistAt.getTime() - Date.now()),
+      session_id: schedule.session_id ?? 0,
+      next_heist_at: schedule.next_heist_at,
+      timeUntilMs: Math.max(0, schedule.next_heist_at.getTime() - Date.now()),
     }
   },
 
   /**
    * Schedule next heist for a session
    */
-  async scheduleNextHeist(sessionId: number, isFirstHeist: boolean = false): Promise<HeistScheduleInfo> {
+  async scheduleNextHeist(session_id: number, isFirstHeist: boolean = false): Promise<HeistScheduleInfo> {
     // Random delay between MIN and MAX minutes
     const delayMinutes = isFirstHeist
       ? HEIST_CONFIG.MIN_AFTER_SESSION_START
       : randInt(HEIST_CONFIG.MIN_DELAY_MINUTES, HEIST_CONFIG.MAX_DELAY_MINUTES)
 
-    const nextHeistAt = new Date(Date.now() + delayMinutes * 60 * 1000)
+    const next_heist_at = new Date(Date.now() + delayMinutes * 60 * 1000)
 
     // Clear any existing schedule for this session
-    await prisma.heistSchedule.deleteMany({
-      where: { sessionId },
+    await prisma.heist_schedule.deleteMany({
+      where: { session_id },
     })
 
     // Create new schedule
-    await prisma.heistSchedule.create({
+    await prisma.heist_schedule.create({
       data: {
-        sessionId,
-        nextHeistAt,
+        session_id,
+        next_heist_at,
       },
     })
 
     return {
-      sessionId,
-      nextHeistAt,
+      session_id,
+      next_heist_at,
       timeUntilMs: delayMinutes * 60 * 1000,
     }
   },
@@ -256,9 +256,9 @@ export const HeistService = {
   /**
    * Clear heist schedule (on session end)
    */
-  async clearSchedule(sessionId: number): Promise<void> {
-    await prisma.heistSchedule.deleteMany({
-      where: { sessionId },
+  async clearSchedule(session_id: number): Promise<void> {
+    await prisma.heist_schedule.deleteMany({
+      where: { session_id },
     })
   },
 
@@ -266,11 +266,11 @@ export const HeistService = {
    * Select event type by weighted distribution
    */
   selectEventType(): HeistEventType {
-    const eventTypes = HEIST_CONFIG.EVENT_TYPES
+    const event_types = HEIST_CONFIG.EVENT_TYPES
     const roll = Math.random()
 
     let cumulative = 0
-    for (const [type, config] of Object.entries(eventTypes)) {
+    for (const [type, config] of Object.entries(event_types)) {
       cumulative += config.weight
       if (roll < cumulative) {
         return type as HeistEventType
@@ -283,38 +283,38 @@ export const HeistService = {
   /**
    * Get recently used event content IDs to avoid repeats
    */
-  async getRecentEventIds(eventType: string, count: number = 10): Promise<number[]> {
-    const recent = await prisma.heistRecentEvent.findMany({
-      where: { eventType },
-      orderBy: { usedAt: 'desc' },
+  async getRecentEventIds(event_type: string, count: number = 10): Promise<number[]> {
+    const recent = await prisma.heist_recent_events.findMany({
+      where: { event_type },
+      orderBy: { used_at: 'desc' },
       take: count,
     })
 
-    return recent.map((r) => r.contentId)
+    return recent.map((r) => r.content_id)
   },
 
   /**
    * Record event usage for no-repeat logic
    */
-  async recordEventUsage(eventType: string, contentId: number): Promise<void> {
-    await prisma.heistRecentEvent.create({
+  async recordEventUsage(event_type: string, content_id: number): Promise<void> {
+    await prisma.heist_recent_events.create({
       data: {
-        eventType,
-        contentId,
+        event_type,
+        content_id,
       },
     })
 
     // Clean up old entries (keep last N per type)
-    const old = await prisma.heistRecentEvent.findMany({
-      where: { eventType },
-      orderBy: { usedAt: 'desc' },
+    const old = await prisma.heist_recent_events.findMany({
+      where: { event_type },
+      orderBy: { used_at: 'desc' },
       skip: HEIST_CONFIG.RECENT_EVENTS_TRACK,
     })
 
     if (old.length > 0) {
-      await prisma.heistRecentEvent.deleteMany({
+      await prisma.heist_recent_events.deleteMany({
         where: {
-          id: { in: old.map((o) => o.id) },
+          recent_id: { in: old.map((o) => o.recent_id) },
         },
       })
     }
@@ -383,15 +383,15 @@ export const HeistService = {
   /**
    * Generate event content based on type
    */
-  async generateEventContent(eventType: HeistEventType): Promise<GeneratedEvent> {
-    const config = HEIST_CONFIG.EVENT_TYPES[eventType]
-    const recentIds = await this.getRecentEventIds(eventType)
+  async generateEventContent(event_type: HeistEventType): Promise<GeneratedEvent> {
+    const config = HEIST_CONFIG.EVENT_TYPES[event_type]
+    const recentIds = await this.getRecentEventIds(event_type)
 
     let prompt: string
     let answer: string
-    let contentId: number
+    let content_id: number
 
-    switch (eventType) {
+    switch (event_type) {
       case HEIST_EVENT_TYPES.QUICK_GRAB: {
         // Find phrase not recently used
         const availablePhrases = HEIST_QUICK_GRAB_PHRASES
@@ -404,7 +404,7 @@ export const HeistService = {
 
         prompt = `Type "!grab ${selected.phrase}" to claim the prize!`
         answer = `!grab ${selected.phrase}`
-        contentId = selected.index
+        content_id = selected.index
         break
       }
 
@@ -412,47 +412,47 @@ export const HeistService = {
         const { code, patternIndex } = this.generateCode()
         prompt = `Crack the code: ${code}`
         answer = code
-        contentId = patternIndex * 1000 + randInt(0, 999) // Unique per generation
+        content_id = patternIndex * 1000 + randInt(0, 999) // Unique per generation
         break
       }
 
       case HEIST_EVENT_TYPES.TRIVIA: {
         // Pull from trivia pool
-        const triviaQuestions = await prisma.heistTriviaPool.findMany({
+        const triviaQuestions = await prisma.heist_trivia_pool.findMany({
           where: {
-            id: { notIn: recentIds },
+            trivia_id: { notIn: recentIds },
           },
-          orderBy: { timesUsed: 'asc' },
+          orderBy: { times_used: 'asc' },
           take: 10,
         })
 
         if (triviaQuestions.length === 0) {
           // Fallback: get any question
-          const fallback = await prisma.heistTriviaPool.findFirst({
-            orderBy: { timesUsed: 'asc' },
+          const fallback = await prisma.heist_trivia_pool.findFirst({
+            orderBy: { times_used: 'asc' },
           })
           if (fallback) {
             prompt = fallback.question
             answer = fallback.answer
-            contentId = fallback.id
+            content_id = fallback.trivia_id
           } else {
             // No trivia in DB, use hardcoded fallback
             prompt = 'What tier do you need to reach to join a faction?'
             answer = 'Associate'
-            contentId = 0
+            content_id = 0
           }
         } else {
           const selected = triviaQuestions[randInt(0, triviaQuestions.length - 1)]
           prompt = selected.question
           answer = selected.answer
-          contentId = selected.id
+          content_id = selected.trivia_id
 
           // Update usage count
-          await prisma.heistTriviaPool.update({
-            where: { id: selected.id },
+          await prisma.heist_trivia_pool.update({
+            where: { trivia_id: selected.trivia_id },
             data: {
-              timesUsed: { increment: 1 },
-              lastUsedAt: new Date(),
+              times_used: { increment: 1 },
+              last_used_at: new Date(),
             },
           })
         }
@@ -470,7 +470,7 @@ export const HeistService = {
 
         prompt = `Unscramble: ${selected.scrambled}`
         answer = selected.answer
-        contentId = selected.index
+        content_id = selected.index
         break
       }
 
@@ -485,7 +485,7 @@ export const HeistService = {
 
         prompt = selected.riddle
         answer = selected.answer
-        contentId = selected.index
+        content_id = selected.index
         break
       }
 
@@ -493,32 +493,32 @@ export const HeistService = {
         const math = this.generateMathProblem()
         prompt = `Decrypt: ${math.expression} = ?`
         answer = math.answer.toString()
-        contentId = randInt(0, 99999) // Random ID for math
+        content_id = randInt(0, 99999) // Random ID for math
         break
       }
 
       default:
         prompt = 'Quick! Type "!grab WIN" to claim!'
         answer = '!grab WIN'
-        contentId = 0
+        content_id = 0
     }
 
     return {
-      type: eventType,
+      type: event_type,
       difficulty: config.difficulty as HeistDifficulty,
       prompt,
       answer,
-      contentId,
+      content_id,
     }
   },
 
   /**
    * Trigger a heist event
    */
-  async triggerHeist(sessionId: number, eventType?: HeistEventType): Promise<TriggerHeistResult> {
+  async triggerHeist(session_id: number, event_type?: HeistEventType): Promise<TriggerHeistResult> {
     // Check session exists and is active
-    const session = await prisma.streamingSession.findFirst({
-      where: { id: sessionId, isActive: true },
+    const session = await prisma.streaming_sessions.findFirst({
+      where: { id: session_id, is_active: true },
     })
 
     if (!session) {
@@ -526,50 +526,50 @@ export const HeistService = {
     }
 
     // Check no active heist already
-    const activeHeist = await this.getActiveHeist(sessionId)
-    if (activeHeist?.isActive) {
+    const activeHeist = await this.getActiveHeist(session_id)
+    if (activeHeist?.is_active) {
       return { success: false, error: 'A heist is already in progress' }
     }
 
     // Select event type if not specified
-    const selectedType = eventType || this.selectEventType()
+    const selectedType = event_type || this.selectEventType()
 
     // Generate event content
     const eventContent = await this.generateEventContent(selectedType)
     const config = HEIST_CONFIG.EVENT_TYPES[eventContent.type]
 
     // Create heist event
-    const heist = await prisma.heistEvent.create({
+    const heist = await prisma.heist_events.create({
       data: {
-        sessionId,
-        eventType: eventContent.type,
+        session_id,
+        event_type: eventContent.type,
         difficulty: eventContent.difficulty,
         prompt: eventContent.prompt,
-        correctAnswer: eventContent.answer,
-        startedAt: new Date(),
-        timeLimitSeconds: config.time,
+        correct_answer: eventContent.answer,
+        started_at: new Date(),
+        time_limit_seconds: config.time,
       },
     })
 
     // Record usage for no-repeat
-    await this.recordEventUsage(eventContent.type, eventContent.contentId)
+    await this.recordEventUsage(eventContent.type, eventContent.content_id)
 
     // Schedule next heist
-    await this.scheduleNextHeist(sessionId)
+    await this.scheduleNextHeist(session_id)
 
     return {
       success: true,
       heist: {
-        id: heist.id,
-        sessionId: heist.sessionId,
-        eventType: heist.eventType,
+        id: heist.heist_id,
+        session_id: heist.session_id ?? 0,
+        event_type: heist.event_type,
         difficulty: heist.difficulty,
         prompt: heist.prompt,
-        correctAnswer: heist.correctAnswer,
-        startedAt: heist.startedAt,
-        timeLimitSeconds: heist.timeLimitSeconds,
-        endedAt: null,
-        isActive: true,
+        correct_answer: heist.correct_answer,
+        started_at: heist.started_at,
+        time_limit_seconds: heist.time_limit_seconds,
+        ended_at: null,
+        is_active: true,
         timeRemainingMs: config.time * 1000,
       },
     }
@@ -578,25 +578,25 @@ export const HeistService = {
   /**
    * Check if an answer is correct for the active heist
    */
-  checkAnswerFormat(eventType: string, userAnswer: string, correctAnswer: string): boolean {
-    switch (eventType) {
+  checkAnswerFormat(event_type: string, userAnswer: string, correct_answer: string): boolean {
+    switch (event_type) {
       case HEIST_EVENT_TYPES.QUICK_GRAB:
-        return exactMatch(userAnswer, correctAnswer)
+        return exactMatch(userAnswer, correct_answer)
 
       case HEIST_EVENT_TYPES.CODE_CRACK:
         // Case-sensitive for letters
-        return userAnswer.trim() === correctAnswer
+        return userAnswer.trim() === correct_answer
 
       case HEIST_EVENT_TYPES.TRIVIA:
       case HEIST_EVENT_TYPES.WORD_SCRAMBLE:
       case HEIST_EVENT_TYPES.RIDDLE:
-        return fuzzyMatch(userAnswer, correctAnswer)
+        return fuzzyMatch(userAnswer, correct_answer)
 
       case HEIST_EVENT_TYPES.MATH_HACK:
-        return numericMatch(userAnswer, correctAnswer)
+        return numericMatch(userAnswer, correct_answer)
 
       default:
-        return exactMatch(userAnswer, correctAnswer)
+        return exactMatch(userAnswer, correct_answer)
     }
   },
 
@@ -604,13 +604,13 @@ export const HeistService = {
    * Submit an answer for an active heist
    */
   async submitAnswer(
-    userId: number,
+    user_id: number,
     answer: string,
     platform: string
   ): Promise<AnswerCheckResult> {
     // Find active session
-    const session = await prisma.streamingSession.findFirst({
-      where: { isActive: true },
+    const session = await prisma.streaming_sessions.findFirst({
+      where: { is_active: true },
     })
 
     if (!session) {
@@ -618,10 +618,10 @@ export const HeistService = {
     }
 
     // Find active heist
-    const heist = await prisma.heistEvent.findFirst({
+    const heist = await prisma.heist_events.findFirst({
       where: {
-        sessionId: session.id,
-        endedAt: null,
+        session_id: session.id,
+        ended_at: null,
       },
     })
 
@@ -630,59 +630,59 @@ export const HeistService = {
     }
 
     // Check if already won
-    if (heist.winnerUserId) {
+    if (heist.winner_user_id) {
       return { success: true, correct: false, alreadyWon: true }
     }
 
     // Check if expired
-    const endTime = heist.startedAt.getTime() + heist.timeLimitSeconds * 1000
+    const endTime = heist.started_at.getTime() + heist.time_limit_seconds * 1000
     if (Date.now() > endTime) {
       return { success: true, correct: false, expired: true }
     }
 
     // Check answer
-    const isCorrect = this.checkAnswerFormat(heist.eventType, answer, heist.correctAnswer)
+    const isCorrect = this.checkAnswerFormat(heist.event_type, answer, heist.correct_answer)
 
     if (!isCorrect) {
       return { success: true, correct: false }
     }
 
     // Winner! Roll crate tier
-    const crateTier = this.rollCrateTier(heist.difficulty as HeistDifficulty)
-    const responseTimeMs = Date.now() - heist.startedAt.getTime()
+    const crate_tier = this.rollCrateTier(heist.difficulty as HeistDifficulty)
+    const response_time_ms = Date.now() - heist.started_at.getTime()
 
     // Update heist with winner
-    await prisma.heistEvent.update({
-      where: { id: heist.id },
+    await prisma.heist_events.update({
+      where: { heist_id: heist.heist_id },
       data: {
-        winnerUserId: userId,
-        winnerPlatform: platform,
-        winningAnswer: answer,
-        responseTimeMs,
-        crateTier,
-        endedAt: new Date(),
+        winner_user_id: user_id,
+        winner_platform: platform,
+        winning_answer: answer,
+        response_time_ms,
+        crate_tier,
+        ended_at: new Date(),
       },
     })
 
     // Award crate to winner
-    await CrateService.awardCrate(userId, crateTier as CrateTier, 'heist' as any)
+    await CrateService.awardCrate(user_id, crate_tier as CrateTier, 'heist' as any)
 
     // Notify winner
-    await NotificationService.notifyHeistWon(userId, crateTier, responseTimeMs)
+    await NotificationService.notifyHeistWon(user_id, crate_tier, response_time_ms)
 
     // Get winner username for Discord (hard difficulty only)
     if (heist.difficulty === 'hard') {
-      const winner = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { username: true, kingpinName: true },
+      const winner = await prisma.users.findUnique({
+        where: { id: user_id },
+        select: { username: true, kingpin_name: true },
       })
       if (winner) {
         await DiscordService.postHeistWinner(
-          winner.kingpinName || winner.username,
-          heist.eventType,
+          winner.kingpin_name || winner.username,
+          heist.event_type,
           heist.difficulty,
-          crateTier,
-          responseTimeMs
+          crate_tier,
+          response_time_ms
         )
       }
     }
@@ -691,18 +691,18 @@ export const HeistService = {
       success: true,
       correct: true,
       winner: true,
-      crateTier,
-      responseTimeMs,
+      crate_tier,
+      response_time_ms,
     }
   },
 
   /**
    * Expire a heist (time ran out)
    */
-  async expireHeist(heistId: number): Promise<void> {
-    await prisma.heistEvent.update({
-      where: { id: heistId },
-      data: { endedAt: new Date() },
+  async expireHeist(heist_id: number): Promise<void> {
+    await prisma.heist_events.update({
+      where: { heist_id },
+      data: { ended_at: new Date() },
     })
   },
 
@@ -713,19 +713,19 @@ export const HeistService = {
     const now = new Date()
 
     // Find heists that should have expired
-    const expiredHeists = await prisma.heistEvent.findMany({
+    const expiredHeists = await prisma.heist_events.findMany({
       where: {
-        endedAt: null,
-        winnerUserId: null,
+        ended_at: null,
+        winner_user_id: null,
       },
     })
 
     let expiredCount = 0
 
     for (const heist of expiredHeists) {
-      const endTime = heist.startedAt.getTime() + heist.timeLimitSeconds * 1000
+      const endTime = heist.started_at.getTime() + heist.time_limit_seconds * 1000
       if (now.getTime() > endTime) {
-        await this.expireHeist(heist.id)
+        await this.expireHeist(heist.heist_id)
         expiredCount++
       }
     }
@@ -757,49 +757,49 @@ export const HeistService = {
   /**
    * Get heist history
    */
-  async getHeistHistory(sessionId?: number, limit: number = 20): Promise<HeistHistoryItem[]> {
-    const where = sessionId ? { sessionId } : {}
+  async getHeistHistory(session_id?: number, limit: number = 20): Promise<HeistHistoryItem[]> {
+    const where = session_id ? { session_id } : {}
 
-    const heists = await prisma.heistEvent.findMany({
+    const heists = await prisma.heist_events.findMany({
       where,
       include: {
-        winner: true,
+        users: true,
       },
-      orderBy: { startedAt: 'desc' },
+      orderBy: { started_at: 'desc' },
       take: limit,
     })
 
     return heists.map((h) => ({
-      id: h.id,
-      eventType: h.eventType,
+      id: h.heist_id,
+      event_type: h.event_type,
       difficulty: h.difficulty,
       prompt: h.prompt,
-      correctAnswer: h.correctAnswer,
-      startedAt: h.startedAt,
-      endedAt: h.endedAt,
-      winner: h.winner
+      correct_answer: h.correct_answer,
+      started_at: h.started_at,
+      ended_at: h.ended_at,
+      winner: h.users
         ? {
-            id: h.winner.id,
-            username: h.winner.username,
-            platform: h.winnerPlatform || 'unknown',
-            responseTimeMs: h.responseTimeMs || 0,
+            id: h.users.id,
+            username: h.users.username,
+            platform: h.winner_platform || 'unknown',
+            response_time_ms: h.response_time_ms || 0,
           }
         : undefined,
-      crateTier: h.crateTier,
+      crate_tier: h.crate_tier,
     }))
   },
 
   /**
    * Get heist stats for a user
    */
-  async getUserHeistStats(userId: number): Promise<{
+  async getUserHeistStats(user_id: number): Promise<{
     totalWins: number
     avgResponseTimeMs: number
     cratesByTier: Record<string, number>
     fastestWinMs: number | null
   }> {
-    const wins = await prisma.heistEvent.findMany({
-      where: { winnerUserId: userId },
+    const wins = await prisma.heist_events.findMany({
+      where: { winner_user_id: user_id },
     })
 
     const cratesByTier: Record<string, number> = {
@@ -813,13 +813,13 @@ export const HeistService = {
     let fastestWinMs: number | null = null
 
     for (const win of wins) {
-      if (win.crateTier) {
-        cratesByTier[win.crateTier] = (cratesByTier[win.crateTier] || 0) + 1
+      if (win.crate_tier) {
+        cratesByTier[win.crate_tier] = (cratesByTier[win.crate_tier] || 0) + 1
       }
-      if (win.responseTimeMs) {
-        totalResponseTime += win.responseTimeMs
-        if (fastestWinMs === null || win.responseTimeMs < fastestWinMs) {
-          fastestWinMs = win.responseTimeMs
+      if (win.response_time_ms) {
+        totalResponseTime += win.response_time_ms
+        if (fastestWinMs === null || win.response_time_ms < fastestWinMs) {
+          fastestWinMs = win.response_time_ms
         }
       }
     }
@@ -835,12 +835,12 @@ export const HeistService = {
   /**
    * Check if it's time to trigger a heist
    */
-  async checkAndTriggerScheduledHeist(sessionId: number): Promise<TriggerHeistResult | null> {
-    const schedule = await this.getHeistSchedule(sessionId)
+  async checkAndTriggerScheduledHeist(session_id: number): Promise<TriggerHeistResult | null> {
+    const schedule = await this.getHeistSchedule(session_id)
 
     if (!schedule) {
       // No schedule, create one
-      await this.scheduleNextHeist(sessionId, true)
+      await this.scheduleNextHeist(session_id, true)
       return null
     }
 
@@ -850,7 +850,7 @@ export const HeistService = {
     }
 
     // Time to trigger!
-    return this.triggerHeist(sessionId)
+    return this.triggerHeist(session_id)
   },
 
   /**
@@ -858,39 +858,39 @@ export const HeistService = {
    */
   async getHeistLeaderboard(limit: number = 10): Promise<
     Array<{
-      userId: number
+      user_id: number
       username: string
       wins: number
       avgResponseTimeMs: number
     }>
   > {
-    const results = await prisma.heistEvent.groupBy({
-      by: ['winnerUserId'],
+    const results = await prisma.heist_events.groupBy({
+      by: ['winner_user_id'],
       where: {
-        winnerUserId: { not: null },
+        winner_user_id: { not: null },
       },
-      _count: { id: true },
-      _avg: { responseTimeMs: true },
-      orderBy: { _count: { id: 'desc' } },
+      _count: { heist_id: true },
+      _avg: { response_time_ms: true },
+      orderBy: { _count: { heist_id: 'desc' } },
       take: limit,
     })
 
     // Get usernames
-    const userIds = results.map((r) => r.winnerUserId).filter((id): id is number => id !== null)
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
+    const user_ids = results.map((r) => r.winner_user_id).filter((id): id is number => id !== null)
+    const users = await prisma.users.findMany({
+      where: { id: { in: user_ids } },
       select: { id: true, username: true },
     })
 
     const userMap = new Map(users.map((u) => [u.id, u.username]))
 
     return results
-      .filter((r) => r.winnerUserId !== null)
+      .filter((r) => r.winner_user_id !== null)
       .map((r) => ({
-        userId: r.winnerUserId!,
-        username: userMap.get(r.winnerUserId!) || 'Unknown',
-        wins: r._count.id,
-        avgResponseTimeMs: Math.round(r._avg.responseTimeMs || 0),
+        user_id: r.winner_user_id!,
+        username: userMap.get(r.winner_user_id!) || 'Unknown',
+        wins: r._count?.heist_id ?? 0,
+        avgResponseTimeMs: Math.round(r._avg?.response_time_ms || 0),
       }))
   },
 }

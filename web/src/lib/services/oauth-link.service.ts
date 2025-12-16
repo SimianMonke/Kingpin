@@ -60,17 +60,17 @@ export class OAuthLinkService {
    */
   static async storeState(
     state: string,
-    userId: number,
+    user_id: number,
     platform: LinkPlatform
   ): Promise<void> {
-    const expiresAt = new Date(Date.now() + STATE_EXPIRY_MINUTES * 60 * 1000)
+    const expires_at = new Date(Date.now() + STATE_EXPIRY_MINUTES * 60 * 1000)
 
-    await prisma.oAuthLinkState.create({
+    await prisma.oauth_link_states.create({
       data: {
         state,
-        userId,
+        user_id,
         platform,
-        expiresAt,
+        expires_at,
       },
     })
   }
@@ -80,10 +80,10 @@ export class OAuthLinkService {
    * Returns stored data if valid, null if invalid/expired
    */
   static async verifyState(state: string): Promise<{
-    userId: number
+    user_id: number
     platform: LinkPlatform
   } | null> {
-    const record = await prisma.oAuthLinkState.findUnique({
+    const record = await prisma.oauth_link_states.findUnique({
       where: { state },
     })
 
@@ -92,17 +92,17 @@ export class OAuthLinkService {
     }
 
     // Delete the state (one-time use)
-    await prisma.oAuthLinkState.delete({
+    await prisma.oauth_link_states.delete({
       where: { state },
     })
 
     // Check expiry
-    if (new Date() > record.expiresAt) {
+    if (new Date() > record.expires_at) {
       return null
     }
 
     return {
-      userId: record.userId,
+      user_id: record.user_id,
       platform: record.platform as LinkPlatform,
     }
   }
@@ -227,17 +227,17 @@ export class OAuthLinkService {
   static async isPlatformIdLinked(
     platform: LinkPlatform,
     platformId: string
-  ): Promise<{ isLinked: boolean; userId?: number }> {
+  ): Promise<{ isLinked: boolean; user_id?: number }> {
     const fieldName = this.getPlatformField(platform)
 
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users.findFirst({
       where: { [fieldName]: platformId },
       select: { id: true },
     })
 
     return {
       isLinked: !!existingUser,
-      userId: existingUser?.id,
+      user_id: existingUser?.id,
     }
   }
 
@@ -245,7 +245,7 @@ export class OAuthLinkService {
    * Link a verified platform to user account
    */
   static async linkPlatform(
-    userId: number,
+    user_id: number,
     platform: LinkPlatform,
     platformId: string,
     platformUsername?: string
@@ -261,12 +261,12 @@ export class OAuthLinkService {
       updateData.discordLinkedAt = new Date()
     }
 
-    await prisma.user.update({
-      where: { id: userId },
+    await prisma.users.update({
+      where: { id: user_id },
       data: updateData,
     })
 
-    console.log(`Linked ${platform} account ${platformId} to user ${userId}`)
+    console.log(`Linked ${platform} account ${platformId} to user ${user_id}`)
   }
 
   /**
@@ -275,11 +275,11 @@ export class OAuthLinkService {
   static getPlatformField(platform: LinkPlatform): string {
     switch (platform) {
       case 'kick':
-        return 'kickUserId'
+        return 'kick_user_id'
       case 'twitch':
-        return 'twitchUserId'
+        return 'twitch_user_id'
       case 'discord':
-        return 'discordUserId'
+        return 'discord_user_id'
       default:
         throw new Error(`Unknown platform: ${platform}`)
     }
@@ -290,9 +290,9 @@ export class OAuthLinkService {
    * Should be called periodically (e.g., in daily cron)
    */
   static async cleanupExpiredStates(): Promise<number> {
-    const result = await prisma.oAuthLinkState.deleteMany({
+    const result = await prisma.oauth_link_states.deleteMany({
       where: {
-        expiresAt: { lt: new Date() },
+        expires_at: { lt: new Date() },
       },
     })
     return result.count

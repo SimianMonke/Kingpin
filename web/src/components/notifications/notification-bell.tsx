@@ -10,10 +10,10 @@ interface Notification {
   title: string
   message: string
   icon: string
-  linkType: string | null
-  linkId: string | null
-  isSeen: boolean
-  createdAt: string
+  link_type: string | null
+  link_id: string | null
+  is_seen: boolean
+  created_at: string
 }
 
 interface NotificationListResponse {
@@ -75,7 +75,7 @@ export function NotificationBell() {
       })
       if (res.ok) {
         setUnreadCount(0)
-        setNotifications(prev => prev.map(n => ({ ...n, isSeen: true })))
+        setNotifications(prev => prev.map(n => ({ ...n, is_seen: true })))
       }
     } catch (error) {
       console.error('Failed to mark notifications as seen:', error)
@@ -116,7 +116,7 @@ export function NotificationBell() {
 
   // Handle notification click - navigate to link
   const handleNotificationClick = (notification: Notification) => {
-    if (notification.linkType) {
+    if (notification.link_type) {
       const linkMap: Record<string, string> = {
         [NOTIFICATION_LINK_TYPES.PROFILE]: '/profile',
         [NOTIFICATION_LINK_TYPES.INVENTORY]: '/inventory',
@@ -129,7 +129,7 @@ export function NotificationBell() {
         [NOTIFICATION_LINK_TYPES.EVENTS]: '/events',
       }
 
-      const path = linkMap[notification.linkType]
+      const path = linkMap[notification.link_type]
       if (path) {
         setIsOpen(false)
         router.push(path)
@@ -244,7 +244,7 @@ export function NotificationBell() {
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
                     className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                      notification.isSeen
+                      notification.is_seen
                         ? 'bg-gray-800 hover:bg-gray-750'
                         : 'bg-gray-800/50 hover:bg-gray-700'
                     }`}
@@ -256,11 +256,11 @@ export function NotificationBell() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className={`text-sm font-medium truncate ${
-                          notification.isSeen ? 'text-gray-300' : 'text-white'
+                          notification.is_seen ? 'text-gray-300' : 'text-white'
                         }`}>
                           {notification.title}
                         </p>
-                        {!notification.isSeen && (
+                        {!notification.is_seen && (
                           <span className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0" />
                         )}
                       </div>
@@ -268,7 +268,7 @@ export function NotificationBell() {
                         {notification.message}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {formatTimeAgo(notification.createdAt)}
+                        {formatTimeAgo(notification.created_at)}
                       </p>
                     </div>
 

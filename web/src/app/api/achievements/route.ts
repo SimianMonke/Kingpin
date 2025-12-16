@@ -18,22 +18,22 @@ export const GET = withErrorHandling(async () => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
 
   const [achievements, stats, recentUnlocks] = await Promise.all([
-    AchievementService.getAchievements(userId),
-    AchievementService.getCompletionStats(userId),
-    AchievementService.getRecentUnlocks(userId, 5),
+    AchievementService.getAchievements(user_id),
+    AchievementService.getCompletionStats(user_id),
+    AchievementService.getRecentUnlocks(user_id, 5),
   ])
 
   return successResponse({
     categories: achievements,
     stats,
-    recentUnlocks: recentUnlocks.map(u => ({
-      achievementName: u.achievement.achievementName,
-      achievementKey: u.achievement.achievementKey,
-      tier: u.achievement.tier,
-      completedAt: u.completedAt,
+    recentUnlocks: recentUnlocks.map((u: typeof recentUnlocks[number]) => ({
+      name: u.achievements.name,
+      key: u.achievements.key,
+      tier: u.achievements.tier,
+      completed_at: u.completed_at,
     })),
   })
 })

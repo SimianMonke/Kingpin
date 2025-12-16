@@ -12,11 +12,11 @@ import {
 } from '@/lib/services/leaderboard.service'
 
 const VALID_METRICS: LeaderboardMetric[] = [
-  'wealthEarned',
-  'xpEarned',
-  'playCount',
-  'robCount',
-  'robSuccessCount',
+  'wealth_earned',
+  'xp_earned',
+  'play_count',
+  'rob_count',
+  'rob_success_count',
   'checkins',
   'totalContributedUsd',
 ]
@@ -26,7 +26,7 @@ const VALID_METRICS: LeaderboardMetric[] = [
  * Get authenticated user's rank across all periods
  *
  * Query params:
- * - metric: wealthEarned | xpEarned | playCount | etc. (default: wealthEarned)
+ * - metric: wealth_earned | xp_earned | play_count | etc. (default: wealth_earned)
  */
 export const GET = withErrorHandling(async (request: NextRequest) => {
   const session = await getAuthSession()
@@ -38,7 +38,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const params = request.nextUrl.searchParams
 
   // Parse and validate metric
-  const metricParam = params.get('metric') || 'wealthEarned'
+  const metricParam = params.get('metric') || 'wealth_earned'
   if (!VALID_METRICS.includes(metricParam as LeaderboardMetric)) {
     return errorResponse(`Invalid metric. Valid options: ${VALID_METRICS.join(', ')}`)
   }
@@ -47,7 +47,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const ranks = await LeaderboardService.getUserRanks(session.user.id, metric)
 
   return successResponse({
-    userId: session.user.id,
+    user_id: session.user.id,
     metric,
     ranks: {
       daily: ranks.daily ? {

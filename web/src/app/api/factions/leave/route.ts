@@ -18,8 +18,8 @@ export const POST = withErrorHandling(async () => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
-  const result = await FactionService.leaveFaction(userId)
+  const user_id = session.user.id
+  const result = await FactionService.leaveFaction(user_id)
 
   if (!result.success) {
     return errorResponse(result.error ?? 'Failed to leave faction')

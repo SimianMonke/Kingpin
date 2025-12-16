@@ -138,7 +138,7 @@ export const CRATE_DROP_TABLES = {
     armor: 0.40,     // 40% armor
     wealth: 0.20,    // 20% wealth
     title: 0,        // 0% title
-    itemTierWeights: {
+    item_tierWeights: {
       [ITEM_TIERS.COMMON]: 0.85,
       [ITEM_TIERS.UNCOMMON]: 0.15,
       [ITEM_TIERS.RARE]: 0,
@@ -151,7 +151,7 @@ export const CRATE_DROP_TABLES = {
     armor: 0.39,       // Redistributed 2% from title
     wealth: 0.22,
     title: 0,          // MED-01: No titles from Uncommon crates
-    itemTierWeights: {
+    item_tierWeights: {
       [ITEM_TIERS.COMMON]: 0.40,
       [ITEM_TIERS.UNCOMMON]: 0.50,
       [ITEM_TIERS.RARE]: 0.10,
@@ -164,7 +164,7 @@ export const CRATE_DROP_TABLES = {
     armor: 0.35,
     wealth: 0.25,
     title: 0.05,
-    itemTierWeights: {
+    item_tierWeights: {
       [ITEM_TIERS.COMMON]: 0.10,
       [ITEM_TIERS.UNCOMMON]: 0.40,
       [ITEM_TIERS.RARE]: 0.45,
@@ -177,7 +177,7 @@ export const CRATE_DROP_TABLES = {
     armor: 0.30,
     wealth: 0.30,
     title: 0.10,
-    itemTierWeights: {
+    item_tierWeights: {
       [ITEM_TIERS.COMMON]: 0,
       [ITEM_TIERS.UNCOMMON]: 0.15,
       [ITEM_TIERS.RARE]: 0.50,

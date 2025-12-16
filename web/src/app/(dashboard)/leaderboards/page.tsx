@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react'
 
 interface LeaderboardEntry {
   rank: number
-  userId: number
+  user_id: number
   username: string
-  kingpinName: string | null
+  kingpin_name: string | null
   level: number
-  statusTier: string
+  status_tier: string
   value: string | number
 }
 
@@ -21,20 +21,20 @@ interface UserRanks {
 }
 
 interface HallOfFameRecord {
-  recordType: string
-  userId: number
+  record_type: string
+  user_id: number
   username: string
-  kingpinName: string | null
-  recordValue: string
-  achievedAt: string
+  kingpin_name: string | null
+  record_value: string
+  achieved_at: string
   previousHolderUsername: string | null
-  previousValue: string | null
-  displayName: string
+  previous_value: string | null
+  display_name: string
   icon: string
 }
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'lifetime'
-type Metric = 'wealthEarned' | 'xpEarned' | 'playCount' | 'robSuccessCount'
+type Metric = 'wealth_earned' | 'xp_earned' | 'play_count' | 'rob_success_count'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'daily', label: 'Daily' },
@@ -44,16 +44,16 @@ const PERIODS: { value: Period; label: string }[] = [
 ]
 
 const METRICS: { value: Metric; label: string; icon: string }[] = [
-  { value: 'wealthEarned', label: 'Wealth', icon: '💰' },
-  { value: 'xpEarned', label: 'XP', icon: '⭐' },
-  { value: 'playCount', label: 'Grinders', icon: '🎮' },
-  { value: 'robSuccessCount', label: 'Rob Masters', icon: '🔫' },
+  { value: 'wealth_earned', label: 'Wealth', icon: '💰' },
+  { value: 'xp_earned', label: 'XP', icon: '⭐' },
+  { value: 'play_count', label: 'Grinders', icon: '🎮' },
+  { value: 'rob_success_count', label: 'Rob Masters', icon: '🔫' },
 ]
 
 export default function LeaderboardsPage() {
   const { data: session } = useSession()
   const [period, setPeriod] = useState<Period>('daily')
-  const [metric, setMetric] = useState<Metric>('wealthEarned')
+  const [metric, setMetric] = useState<Metric>('wealth_earned')
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [userRanks, setUserRanks] = useState<UserRanks | null>(null)
   const [records, setRecords] = useState<HallOfFameRecord[]>([])
@@ -105,7 +105,7 @@ export default function LeaderboardsPage() {
 
   const formatValue = (value: string | number, metricType: Metric): string => {
     const num = typeof value === 'string' ? parseInt(value, 10) : value
-    if (metricType === 'wealthEarned') {
+    if (metricType === 'wealth_earned') {
       return '$' + num.toLocaleString()
     }
     return num.toLocaleString()
@@ -224,10 +224,10 @@ export default function LeaderboardsPage() {
         ) : (
           <div className="divide-y divide-gray-700">
             {leaderboard.map((entry) => {
-              const isCurrentUser = session?.user?.id === entry.userId
+              const isCurrentUser = session?.user?.id === entry.user_id
               return (
                 <div
-                  key={entry.userId}
+                  key={entry.user_id}
                   className={`flex items-center gap-4 p-4 ${
                     isCurrentUser ? 'bg-purple-500/10' : 'hover:bg-gray-800/50'
                   }`}
@@ -242,14 +242,14 @@ export default function LeaderboardsPage() {
                   {/* Player Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">
-                      {entry.kingpinName || entry.username}
+                      {entry.kingpin_name || entry.username}
                       {isCurrentUser && (
                         <span className="ml-2 text-xs text-purple-400">(You)</span>
                       )}
                     </p>
                     <div className="flex items-center gap-2 text-sm">
-                      <span className={getTierColor(entry.statusTier)}>
-                        {entry.statusTier}
+                      <span className={getTierColor(entry.status_tier)}>
+                        {entry.status_tier}
                       </span>
                       <span className="text-gray-500">•</span>
                       <span className="text-gray-400">Lv.{entry.level}</span>
@@ -278,22 +278,22 @@ export default function LeaderboardsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {records.map((record) => (
               <div
-                key={record.recordType}
+                key={record.record_type}
                 className="bg-gray-700/50 rounded-lg p-4 border border-gray-600"
               >
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{record.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-400">{record.displayName}</p>
+                    <p className="text-sm text-gray-400">{record.display_name}</p>
                     <p className="font-semibold truncate">
-                      {record.kingpinName || record.username}
+                      {record.kingpin_name || record.username}
                     </p>
                     <p className="text-yellow-400 font-bold">
-                      {formatRecordValue(record.recordType, record.recordValue)}
+                      {formatRecordValue(record.record_type, record.record_value)}
                     </p>
                     {record.previousHolderUsername && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Previous: {record.previousHolderUsername} ({formatRecordValue(record.recordType, record.previousValue!)})
+                        Previous: {record.previousHolderUsername} ({formatRecordValue(record.record_type, record.previous_value!)})
                       </p>
                     )}
                   </div>
@@ -307,12 +307,12 @@ export default function LeaderboardsPage() {
   )
 }
 
-function formatRecordValue(recordType: string, value: string): string {
+function formatRecordValue(record_type: string, value: string): string {
   const num = parseInt(value, 10)
-  if (recordType.includes('wealth') || recordType.includes('rob')) {
+  if (record_type.includes('wealth') || record_type.includes('rob')) {
     return '$' + num.toLocaleString()
   }
-  if (recordType.includes('streak')) {
+  if (record_type.includes('streak')) {
     return num + ' days'
   }
   return num.toLocaleString()

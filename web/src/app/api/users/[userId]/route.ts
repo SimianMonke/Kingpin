@@ -7,7 +7,7 @@ import {
 import { UserService } from '@/lib/services/user.service'
 
 /**
- * GET /api/users/[userId]
+ * GET /api/users/[user_id]
  * Get a user's public profile by ID
  */
 export const GET = withErrorHandling(async (
@@ -15,13 +15,13 @@ export const GET = withErrorHandling(async (
   context?: { params: Promise<Record<string, string>> }
 ) => {
   const params = await context?.params
-  const userId = params?.userId
+  const user_id = params?.user_id
 
-  if (!userId) {
+  if (!user_id) {
     return notFoundResponse('User ID required')
   }
 
-  const profile = await UserService.getProfile(parseInt(userId, 10))
+  const profile = await UserService.getProfile(parseInt(user_id, 10))
 
   if (!profile) {
     return notFoundResponse('User not found')
@@ -31,14 +31,14 @@ export const GET = withErrorHandling(async (
   const publicProfile = {
     id: profile.id,
     username: profile.username,
-    displayName: profile.displayName,
-    kingpinName: profile.kingpinName,
+    display_name: profile.display_name,
+    kingpin_name: profile.kingpin_name,
     level: profile.level,
-    statusTier: profile.statusTier,
-    factionName: profile.factionName,
+    status_tier: profile.status_tier,
+    faction_name: profile.faction_name,
     equippedTitle: profile.equippedTitle,
-    totalPlayCount: profile.totalPlayCount,
-    createdAt: profile.createdAt,
+    total_play_count: profile.total_play_count,
+    created_at: profile.created_at,
   }
 
   return successResponse(publicProfile)

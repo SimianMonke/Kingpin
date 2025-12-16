@@ -15,13 +15,13 @@ interface MissionTemplate {
 interface UserMission {
   id: number
   templateId: string
-  missionType: string
-  objectiveValue: number
-  rewardWealth: number
-  rewardXp: number
-  currentProgress: number
-  isCompleted: boolean
-  expiresAt: string
+  mission_type: string
+  objective_value: number
+  reward_wealth: number
+  reward_xp: number
+  current_progress: number
+  is_completed: boolean
+  expires_at: string
   template: MissionTemplate
 }
 
@@ -112,11 +112,11 @@ export default function MissionsPage() {
     }
   }
 
-  const formatTimeRemaining = (expiresAt: string | null): string => {
-    if (!expiresAt) return 'Unknown'
+  const formatTimeRemaining = (expires_at: string | null): string => {
+    if (!expires_at) return 'Unknown'
 
     const now = new Date()
-    const expires = new Date(expiresAt)
+    const expires = new Date(expires_at)
     const diff = expires.getTime() - now.getTime()
 
     if (diff <= 0) return 'Expired'
@@ -299,10 +299,10 @@ export default function MissionsPage() {
 }
 
 function MissionCard({ mission }: { mission: UserMission }) {
-  const progressPercent = Math.min(100, Math.round((mission.currentProgress / mission.objectiveValue) * 100))
+  const progressPercent = Math.min(100, Math.round((mission.current_progress / mission.objective_value) * 100))
 
   return (
-    <div className={`p-4 ${mission.isCompleted ? 'bg-green-500/5' : ''}`}>
+    <div className={`p-4 ${mission.is_completed ? 'bg-green-500/5' : ''}`}>
       <div className="flex items-start gap-4">
         {/* Category Icon */}
         <div className="text-2xl">
@@ -320,7 +320,7 @@ function MissionCard({ mission }: { mission: UserMission }) {
             >
               {mission.template.difficulty}
             </span>
-            {mission.isCompleted && (
+            {mission.is_completed && (
               <span className="text-green-400 text-sm">✓</span>
             )}
           </div>
@@ -331,13 +331,13 @@ function MissionCard({ mission }: { mission: UserMission }) {
             <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
               <span>Progress</span>
               <span>
-                {mission.currentProgress} / {mission.objectiveValue}
+                {mission.current_progress} / {mission.objective_value}
               </span>
             </div>
             <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all ${
-                  mission.isCompleted ? 'bg-green-500' : 'bg-purple-500'
+                  mission.is_completed ? 'bg-green-500' : 'bg-purple-500'
                 }`}
                 style={{ width: `${progressPercent}%` }}
               />
@@ -347,9 +347,9 @@ function MissionCard({ mission }: { mission: UserMission }) {
           {/* Rewards */}
           <div className="flex items-center gap-4 text-sm">
             <span className="text-yellow-400">
-              +${mission.rewardWealth.toLocaleString()}
+              +${mission.reward_wealth.toLocaleString()}
             </span>
-            <span className="text-purple-400">+{mission.rewardXp} XP</span>
+            <span className="text-purple-400">+{mission.reward_xp} XP</span>
           </div>
         </div>
       </div>

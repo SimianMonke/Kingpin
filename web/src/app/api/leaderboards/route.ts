@@ -11,11 +11,11 @@ import {
 } from '@/lib/services/leaderboard.service'
 
 const VALID_METRICS: LeaderboardMetric[] = [
-  'wealthEarned',
-  'xpEarned',
-  'playCount',
-  'robCount',
-  'robSuccessCount',
+  'wealth_earned',
+  'xp_earned',
+  'play_count',
+  'rob_count',
+  'rob_success_count',
   'checkins',
   'totalContributedUsd',
 ]
@@ -33,7 +33,7 @@ const VALID_PERIODS: LeaderboardPeriod[] = [
  * Get leaderboard data
  *
  * Query params:
- * - metric: wealthEarned | xpEarned | playCount | robCount | robSuccessCount | checkins | totalContributedUsd
+ * - metric: wealth_earned | xp_earned | play_count | rob_count | rob_success_count | checkins | totalContributedUsd
  * - period: daily | weekly | monthly | annual | lifetime
  * - limit: number (default 10, max 100)
  * - offset: number (default 0)
@@ -42,7 +42,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const params = request.nextUrl.searchParams
 
   // Parse and validate metric
-  const metricParam = params.get('metric') || 'wealthEarned'
+  const metricParam = params.get('metric') || 'wealth_earned'
   if (!VALID_METRICS.includes(metricParam as LeaderboardMetric)) {
     return errorResponse(`Invalid metric. Valid options: ${VALID_METRICS.join(', ')}`)
   }
@@ -67,8 +67,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   return successResponse({
     metric,
     period,
-    periodStart: bounds.start,
-    periodEnd: bounds.end,
+    period_start: bounds.start,
+    period_end: bounds.end,
     entries: leaderboard,
     pagination: {
       limit,

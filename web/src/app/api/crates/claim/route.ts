@@ -27,21 +27,21 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
   const body = await parseJsonBody<ClaimCrateBody>(request)
 
   if (!body.crateId) {
     return errorResponse('crateId is required')
   }
 
-  const result = await CrateService.claimFromEscrow(userId, body.crateId)
+  const result = await CrateService.claimFromEscrow(user_id, body.crateId)
 
   if (!result.success) {
     return errorResponse(result.reason || 'Failed to claim crate')
   }
 
   // Return updated inventory
-  const inventory = await CrateService.getCrates(userId)
+  const inventory = await CrateService.getCrates(user_id)
 
   return successResponse({
     claimed: true,

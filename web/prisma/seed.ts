@@ -11,7 +11,7 @@ async function main() {
   console.log('Seeding factions...')
 
   const factions = await Promise.all([
-    prisma.faction.upsert({
+    prisma.factions.upsert({
       where: { factionName: 'The Volkov Bratva' },
       update: {},
       create: {
@@ -21,7 +21,7 @@ async function main() {
         motto: 'Кровь за кровь (Blood for blood)',
       },
     }),
-    prisma.faction.upsert({
+    prisma.factions.upsert({
       where: { factionName: 'Dead Circuit' },
       update: {},
       create: {
@@ -31,7 +31,7 @@ async function main() {
         motto: 'We are the signal in the static.',
       },
     }),
-    prisma.faction.upsert({
+    prisma.factions.upsert({
       where: { factionName: 'Kessler Group' },
       update: {},
       create: {

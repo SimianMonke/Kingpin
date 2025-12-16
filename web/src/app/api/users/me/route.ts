@@ -42,9 +42,9 @@ export const PATCH = withErrorHandling(async (request: NextRequest) => {
   const body = await request.json()
 
   // Handle Kingpin name update
-  if (body.kingpinName !== undefined) {
+  if (body.kingpin_name !== undefined) {
     try {
-      await UserService.setKingpinName(session.user.id, body.kingpinName)
+      await UserService.setKingpinName(session.user.id, body.kingpin_name)
     } catch (error) {
       return errorResponse(error instanceof Error ? error.message : 'Failed to update name')
     }

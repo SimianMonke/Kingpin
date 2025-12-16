@@ -19,29 +19,29 @@ export const GET = withErrorHandling(async () => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
 
   // Get user's faction membership info
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const user = await prisma.users.findUnique({
+    where: { id: user_id },
     select: {
-      factionId: true,
-      joinedFactionAt: true,
-      factionCooldownUntil: true,
-      factionRewardCooldownUntil: true,
-      assignedTerritoryId: true,
+      faction_id: true,
+      joined_faction_at: true,
+      faction_cooldown_until: true,
+      faction_reward_cooldown_until: true,
+      assigned_territory_id: true,
     },
   })
 
-  if (!user?.factionId) {
+  if (!user?.faction_id) {
     return successResponse({
       inFaction: false,
       faction: null,
       membership: {
         joinedAt: null,
-        cooldownUntil: user?.factionCooldownUntil ?? null,
+        cooldownUntil: user?.faction_cooldown_until ?? null,
         rewardCooldownUntil: null,
-        canJoin: !user?.factionCooldownUntil || user.factionCooldownUntil <= new Date(),
+        canJoin: !user?.faction_cooldown_until || user.faction_cooldown_until <= new Date(),
       },
       assignedTerritory: null,
       rank: null,
@@ -49,27 +49,27 @@ export const GET = withErrorHandling(async () => {
   }
 
   // Get faction details
-  const faction = await FactionService.getFactionDetails(user.factionId)
+  const faction = await FactionService.getFactionDetails(user.faction_id)
 
   // Get assigned territory
-  const assignedTerritory = user.assignedTerritoryId
-    ? await FactionService.getUserTerritory(userId)
+  const assignedTerritory = user.assigned_territory_id
+    ? await FactionService.getUserTerritory(user_id)
     : null
 
   // Get user's rank in faction
-  const rank = await FactionService.getUserFactionRank(userId)
+  const rank = await FactionService.getUserFactionRank(user_id)
 
   // Check if user can earn rewards
-  const canEarnRewards = !user.factionRewardCooldownUntil ||
-    user.factionRewardCooldownUntil <= new Date()
+  const canEarnRewards = !user.faction_reward_cooldown_until ||
+    user.faction_reward_cooldown_until <= new Date()
 
   return successResponse({
     inFaction: true,
     faction,
     membership: {
-      joinedAt: user.joinedFactionAt,
+      joinedAt: user.joined_faction_at,
       cooldownUntil: null,
-      rewardCooldownUntil: canEarnRewards ? null : user.factionRewardCooldownUntil,
+      rewardCooldownUntil: canEarnRewards ? null : user.faction_reward_cooldown_until,
       canJoin: false, // Already in faction
       canEarnRewards,
     },

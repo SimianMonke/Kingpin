@@ -19,18 +19,18 @@ import type { CrateTier } from '@/lib/game'
 // =============================================================================
 
 interface GiveRequest {
-  userId: number
+  user_id: number
   type: 'wealth' | 'xp' | 'crate'
   amount?: number  // For wealth and XP
-  crateTier?: CrateTier  // For crate
+  crate_tier?: CrateTier  // For crate
 }
 
 interface GiveResponse {
   success: boolean
   type: string
-  userId: number
+  user_id: number
   amount?: number
-  crateTier?: string
+  crate_tier?: string
   crateId?: number
   levelUp?: boolean
   newLevel?: number
@@ -50,8 +50,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const body = await parseJsonBody<GiveRequest>(request)
 
   // Validate request
-  if (!body.userId || !body.type) {
-    return errorResponse('Missing required fields: userId and type')
+  if (!body.user_id || !body.type) {
+    return errorResponse('Missing required fields: user_id and type')
   }
 
   if (!['wealth', 'xp', 'crate'].includes(body.type)) {
@@ -59,7 +59,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   // Verify user exists
-  const user = await UserService.findById(body.userId)
+  const user = await UserService.findById(body.user_id)
   if (!user) {
     return notFoundResponse('User not found')
   }
@@ -67,7 +67,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   let response: GiveResponse = {
     success: true,
     type: body.type,
-    userId: body.userId,
+    user_id: body.user_id,
   }
 
   switch (body.type) {
@@ -76,7 +76,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         return errorResponse('Amount must be a positive number')
       }
 
-      await UserService.addWealth(body.userId, body.amount)
+      await UserService.addWealth(body.user_id, body.amount)
       response.amount = body.amount
       break
     }
@@ -86,7 +86,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         return errorResponse('Amount must be a positive number')
       }
 
-      const xpResult = await UserService.addXp(body.userId, body.amount)
+      const xpResult = await UserService.addXp(body.user_id, body.amount)
       response.amount = body.amount
       response.levelUp = xpResult.levelUp
       response.newLevel = xpResult.newLevel
@@ -96,7 +96,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
 
     case 'crate': {
-      const tier = body.crateTier || 'common'
+      const tier = body.crate_tier || 'common'
       const validTiers = Object.keys(CRATE_TIERS)
 
       if (!validTiers.includes(tier)) {
@@ -104,7 +104,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       }
 
       const crateResult = await CrateService.awardCrate(
-        body.userId,
+        body.user_id,
         tier as CrateTier,
         CRATE_SOURCES.GIFT
       )
@@ -113,7 +113,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         return errorResponse(crateResult.reason || 'Failed to award crate')
       }
 
-      response.crateTier = tier
+      response.crate_tier = tier
       response.crateId = crateResult.crateId
       break
     }

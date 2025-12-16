@@ -13,19 +13,19 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   const apiKey = request.headers.get('x-api-key')
-  let userId: number
+  let user_id: number
 
   if (apiKey && apiKey === process.env.BOT_API_KEY) {
-    // Bot request - validate userId type
-    if (!body.userId || typeof body.userId !== 'number') {
-      return errorResponse('userId required and must be a number', 400)
+    // Bot request - validate user_id type
+    if (!body.user_id || typeof body.user_id !== 'number') {
+      return errorResponse('user_id required and must be a number', 400)
     }
-    userId = body.userId
+    user_id = body.user_id
   } else {
     // Session request
     const session = await getAuthSession()
     if (!session?.user?.id) return unauthorizedResponse()
-    userId = typeof session.user.id === 'string'
+    user_id = typeof session.user.id === 'string'
       ? parseInt(session.user.id, 10)
       : session.user.id
   }
@@ -39,26 +39,26 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   switch (action) {
     case 'start': {
-      const wagerAmount = BigInt((wager as number) || 0)
-      if (!wagerAmount || wagerAmount <= 0) {
+      const wager_amount = BigInt((wager as number) || 0)
+      if (!wager_amount || wager_amount <= 0) {
         return errorResponse('Invalid wager amount', 400)
       }
-      const startResult = await GamblingService.startBlackjack(userId, wagerAmount)
+      const startResult = await GamblingService.startBlackjack(user_id, wager_amount)
       return successResponse(startResult)
     }
 
     case 'hit': {
-      const hitResult = await GamblingService.blackjackHit(userId)
+      const hitResult = await GamblingService.blackjackHit(user_id)
       return successResponse(hitResult)
     }
 
     case 'stand': {
-      const standResult = await GamblingService.blackjackStand(userId)
+      const standResult = await GamblingService.blackjackStand(user_id)
       return successResponse(standResult)
     }
 
     case 'double': {
-      const doubleResult = await GamblingService.blackjackDouble(userId)
+      const doubleResult = await GamblingService.blackjackDouble(user_id)
       return successResponse(doubleResult)
     }
 

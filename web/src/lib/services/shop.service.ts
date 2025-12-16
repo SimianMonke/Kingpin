@@ -16,26 +16,26 @@ import { BusinessService } from './business.service'
 
 export interface ShopItem {
   shopItemId: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: string
+  type: string
   tier: string
   price: number
-  originalPrice: number
-  isPurchased: boolean
+  original_price: number | null
+  is_purchased: boolean | null
   // Item stats
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
   description: string | null
-  flavorText: string | null
+  flavor_text: string | null
 }
 
 export interface ShopInventory {
   items: ShopItem[]
-  generatedAt: Date | null
+  generated_at: Date | null
   playerTier: string
   accessibleTiers: string[]
 }
@@ -57,59 +57,59 @@ export const ShopService = {
   /**
    * Get player's shop inventory
    */
-  async getShopInventory(userId: number): Promise<ShopInventory> {
+  async getShopInventory(user_id: number): Promise<ShopInventory> {
     // Get user's tier
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { statusTier: true },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { status_tier: true },
     })
 
     if (!user) {
       throw new Error('User not found')
     }
 
-    const playerTier = user.statusTier as Tier
+    const playerTier = user.status_tier as Tier
     const accessibleTiers = PLAYER_SHOP_CONFIG.TIER_ACCESS[playerTier] as ItemTier[]
 
     // Get current shop items
-    const shopItems = await prisma.playerShopInventory.findMany({
+    const shopItems = await prisma.player_shop_inventory.findMany({
       where: {
-        userId,
-        isPurchased: false,
+        user_id,
+        is_purchased: false,
       },
       include: {
-        item: true,
+        items: true,
       },
-      orderBy: { generatedAt: 'desc' },
+      orderBy: { generated_at: 'desc' },
     })
 
     // If no shop exists or empty, generate one
     if (shopItems.length === 0) {
-      await this.generateShop(userId)
-      return this.getShopInventory(userId) // Recursive call to get fresh shop
+      await this.generateShop(user_id)
+      return this.getShopInventory(user_id) // Recursive call to get fresh shop
     }
 
-    const generatedAt = shopItems[0]?.generatedAt ?? null
+    const generated_at = shopItems[0]?.generated_at ?? null
 
     return {
       items: shopItems.map((si) => ({
         shopItemId: si.id,
-        itemId: si.item.id,
-        itemName: si.item.itemName,
-        itemType: si.item.itemType,
-        tier: si.item.tier,
+        item_id: si.items.id,
+        itemName: si.items.name,
+        type: si.items.type,
+        tier: si.items.tier,
         price: si.price,
-        originalPrice: si.item.purchasePrice,
-        isPurchased: si.isPurchased,
-        robBonus: si.item.robBonus ? Number(si.item.robBonus) : null,
-        defenseBonus: si.item.defenseBonus ? Number(si.item.defenseBonus) : null,
-        revenueMin: si.item.revenueMin,
-        revenueMax: si.item.revenueMax,
-        insurancePercent: si.item.insurancePercent ? Number(si.item.insurancePercent) : null,
-        description: si.item.description,
-        flavorText: si.item.flavorText,
+        original_price: si.items.purchase_price,
+        is_purchased: si.is_purchased,
+        rob_bonus: si.items.rob_bonus ? Number(si.items.rob_bonus) : null,
+        defense_bonus: si.items.defense_bonus ? Number(si.items.defense_bonus) : null,
+        revenue_min: si.items.revenue_min,
+        revenue_max: si.items.revenue_max,
+        insurance_percent: si.items.insurance_percent ? Number(si.items.insurance_percent) : null,
+        description: si.items.description,
+        flavor_text: si.items.flavor_text,
       })),
-      generatedAt,
+      generated_at,
       playerTier,
       accessibleTiers,
     }
@@ -118,18 +118,18 @@ export const ShopService = {
   /**
    * Generate new shop inventory for a player
    */
-  async generateShop(userId: number): Promise<void> {
+  async generateShop(user_id: number): Promise<void> {
     // Get user's tier
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { statusTier: true },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { status_tier: true },
     })
 
     if (!user) {
       throw new Error('User not found')
     }
 
-    const playerTier = user.statusTier as Tier
+    const playerTier = user.status_tier as Tier
     const accessibleTiers = PLAYER_SHOP_CONFIG.TIER_ACCESS[playerTier] as ItemTier[]
 
     // Determine number of items
@@ -139,7 +139,7 @@ export const ShopService = {
     )
 
     // Get available items for player's tier (excluding legendary - Black Market only)
-    const availableItems = await prisma.item.findMany({
+    const availableItems = await prisma.items.findMany({
       where: {
         tier: { in: accessibleTiers.filter(t => t !== ITEM_TIERS.LEGENDARY) },
       },
@@ -154,19 +154,19 @@ export const ShopService = {
     const selectedItems = shuffled.slice(0, Math.min(itemCount, shuffled.length))
 
     // Delete old shop inventory
-    await prisma.playerShopInventory.deleteMany({
-      where: { userId },
+    await prisma.player_shop_inventory.deleteMany({
+      where: { user_id },
     })
 
     // Create new shop inventory
     const now = new Date()
-    await prisma.playerShopInventory.createMany({
+    await prisma.player_shop_inventory.createMany({
       data: selectedItems.map((item) => ({
-        userId,
-        itemId: item.id,
-        price: item.purchasePrice, // Standard price
-        generatedAt: now,
-        isPurchased: false,
+        user_id,
+        item_id: item.id,
+        price: item.purchase_price, // Standard price
+        generated_at: now,
+        is_purchased: false,
       })),
     })
   },
@@ -174,21 +174,21 @@ export const ShopService = {
   /**
    * Reroll/refresh player's shop
    */
-  async rerollShop(userId: number): Promise<{ success: boolean; itemCount: number }> {
-    await this.generateShop(userId)
+  async rerollShop(user_id: number): Promise<{ success: boolean; itemCount: number }> {
+    await this.generateShop(user_id)
 
-    const newCount = await prisma.playerShopInventory.count({
-      where: { userId, isPurchased: false },
+    const newCount = await prisma.player_shop_inventory.count({
+      where: { user_id, is_purchased: false },
     })
 
     // Record the reroll event
-    await prisma.gameEvent.create({
+    await prisma.game_events.create({
       data: {
-        userId,
-        eventType: 'shop_reroll',
-        wealthChange: 0,
-        xpChange: 0,
-        eventDescription: 'Rerolled shop inventory',
+        user_id,
+        event_type: 'shop_reroll',
+        wealth_change: 0,
+        xp_change: 0,
+        event_description: 'Rerolled shop inventory',
         success: true,
       },
     })
@@ -199,16 +199,16 @@ export const ShopService = {
   /**
    * Purchase item from player's shop
    */
-  async purchaseItem(userId: number, shopItemId: number): Promise<PurchaseResult> {
+  async purchaseItem(user_id: number, shopItemId: number): Promise<PurchaseResult> {
     // Get shop item
-    const shopItem = await prisma.playerShopInventory.findFirst({
+    const shopItem = await prisma.player_shop_inventory.findFirst({
       where: {
         id: shopItemId,
-        userId,
-        isPurchased: false,
+        user_id,
+        is_purchased: false,
       },
       include: {
-        item: true,
+        items: true,
       },
     })
 
@@ -217,8 +217,8 @@ export const ShopService = {
     }
 
     // Check user's wealth
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       select: { wealth: true },
     })
 
@@ -234,14 +234,14 @@ export const ShopService = {
     }
 
     // Check inventory space
-    const hasSpace = await InventoryService.hasSpace(userId)
+    const hasSpace = await InventoryService.hasSpace(user_id)
     if (!hasSpace) {
       return { success: false, reason: 'Your inventory is full (10/10)' }
     }
 
     // Check business ownership limit (Design Drift Remediation)
-    if (shopItem.item.itemType === 'business') {
-      const businessCheck = await BusinessService.canPurchaseBusiness(userId, MAX_BUSINESSES_OWNED)
+    if (shopItem.items.type === 'business') {
+      const businessCheck = await BusinessService.canPurchaseBusiness(user_id, MAX_BUSINESSES_OWNED)
       if (!businessCheck.canPurchase) {
         return { success: false, reason: businessCheck.error }
       }
@@ -250,39 +250,39 @@ export const ShopService = {
     // Process purchase in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Deduct wealth
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
+      const updatedUser = await tx.users.update({
+        where: { id: user_id },
         data: { wealth: { decrement: shopItem.price } },
         select: { wealth: true },
       })
 
       // Mark shop item as purchased
-      await tx.playerShopInventory.update({
+      await tx.player_shop_inventory.update({
         where: { id: shopItemId },
         data: {
-          isPurchased: true,
-          purchasedAt: new Date(),
+          is_purchased: true,
+          purchased_at: new Date(),
         },
       })
 
       // Add item to inventory
-      const inventoryItem = await tx.userInventory.create({
+      const inventoryItem = await tx.user_inventory.create({
         data: {
-          userId,
-          itemId: shopItem.itemId,
-          durability: shopItem.item.baseDurability,
-          isEquipped: false,
+          user_id,
+          item_id: shopItem.item_id,
+          durability: shopItem.items.base_durability ?? 100,
+          is_equipped: false,
         },
       })
 
       // Record purchase event
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId,
-          eventType: 'shop_purchase',
-          wealthChange: -shopItem.price,
-          xpChange: 0,
-          eventDescription: `Purchased ${shopItem.item.itemName} for $${shopItem.price.toLocaleString()}`,
+          user_id,
+          event_type: 'shop_purchase',
+          wealth_change: -shopItem.price,
+          xp_change: 0,
+          event_description: `Purchased ${shopItem.items.name} for $${shopItem.price.toLocaleString()}`,
           success: true,
         },
       })
@@ -292,9 +292,9 @@ export const ShopService = {
 
     return {
       success: true,
-      itemName: shopItem.item.itemName,
+      itemName: shopItem.items.name,
       pricePaid: shopItem.price,
-      newWealth: result.newWealth,
+      newWealth: result.newWealth ?? BigInt(0),
       inventoryId: result.inventoryId,
     }
   },
@@ -302,17 +302,17 @@ export const ShopService = {
   /**
    * Get item by name from player's shop
    */
-  async findShopItemByName(userId: number, itemName: string): Promise<ShopItem | null> {
-    const shopItem = await prisma.playerShopInventory.findFirst({
+  async findShopItemByName(user_id: number, itemName: string): Promise<ShopItem | null> {
+    const shopItem = await prisma.player_shop_inventory.findFirst({
       where: {
-        userId,
-        isPurchased: false,
-        item: {
-          itemName: { equals: itemName, mode: 'insensitive' },
+        user_id,
+        is_purchased: false,
+        items: {
+          name: { equals: itemName, mode: 'insensitive' },
         },
       },
       include: {
-        item: true,
+        items: true,
       },
     })
 
@@ -320,29 +320,29 @@ export const ShopService = {
 
     return {
       shopItemId: shopItem.id,
-      itemId: shopItem.item.id,
-      itemName: shopItem.item.itemName,
-      itemType: shopItem.item.itemType,
-      tier: shopItem.item.tier,
+      item_id: shopItem.items.id,
+      itemName: shopItem.items.name,
+      type: shopItem.items.type,
+      tier: shopItem.items.tier,
       price: shopItem.price,
-      originalPrice: shopItem.item.purchasePrice,
-      isPurchased: shopItem.isPurchased,
-      robBonus: shopItem.item.robBonus ? Number(shopItem.item.robBonus) : null,
-      defenseBonus: shopItem.item.defenseBonus ? Number(shopItem.item.defenseBonus) : null,
-      revenueMin: shopItem.item.revenueMin,
-      revenueMax: shopItem.item.revenueMax,
-      insurancePercent: shopItem.item.insurancePercent ? Number(shopItem.item.insurancePercent) : null,
-      description: shopItem.item.description,
-      flavorText: shopItem.item.flavorText,
+      original_price: shopItem.items.purchase_price,
+      is_purchased: shopItem.is_purchased,
+      rob_bonus: shopItem.items.rob_bonus ? Number(shopItem.items.rob_bonus) : null,
+      defense_bonus: shopItem.items.defense_bonus ? Number(shopItem.items.defense_bonus) : null,
+      revenue_min: shopItem.items.revenue_min,
+      revenue_max: shopItem.items.revenue_max,
+      insurance_percent: shopItem.items.insurance_percent ? Number(shopItem.items.insurance_percent) : null,
+      description: shopItem.items.description,
+      flavor_text: shopItem.items.flavor_text,
     }
   },
 
   /**
    * Check if user's shop needs generation (for auto-gen on first visit)
    */
-  async hasShop(userId: number): Promise<boolean> {
-    const count = await prisma.playerShopInventory.count({
-      where: { userId, isPurchased: false },
+  async hasShop(user_id: number): Promise<boolean> {
+    const count = await prisma.player_shop_inventory.count({
+      where: { user_id, is_purchased: false },
     })
     return count > 0
   },
@@ -350,21 +350,21 @@ export const ShopService = {
   /**
    * Get shop statistics for display
    */
-  async getShopStats(userId: number) {
+  async getShopStats(user_id: number) {
     const [totalPurchases, totalSpent] = await Promise.all([
-      prisma.playerShopInventory.count({
-        where: { userId, isPurchased: true },
+      prisma.player_shop_inventory.count({
+        where: { user_id, is_purchased: true },
       }),
-      prisma.gameEvent.aggregate({
-        where: { userId, eventType: 'shop_purchase' },
-        _sum: { wealthChange: true },
+      prisma.game_events.aggregate({
+        where: { user_id, event_type: 'shop_purchase' },
+        _sum: { wealth_change: true },
       }),
     ])
 
     return {
       totalPurchases,
-      totalSpent: totalSpent._sum.wealthChange
-        ? Math.abs(Number(totalSpent._sum.wealthChange))
+      totalSpent: totalSpent._sum.wealth_change
+        ? Math.abs(Number(totalSpent._sum.wealth_change))
         : 0,
     }
   },

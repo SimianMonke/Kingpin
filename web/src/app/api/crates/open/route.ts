@@ -10,7 +10,7 @@ import {
 import { CrateService } from '@/lib/services/crate.service'
 
 interface OpenCrateBody {
-  userId?: number  // HIGH-06: For bot requests
+  user_id?: number  // HIGH-06: For bot requests
   crateId?: number
   count?: number
 }
@@ -20,7 +20,7 @@ interface OpenCrateBody {
  * Open one or more crates
  *
  * Body:
- * - userId?: number - User ID (required for bot requests with x-api-key)
+ * - user_id?: number - User ID (required for bot requests with x-api-key)
  * - crateId?: number - Specific crate to open (opens oldest if not specified)
  * - count?: number - Number of crates to open (batch mode)
  *
@@ -37,22 +37,22 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   // HIGH-06 fix: Support bot authentication
   const apiKey = request.headers.get('x-api-key')
-  let userId: number
+  let user_id: number
 
   if (apiKey && apiKey === process.env.BOT_API_KEY) {
     // Bot request
-    if (!body.userId || typeof body.userId !== 'number') {
-      return errorResponse('userId required and must be a number', 400)
+    if (!body.user_id || typeof body.user_id !== 'number') {
+      return errorResponse('user_id required and must be a number', 400)
     }
-    userId = body.userId
+    user_id = body.user_id
   } else {
     // Session request
     const session = await getAuthSession()
     if (!session?.user?.id) {
       return unauthorizedResponse()
     }
-    // Handle both string and number userId from session
-    userId = typeof session.user.id === 'string'
+    // Handle both string and number user_id from session
+    user_id = typeof session.user.id === 'string'
       ? parseInt(session.user.id, 10)
       : session.user.id
   }
@@ -61,7 +61,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   // Batch mode
   if (count && count > 1) {
-    const result = await CrateService.batchOpen(userId, Math.min(count, 10)) // Cap at 10
+    const result = await CrateService.batchOpen(user_id, Math.min(count, 10)) // Cap at 10
 
     if (!result.success && result.results.length === 0) {
       return errorResponse(result.stats.stopReason || 'Failed to open crates')
@@ -71,7 +71,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   // Single crate mode
-  const result = await CrateService.openCrate(userId, crateId)
+  const result = await CrateService.openCrate(user_id, crateId)
 
   if (!result.success) {
     return errorResponse(result.error || 'Failed to open crate')

@@ -6,14 +6,14 @@ import Link from 'next/link'
 
 interface UserProfile {
   id: string
-  kingpinName: string | null
+  kingpin_name: string | null
   wealth: number
   level: number
   xp: number
   tier: string
   checkInStreak: number
   lastCheckIn: string | null
-  createdAt: string
+  created_at: string
   linkedAccounts: {
     kick: { username: string } | null
     twitch: { username: string } | null
@@ -117,7 +117,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
-            Welcome back, <span className="text-gradient">{profile?.kingpinName || session?.user?.name || 'Player'}</span>
+            Welcome back, <span className="text-gradient">{profile?.kingpin_name || session?.user?.name || 'Player'}</span>
           </h1>
           <p className="text-gray-400 mt-1">Here's your empire overview</p>
         </div>

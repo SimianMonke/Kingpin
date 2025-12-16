@@ -18,10 +18,10 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
 
   // Get crate inventory
-  const inventory = await CrateService.getCrates(userId)
+  const inventory = await CrateService.getCrates(user_id)
 
   // Check for history query param
   const url = new URL(request.url)
@@ -30,7 +30,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   let history = undefined
   if (includeHistory) {
     const limit = parseInt(url.searchParams.get('limit') || '20', 10)
-    history = await CrateService.getOpenHistory(userId, limit)
+    history = await CrateService.getOpenHistory(user_id, limit)
   }
 
   return successResponse({

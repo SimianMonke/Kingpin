@@ -8,22 +8,22 @@ import { TitleService } from './title.service'
 
 export interface AchievementWithProgress {
   id: number
-  achievementName: string
-  achievementKey: string
-  description: string
+  name: string
+  key: string
+  description: string | null
   category: string
   tier: string
-  requirementType: string
-  requirementValue: bigint
-  rewardWealth: number
-  rewardXp: number
-  rewardTitle: string | null
-  isHidden: boolean
-  displayOrder: number
+  requirement_type: string
+  requirement_value: bigint | null
+  reward_wealth: number | null
+  reward_xp: number | null
+  reward_title: string | null
+  is_hidden: boolean | null
+  display_order: number | null
   // User progress
-  currentProgress: bigint
-  isCompleted: boolean
-  completedAt: Date | null
+  current_progress: bigint
+  is_completed: boolean
+  completed_at: Date | null
 }
 
 export interface AchievementsByCategory {
@@ -38,8 +38,8 @@ export interface AchievementUnlockResult {
   achievement?: {
     name: string
     tier: string
-    rewardWealth: number
-    rewardXp: number
+    reward_wealth: number
+    reward_xp: number
     titleUnlocked?: string
   }
 }
@@ -52,19 +52,19 @@ export const AchievementService = {
   /**
    * Get all achievements with user progress
    */
-  async getAchievements(userId: number): Promise<AchievementsByCategory[]> {
+  async getAchievements(user_id: number): Promise<AchievementsByCategory[]> {
     // Get all achievements
-    const achievements = await prisma.achievement.findMany({
-      orderBy: [{ category: 'asc' }, { displayOrder: 'asc' }],
+    const achievements = await prisma.achievements.findMany({
+      orderBy: [{ category: 'asc' }, { display_order: 'asc' }],
     })
 
     // Get user progress
-    const userProgress = await prisma.userAchievement.findMany({
-      where: { userId },
+    const userProgress = await prisma.user_achievements.findMany({
+      where: { user_id },
     })
 
     const progressMap = new Map(
-      userProgress.map(p => [p.achievementId, p])
+      userProgress.map(p => [p.achievement_id, p])
     )
 
     // Group by category
@@ -75,21 +75,21 @@ export const AchievementService = {
 
       const achievementWithProgress: AchievementWithProgress = {
         id: achievement.id,
-        achievementName: achievement.achievementName,
-        achievementKey: achievement.achievementKey,
+        name: achievement.name,
+        key: achievement.key,
         description: achievement.description,
         category: achievement.category,
         tier: achievement.tier,
-        requirementType: achievement.requirementType,
-        requirementValue: achievement.requirementValue,
-        rewardWealth: achievement.rewardWealth,
-        rewardXp: achievement.rewardXp,
-        rewardTitle: achievement.rewardTitle,
-        isHidden: achievement.isHidden,
-        displayOrder: achievement.displayOrder,
-        currentProgress: progress?.currentProgress ?? BigInt(0),
-        isCompleted: progress?.isCompleted ?? false,
-        completedAt: progress?.completedAt ?? null,
+        requirement_type: achievement.requirement_type,
+        requirement_value: achievement.requirement_value,
+        reward_wealth: achievement.reward_wealth,
+        reward_xp: achievement.reward_xp,
+        reward_title: achievement.reward_title,
+        is_hidden: achievement.is_hidden,
+        display_order: achievement.display_order,
+        current_progress: progress?.current_progress ?? BigInt(0),
+        is_completed: progress?.is_completed ?? false,
+        completed_at: progress?.completed_at ?? null,
       }
 
       const category = achievement.category
@@ -106,7 +106,7 @@ export const AchievementService = {
         category,
         achievements: achs,
         totalCount: achs.length,
-        completedCount: achs.filter(a => a.isCompleted).length,
+        completedCount: achs.filter(a => a.is_completed).length,
       })
     }
 
@@ -117,41 +117,41 @@ export const AchievementService = {
    * Get a single achievement with user progress
    */
   async getAchievement(
-    userId: number,
-    achievementKey: string
+    user_id: number,
+    key: string
   ): Promise<AchievementWithProgress | null> {
-    const achievement = await prisma.achievement.findUnique({
-      where: { achievementKey },
+    const achievement = await prisma.achievements.findUnique({
+      where: { key },
     })
 
     if (!achievement) return null
 
-    const progress = await prisma.userAchievement.findUnique({
+    const progress = await prisma.user_achievements.findUnique({
       where: {
-        userId_achievementId: {
-          userId,
-          achievementId: achievement.id,
+        user_id_achievement_id: {
+          user_id,
+          achievement_id: achievement.id,
         },
       },
     })
 
     return {
       id: achievement.id,
-      achievementName: achievement.achievementName,
-      achievementKey: achievement.achievementKey,
+      name: achievement.name,
+      key: achievement.key,
       description: achievement.description,
       category: achievement.category,
       tier: achievement.tier,
-      requirementType: achievement.requirementType,
-      requirementValue: achievement.requirementValue,
-      rewardWealth: achievement.rewardWealth,
-      rewardXp: achievement.rewardXp,
-      rewardTitle: achievement.rewardTitle,
-      isHidden: achievement.isHidden,
-      displayOrder: achievement.displayOrder,
-      currentProgress: progress?.currentProgress ?? BigInt(0),
-      isCompleted: progress?.isCompleted ?? false,
-      completedAt: progress?.completedAt ?? null,
+      requirement_type: achievement.requirement_type,
+      requirement_value: achievement.requirement_value,
+      reward_wealth: achievement.reward_wealth,
+      reward_xp: achievement.reward_xp,
+      reward_title: achievement.reward_title,
+      is_hidden: achievement.is_hidden,
+      display_order: achievement.display_order,
+      current_progress: progress?.current_progress ?? BigInt(0),
+      is_completed: progress?.is_completed ?? false,
+      completed_at: progress?.completed_at ?? null,
     }
   },
 
@@ -159,40 +159,40 @@ export const AchievementService = {
    * Increment progress for achievements with matching requirement type
    */
   async incrementProgress(
-    userId: number,
-    requirementType: string,
+    user_id: number,
+    requirement_type: string,
     amount: number = 1
   ): Promise<AchievementUnlockResult[]> {
     const results: AchievementUnlockResult[] = []
 
     // Get achievements with this requirement type that aren't completed
-    const achievements = await prisma.achievement.findMany({
-      where: { requirementType },
+    const achievements = await prisma.achievements.findMany({
+      where: { requirement_type },
     })
 
     for (const achievement of achievements) {
       // Get or create user progress
-      const progress = await prisma.userAchievement.upsert({
+      const progress = await prisma.user_achievements.upsert({
         where: {
-          userId_achievementId: {
-            userId,
-            achievementId: achievement.id,
+          user_id_achievement_id: {
+            user_id,
+            achievement_id: achievement.id,
           },
         },
         create: {
-          userId,
-          achievementId: achievement.id,
-          currentProgress: BigInt(amount),
+          user_id,
+          achievement_id: achievement.id,
+          current_progress: BigInt(amount),
         },
         update: {
-          currentProgress: { increment: amount },
+          current_progress: { increment: amount },
         },
       })
 
       // Check if just completed
-      if (!progress.isCompleted &&
-          progress.currentProgress >= achievement.requirementValue) {
-        const result = await this.completeAchievement(userId, achievement.id)
+      if (!progress.is_completed &&
+          (progress.current_progress ?? 0) >= achievement.requirement_value) {
+        const result = await this.completeAchievement(user_id, achievement.id)
         if (result.unlocked) {
           results.push(result)
         }
@@ -206,51 +206,51 @@ export const AchievementService = {
    * Set progress to absolute value (for streak/level type achievements)
    */
   async setProgress(
-    userId: number,
-    requirementType: string,
+    user_id: number,
+    requirement_type: string,
     value: number
   ): Promise<AchievementUnlockResult[]> {
     const results: AchievementUnlockResult[] = []
 
-    const achievements = await prisma.achievement.findMany({
-      where: { requirementType },
+    const achievements = await prisma.achievements.findMany({
+      where: { requirement_type },
     })
 
     for (const achievement of achievements) {
       // Get current progress
-      const existing = await prisma.userAchievement.findUnique({
+      const existing = await prisma.user_achievements.findUnique({
         where: {
-          userId_achievementId: {
-            userId,
-            achievementId: achievement.id,
+          user_id_achievement_id: {
+            user_id,
+            achievement_id: achievement.id,
           },
         },
       })
 
       // Skip if already completed
-      if (existing?.isCompleted) continue
+      if (existing?.is_completed) continue
 
       // Update or create progress
-      const progress = await prisma.userAchievement.upsert({
+      const progress = await prisma.user_achievements.upsert({
         where: {
-          userId_achievementId: {
-            userId,
-            achievementId: achievement.id,
+          user_id_achievement_id: {
+            user_id,
+            achievement_id: achievement.id,
           },
         },
         create: {
-          userId,
-          achievementId: achievement.id,
-          currentProgress: BigInt(value),
+          user_id,
+          achievement_id: achievement.id,
+          current_progress: BigInt(value),
         },
         update: {
-          currentProgress: BigInt(value),
+          current_progress: BigInt(value),
         },
       })
 
       // Check if just completed
-      if (progress.currentProgress >= achievement.requirementValue) {
-        const result = await this.completeAchievement(userId, achievement.id)
+      if ((progress.current_progress ?? BigInt(0)) >= achievement.requirement_value) {
+        const result = await this.completeAchievement(user_id, achievement.id)
         if (result.unlocked) {
           results.push(result)
         }
@@ -264,22 +264,22 @@ export const AchievementService = {
    * Check and potentially complete an achievement
    */
   async checkProgress(
-    userId: number,
-    requirementType: string,
+    user_id: number,
+    requirement_type: string,
     currentValue: number
   ): Promise<AchievementUnlockResult[]> {
-    return this.setProgress(userId, requirementType, currentValue)
+    return this.setProgress(user_id, requirement_type, currentValue)
   },
 
   /**
    * Complete an achievement and award rewards
    */
   async completeAchievement(
-    userId: number,
-    achievementId: number
+    user_id: number,
+    achievement_id: number
   ): Promise<AchievementUnlockResult> {
-    const achievement = await prisma.achievement.findUnique({
-      where: { id: achievementId },
+    const achievement = await prisma.achievements.findUnique({
+      where: { id: achievement_id },
     })
 
     if (!achievement) {
@@ -287,72 +287,72 @@ export const AchievementService = {
     }
 
     // Check if already completed
-    const existing = await prisma.userAchievement.findUnique({
+    const existing = await prisma.user_achievements.findUnique({
       where: {
-        userId_achievementId: { userId, achievementId },
+        user_id_achievement_id: { user_id, achievement_id },
       },
     })
 
-    if (existing?.isCompleted) {
+    if (existing?.is_completed) {
       return { unlocked: false }
     }
 
     // Complete in transaction
     await prisma.$transaction(async (tx) => {
       // Mark as completed
-      await tx.userAchievement.upsert({
+      await tx.user_achievements.upsert({
         where: {
-          userId_achievementId: { userId, achievementId },
+          user_id_achievement_id: { user_id, achievement_id },
         },
         create: {
-          userId,
-          achievementId,
-          currentProgress: achievement.requirementValue,
-          isCompleted: true,
-          completedAt: new Date(),
+          user_id,
+          achievement_id,
+          current_progress: achievement.requirement_value,
+          is_completed: true,
+          completed_at: new Date(),
         },
         update: {
-          isCompleted: true,
-          completedAt: new Date(),
+          is_completed: true,
+          completed_at: new Date(),
         },
       })
 
       // Award rewards
-      await tx.user.update({
-        where: { id: userId },
+      await tx.users.update({
+        where: { id: user_id },
         data: {
-          wealth: { increment: achievement.rewardWealth },
-          xp: { increment: achievement.rewardXp },
+          wealth: { increment: achievement.reward_wealth ?? 0 },
+          xp: { increment: achievement.reward_xp ?? 0 },
         },
       })
 
       // Unlock title if applicable
-      if (achievement.rewardTitle) {
-        await tx.userTitle.upsert({
+      if (achievement.reward_title) {
+        await tx.user_titles.upsert({
           where: {
-            userId_title: {
-              userId,
-              title: achievement.rewardTitle,
+            user_id_title: {
+              user_id,
+              title: achievement.reward_title,
             },
           },
           create: {
-            userId,
-            title: achievement.rewardTitle,
+            user_id,
+            title: achievement.reward_title,
           },
           update: {},
         })
       }
 
       // Create notification
-      await tx.userNotification.create({
+      await tx.user_notifications.create({
         data: {
-          userId,
-          notificationType: 'achievement_unlocked',
+          user_id,
+          notification_type: 'achievement_unlocked',
           title: 'Achievement Unlocked!',
-          message: `You earned "${achievement.achievementName}" - +$${achievement.rewardWealth.toLocaleString()} and +${achievement.rewardXp} XP`,
+          message: `You earned "${achievement.name}" - +$${(achievement.reward_wealth ?? 0).toLocaleString()} and +${achievement.reward_xp ?? 0} XP`,
           icon: this.getTierIcon(achievement.tier),
-          linkType: 'achievement',
-          linkId: achievement.achievementKey,
+          link_type: 'achievement',
+          link_id: achievement.key,
         },
       })
     })
@@ -360,11 +360,11 @@ export const AchievementService = {
     return {
       unlocked: true,
       achievement: {
-        name: achievement.achievementName,
+        name: achievement.name,
         tier: achievement.tier,
-        rewardWealth: achievement.rewardWealth,
-        rewardXp: achievement.rewardXp,
-        titleUnlocked: achievement.rewardTitle ?? undefined,
+        reward_wealth: achievement.reward_wealth ?? 0,
+        reward_xp: achievement.reward_xp ?? 0,
+        titleUnlocked: achievement.reward_title ?? undefined,
       },
     }
   },
@@ -372,23 +372,23 @@ export const AchievementService = {
   /**
    * Get completion stats for a user
    */
-  async getCompletionStats(userId: number): Promise<{
+  async getCompletionStats(user_id: number): Promise<{
     total: number
     completed: number
     percentage: number
     byTier: Record<string, { total: number; completed: number }>
   }> {
     const [allAchievements, userProgress] = await Promise.all([
-      prisma.achievement.findMany({
+      prisma.achievements.findMany({
         select: { id: true, tier: true },
       }),
-      prisma.userAchievement.findMany({
-        where: { userId, isCompleted: true },
-        select: { achievementId: true },
+      prisma.user_achievements.findMany({
+        where: { user_id, is_completed: true },
+        select: { achievement_id: true },
       }),
     ])
 
-    const completedIds = new Set(userProgress.map(p => p.achievementId))
+    const completedIds = new Set(userProgress.map(p => p.achievement_id))
 
     const byTier: Record<string, { total: number; completed: number }> = {}
     for (const tier of Object.values(ACHIEVEMENT_TIERS)) {
@@ -418,13 +418,13 @@ export const AchievementService = {
   /**
    * Get recently unlocked achievements
    */
-  async getRecentUnlocks(userId: number, limit: number = 5) {
-    return prisma.userAchievement.findMany({
-      where: { userId, isCompleted: true },
+  async getRecentUnlocks(user_id: number, limit: number = 5) {
+    return prisma.user_achievements.findMany({
+      where: { user_id: user_id, is_completed: true },
       include: {
-        achievement: true,
+        achievements: true,
       },
-      orderBy: { completedAt: 'desc' },
+      orderBy: { completed_at: 'desc' },
       take: limit,
     })
   },

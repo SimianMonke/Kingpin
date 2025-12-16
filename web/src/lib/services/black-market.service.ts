@@ -10,31 +10,31 @@ import { BusinessService } from './business.service'
 
 export interface BlackMarketItem {
   marketId: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: string
+  type: string
   tier: string
   price: number
-  originalPrice: number
-  discountPercent: number
-  stockQuantity: number
-  originalStock: number
-  isFeatured: boolean
+  original_price: number | null
+  discount_percent: number | null
+  stock_quantity: number | null
+  original_stock: number | null
+  is_featured: boolean | null
   // Item stats
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
   description: string | null
-  flavorText: string | null
+  flavor_text: string | null
 }
 
 export interface BlackMarketInventory {
   items: BlackMarketItem[]
-  rotationId: number
-  availableFrom: Date
-  availableUntil: Date
+  rotation_id: number
+  available_from: Date
+  available_until: Date
   timeRemaining: string
   featuredItem: BlackMarketItem | null
 }
@@ -61,18 +61,18 @@ export const BlackMarketService = {
     const now = new Date()
 
     // Get current rotation
-    const marketItems = await prisma.blackMarketInventory.findMany({
+    const marketItems = await prisma.black_market_inventory.findMany({
       where: {
-        availableFrom: { lte: now },
-        availableUntil: { gt: now },
-        stockQuantity: { gt: 0 },
+        available_from: { lte: now },
+        available_until: { gt: now },
+        stock_quantity: { gt: 0 },
       },
       include: {
-        item: true,
+        items: true,
       },
       orderBy: [
-        { isFeatured: 'desc' },
-        { item: { tier: 'desc' } },
+        { is_featured: 'desc' },
+        { items: { tier: 'desc' } },
         { price: 'desc' },
       ],
     })
@@ -83,39 +83,39 @@ export const BlackMarketService = {
       return this.getMarketInventory() // Recursive call
     }
 
-    const rotationId = marketItems[0].rotationId
-    const availableFrom = marketItems[0].availableFrom
-    const availableUntil = marketItems[0].availableUntil
+    const rotation_id = marketItems[0].rotation_id
+    const available_from = marketItems[0].available_from
+    const available_until = marketItems[0].available_until
 
     const items: BlackMarketItem[] = marketItems.map((mi) => ({
       marketId: mi.id,
-      itemId: mi.item.id,
-      itemName: mi.item.itemName,
-      itemType: mi.item.itemType,
-      tier: mi.item.tier,
+      item_id: mi.items.id,
+      itemName: mi.items.name,
+      type: mi.items.type,
+      tier: mi.items.tier,
       price: mi.price,
-      originalPrice: mi.item.purchasePrice,
-      discountPercent: mi.discountPercent,
-      stockQuantity: mi.stockQuantity,
-      originalStock: mi.originalStock,
-      isFeatured: mi.isFeatured,
-      robBonus: mi.item.robBonus ? Number(mi.item.robBonus) : null,
-      defenseBonus: mi.item.defenseBonus ? Number(mi.item.defenseBonus) : null,
-      revenueMin: mi.item.revenueMin,
-      revenueMax: mi.item.revenueMax,
-      insurancePercent: mi.item.insurancePercent ? Number(mi.item.insurancePercent) : null,
-      description: mi.item.description,
-      flavorText: mi.item.flavorText,
+      original_price: mi.items.purchase_price,
+      discount_percent: mi.discount_percent,
+      stock_quantity: mi.stock_quantity,
+      original_stock: mi.original_stock,
+      is_featured: mi.is_featured,
+      rob_bonus: mi.items.rob_bonus ? Number(mi.items.rob_bonus) : null,
+      defense_bonus: mi.items.defense_bonus ? Number(mi.items.defense_bonus) : null,
+      revenue_min: mi.items.revenue_min,
+      revenue_max: mi.items.revenue_max,
+      insurance_percent: mi.items.insurance_percent ? Number(mi.items.insurance_percent) : null,
+      description: mi.items.description,
+      flavor_text: mi.items.flavor_text,
     }))
 
-    const featuredItem = items.find((i) => i.isFeatured) ?? null
+    const featuredItem = items.find((i) => i.is_featured) ?? null
 
     return {
       items,
-      rotationId,
-      availableFrom,
-      availableUntil,
-      timeRemaining: formatTimeRemaining(availableUntil),
+      rotation_id,
+      available_from,
+      available_until,
+      timeRemaining: formatTimeRemaining(available_until),
       featuredItem,
     }
   },
@@ -123,33 +123,33 @@ export const BlackMarketService = {
   /**
    * Rotate the Black Market with new items
    */
-  async rotateMarket(): Promise<{ rotationId: number; itemCount: number }> {
+  async rotateMarket(): Promise<{ rotation_id: number; itemCount: number }> {
     // Get max rotation ID
-    const lastRotation = await prisma.blackMarketInventory.aggregate({
-      _max: { rotationId: true },
+    const lastRotation = await prisma.black_market_inventory.aggregate({
+      _max: { rotation_id: true },
     })
-    const rotationId = (lastRotation._max.rotationId ?? 0) + 1
+    const rotation_id = (lastRotation._max.rotation_id ?? 0) + 1
 
     // Calculate time window
-    const availableFrom = new Date()
-    const availableUntil = new Date()
-    availableUntil.setHours(availableUntil.getHours() + BLACK_MARKET_CONFIG.ROTATION_HOURS)
+    const available_from = new Date()
+    const available_until = new Date()
+    available_until.setHours(available_until.getHours() + BLACK_MARKET_CONFIG.ROTATION_HOURS)
 
     // Get items by tier
     const [legendaryItems, rareItems, uncommonItems, commonItems] = await Promise.all([
-      prisma.item.findMany({ where: { tier: ITEM_TIERS.LEGENDARY } }),
-      prisma.item.findMany({ where: { tier: ITEM_TIERS.RARE } }),
-      prisma.item.findMany({ where: { tier: ITEM_TIERS.UNCOMMON } }),
-      prisma.item.findMany({ where: { tier: ITEM_TIERS.COMMON } }),
+      prisma.items.findMany({ where: { tier: ITEM_TIERS.LEGENDARY } }),
+      prisma.items.findMany({ where: { tier: ITEM_TIERS.RARE } }),
+      prisma.items.findMany({ where: { tier: ITEM_TIERS.UNCOMMON } }),
+      prisma.items.findMany({ where: { tier: ITEM_TIERS.COMMON } }),
     ])
 
     const itemsToAdd: Array<{
-      itemId: number
+      item_id: number
       price: number
       stock: number
       tier: ItemTier
-      isFeatured: boolean
-      discountPercent: number
+      is_featured: boolean
+      discount_percent: number
     }> = []
 
     // Legendary item (30% chance)
@@ -160,12 +160,12 @@ export const BlackMarketService = {
         BLACK_MARKET_CONFIG.STOCK_RANGES[ITEM_TIERS.LEGENDARY].max
       )
       itemsToAdd.push({
-        itemId: item.id,
-        price: item.purchasePrice,
+        item_id: item.id,
+        price: item.purchase_price,
         stock,
         tier: ITEM_TIERS.LEGENDARY,
-        isFeatured: false,
-        discountPercent: 0,
+        is_featured: false,
+        discount_percent: 0,
       })
     }
 
@@ -178,12 +178,12 @@ export const BlackMarketService = {
         BLACK_MARKET_CONFIG.STOCK_RANGES[ITEM_TIERS.RARE].max
       )
       itemsToAdd.push({
-        itemId: item.id,
-        price: item.purchasePrice,
+        item_id: item.id,
+        price: item.purchase_price,
         stock,
         tier: ITEM_TIERS.RARE,
-        isFeatured: false,
-        discountPercent: 0,
+        is_featured: false,
+        discount_percent: 0,
       })
     }
 
@@ -196,12 +196,12 @@ export const BlackMarketService = {
         BLACK_MARKET_CONFIG.STOCK_RANGES[ITEM_TIERS.UNCOMMON].max
       )
       itemsToAdd.push({
-        itemId: item.id,
-        price: item.purchasePrice,
+        item_id: item.id,
+        price: item.purchase_price,
         stock,
         tier: ITEM_TIERS.UNCOMMON,
-        isFeatured: false,
-        discountPercent: 0,
+        is_featured: false,
+        discount_percent: 0,
       })
     }
 
@@ -214,59 +214,59 @@ export const BlackMarketService = {
         BLACK_MARKET_CONFIG.STOCK_RANGES[ITEM_TIERS.COMMON].max
       )
       itemsToAdd.push({
-        itemId: item.id,
-        price: item.purchasePrice,
+        item_id: item.id,
+        price: item.purchase_price,
         stock,
         tier: ITEM_TIERS.COMMON,
-        isFeatured: false,
-        discountPercent: 0,
+        is_featured: false,
+        discount_percent: 0,
       })
     }
 
     // Select one featured item with discount
     if (itemsToAdd.length > 0) {
       const featuredIndex = Math.floor(Math.random() * itemsToAdd.length)
-      itemsToAdd[featuredIndex].isFeatured = true
-      itemsToAdd[featuredIndex].discountPercent = Math.floor(BLACK_MARKET_CONFIG.FEATURED_DISCOUNT * 100)
+      itemsToAdd[featuredIndex].is_featured = true
+      itemsToAdd[featuredIndex].discount_percent = Math.floor(BLACK_MARKET_CONFIG.FEATURED_DISCOUNT * 100)
       itemsToAdd[featuredIndex].price = Math.floor(
         itemsToAdd[featuredIndex].price * (1 - BLACK_MARKET_CONFIG.FEATURED_DISCOUNT)
       )
     }
 
     // Create market inventory
-    await prisma.blackMarketInventory.createMany({
+    await prisma.black_market_inventory.createMany({
       data: itemsToAdd.map((item) => ({
-        itemId: item.itemId,
-        stockQuantity: item.stock,
-        originalStock: item.stock,
+        item_id: item.item_id,
+        stock_quantity: item.stock,
+        original_stock: item.stock,
         price: item.price,
-        rotationId,
-        availableFrom,
-        availableUntil,
-        isFeatured: item.isFeatured,
-        discountPercent: item.discountPercent,
+        rotation_id,
+        available_from,
+        available_until,
+        is_featured: item.is_featured,
+        discount_percent: item.discount_percent,
       })),
     })
 
-    return { rotationId, itemCount: itemsToAdd.length }
+    return { rotation_id, itemCount: itemsToAdd.length }
   },
 
   /**
    * Purchase item from Black Market
    */
-  async purchaseItem(userId: number, marketId: number): Promise<MarketPurchaseResult> {
+  async purchaseItem(user_id: number, marketId: number): Promise<MarketPurchaseResult> {
     const now = new Date()
 
     // Get market item
-    const marketItem = await prisma.blackMarketInventory.findFirst({
+    const marketItem = await prisma.black_market_inventory.findFirst({
       where: {
         id: marketId,
-        availableFrom: { lte: now },
-        availableUntil: { gt: now },
-        stockQuantity: { gt: 0 },
+        available_from: { lte: now },
+        available_until: { gt: now },
+        stock_quantity: { gt: 0 },
       },
       include: {
-        item: true,
+        items: true,
       },
     })
 
@@ -275,8 +275,8 @@ export const BlackMarketService = {
     }
 
     // Check user's wealth
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       select: { wealth: true },
     })
 
@@ -292,14 +292,14 @@ export const BlackMarketService = {
     }
 
     // Check inventory space
-    const hasSpace = await InventoryService.hasSpace(userId)
+    const hasSpace = await InventoryService.hasSpace(user_id)
     if (!hasSpace) {
       return { success: false, reason: 'Your inventory is full (10/10)' }
     }
 
     // Check business ownership limit (Design Drift Remediation)
-    if (marketItem.item.itemType === 'business') {
-      const businessCheck = await BusinessService.canPurchaseBusiness(userId, MAX_BUSINESSES_OWNED)
+    if (marketItem.items.type === 'business') {
+      const businessCheck = await BusinessService.canPurchaseBusiness(user_id, MAX_BUSINESSES_OWNED)
       if (!businessCheck.canPurchase) {
         return { success: false, reason: businessCheck.error }
       }
@@ -308,13 +308,13 @@ export const BlackMarketService = {
     // Process purchase in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Decrement stock (with optimistic locking check)
-      const updated = await tx.blackMarketInventory.updateMany({
+      const updated = await tx.black_market_inventory.updateMany({
         where: {
           id: marketId,
-          stockQuantity: { gt: 0 },
+          stock_quantity: { gt: 0 },
         },
         data: {
-          stockQuantity: { decrement: 1 },
+          stock_quantity: { decrement: 1 },
         },
       })
 
@@ -323,62 +323,52 @@ export const BlackMarketService = {
       }
 
       // Deduct wealth
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
+      const updatedUser = await tx.users.update({
+        where: { id: user_id },
         data: { wealth: { decrement: marketItem.price } },
         select: { wealth: true },
       })
 
       // Add item to inventory
-      const inventoryItem = await tx.userInventory.create({
+      const inventoryItem = await tx.user_inventory.create({
         data: {
-          userId,
-          itemId: marketItem.itemId,
-          durability: marketItem.item.baseDurability,
-          isEquipped: false,
+          user_id,
+          item_id: marketItem.item_id,
+          durability: marketItem.items.base_durability ?? 100,
+          is_equipped: false,
         },
       })
 
-      // Record purchase
-      await tx.blackMarketPurchase.create({
+      // Record game event (purchase record)
+      await tx.game_events.create({
         data: {
-          userId,
-          marketId,
-          itemId: marketItem.itemId,
-          pricePaid: marketItem.price,
-        },
-      })
-
-      // Record game event
-      await tx.gameEvent.create({
-        data: {
-          userId,
-          eventType: 'market_purchase',
-          wealthChange: -marketItem.price,
-          xpChange: 0,
-          eventDescription: `Purchased ${marketItem.item.itemName} from Black Market for $${marketItem.price.toLocaleString()}`,
+          user_id,
+          event_type: 'market_purchase',
+          wealth_change: -marketItem.price,
+          xp_change: 0,
+          event_description: `Purchased ${marketItem.items.name} from Black Market for $${marketItem.price.toLocaleString()}`,
           success: true,
         },
       })
 
       // Get updated stock
-      const updatedMarket = await tx.blackMarketInventory.findUnique({
+      const updatedMarket = await tx.black_market_inventory.findUnique({
         where: { id: marketId },
-        select: { stockQuantity: true },
+        select: { stock_quantity: true },
       })
 
       return {
         newWealth: updatedUser.wealth,
         inventoryId: inventoryItem.id,
-        stockRemaining: updatedMarket?.stockQuantity ?? 0,
+        stockRemaining: updatedMarket?.stock_quantity ?? 0,
       }
     })
 
     return {
       success: true,
-      itemName: marketItem.item.itemName,
+      itemName: marketItem.items.name,
       pricePaid: marketItem.price,
-      newWealth: result.newWealth,
+      newWealth: result.newWealth ?? BigInt(0),
       inventoryId: result.inventoryId,
       stockRemaining: result.stockRemaining,
     }
@@ -390,12 +380,12 @@ export const BlackMarketService = {
   async getNextRotationTime(): Promise<{ nextRotation: Date | null; timeRemaining: string | null }> {
     const now = new Date()
 
-    const currentRotation = await prisma.blackMarketInventory.findFirst({
+    const currentRotation = await prisma.black_market_inventory.findFirst({
       where: {
-        availableFrom: { lte: now },
-        availableUntil: { gt: now },
+        available_from: { lte: now },
+        available_until: { gt: now },
       },
-      select: { availableUntil: true },
+      select: { available_until: true },
     })
 
     if (!currentRotation) {
@@ -403,23 +393,23 @@ export const BlackMarketService = {
     }
 
     return {
-      nextRotation: currentRotation.availableUntil,
-      timeRemaining: formatTimeRemaining(currentRotation.availableUntil),
+      nextRotation: currentRotation.available_until,
+      timeRemaining: formatTimeRemaining(currentRotation.available_until),
     }
   },
 
   /**
    * Force market rotation (admin only)
    */
-  async forceRotation(): Promise<{ success: boolean; rotationId: number; itemCount: number }> {
+  async forceRotation(): Promise<{ success: boolean; rotation_id: number; itemCount: number }> {
     // Expire current rotation
     const now = new Date()
-    await prisma.blackMarketInventory.updateMany({
+    await prisma.black_market_inventory.updateMany({
       where: {
-        availableUntil: { gt: now },
+        available_until: { gt: now },
       },
       data: {
-        availableUntil: now,
+        available_until: now,
       },
     })
 
@@ -430,24 +420,22 @@ export const BlackMarketService = {
   },
 
   /**
-   * Get Black Market purchase history for a user
+   * Get Black Market purchase history for a user (from game_events)
    */
-  async getUserPurchaseHistory(userId: number, limit: number = 10) {
-    const purchases = await prisma.blackMarketPurchase.findMany({
-      where: { userId },
-      include: {
-        item: true,
+  async getUserPurchaseHistory(user_id: number, limit: number = 10) {
+    const purchases = await prisma.game_events.findMany({
+      where: {
+        user_id,
+        event_type: 'market_purchase',
       },
-      orderBy: { purchasedAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       take: limit,
     })
 
     return purchases.map((p) => ({
-      itemName: p.item.itemName,
-      itemType: p.item.itemType,
-      tier: p.item.tier,
-      pricePaid: p.pricePaid,
-      purchasedAt: p.purchasedAt,
+      event_description: p.event_description,
+      wealth_change: p.wealth_change,
+      created_at: p.created_at,
     }))
   },
 
@@ -457,10 +445,10 @@ export const BlackMarketService = {
   async needsRotation(): Promise<boolean> {
     const now = new Date()
 
-    const activeMarket = await prisma.blackMarketInventory.findFirst({
+    const activeMarket = await prisma.black_market_inventory.findFirst({
       where: {
-        availableFrom: { lte: now },
-        availableUntil: { gt: now },
+        available_from: { lte: now },
+        available_until: { gt: now },
       },
     })
 

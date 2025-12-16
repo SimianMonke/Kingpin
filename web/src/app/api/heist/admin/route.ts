@@ -30,24 +30,24 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   const body = await request.json()
-  const { action, sessionId, heistId, eventType } = body
+  const { action, session_id, heist_id, event_type } = body
 
   switch (action) {
     case 'trigger': {
       // Trigger a heist event
-      if (!sessionId) {
+      if (!session_id) {
         // Find active session
-        const activeSession = await prisma.streamingSession.findFirst({
-          where: { isActive: true },
+        const activeSession = await prisma.streaming_sessions.findFirst({
+          where: { is_active: true },
         })
 
         if (!activeSession) {
-          return errorResponse('No active session. Provide sessionId or start a session first.')
+          return errorResponse('No active session. Provide session_id or start a session first.')
         }
 
         const result = await HeistService.triggerHeist(
           activeSession.id,
-          eventType as HeistEventType | undefined
+          event_type as HeistEventType | undefined
         )
 
         if (!result.success) {
@@ -61,8 +61,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       }
 
       const result = await HeistService.triggerHeist(
-        sessionId,
-        eventType as HeistEventType | undefined
+        session_id,
+        event_type as HeistEventType | undefined
       )
 
       if (!result.success) {
@@ -77,7 +77,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
     case 'expire': {
       // Force expire active heist
-      if (!heistId) {
+      if (!heist_id) {
         // Find and expire any active heist
         const expiredCount = await HeistService.checkExpiredHeists()
         return successResponse({
@@ -86,21 +86,21 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         })
       }
 
-      await HeistService.expireHeist(heistId)
+      await HeistService.expireHeist(heist_id)
       return successResponse({
         action: 'expire',
-        heistId,
+        heist_id,
       })
     }
 
     case 'schedule': {
       // Create/reset heist schedule
-      if (!sessionId) {
-        return errorResponse('sessionId is required for schedule action')
+      if (!session_id) {
+        return errorResponse('session_id is required for schedule action')
       }
 
       const isFirstHeist = body.isFirstHeist || false
-      const schedule = await HeistService.scheduleNextHeist(sessionId, isFirstHeist)
+      const schedule = await HeistService.scheduleNextHeist(session_id, isFirstHeist)
 
       return successResponse({
         action: 'schedule',
@@ -110,21 +110,21 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
     case 'clear_schedule': {
       // Clear heist schedule
-      if (!sessionId) {
-        return errorResponse('sessionId is required for clear_schedule action')
+      if (!session_id) {
+        return errorResponse('session_id is required for clear_schedule action')
       }
 
-      await HeistService.clearSchedule(sessionId)
+      await HeistService.clearSchedule(session_id)
       return successResponse({
         action: 'clear_schedule',
-        sessionId,
+        session_id,
       })
     }
 
     case 'status': {
       // Get admin status view
-      const activeSession = await prisma.streamingSession.findFirst({
-        where: { isActive: true },
+      const activeSession = await prisma.streaming_sessions.findFirst({
+        where: { is_active: true },
       })
 
       const activeHeist = activeSession
@@ -139,9 +139,9 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       const leaderboard = await HeistService.getHeistLeaderboard(10)
 
       // Get trivia pool stats
-      const triviaStats = await prisma.heistTriviaPool.aggregate({
-        _count: { id: true },
-        _avg: { timesUsed: true },
+      const triviaStats = await prisma.heist_trivia_pool.aggregate({
+        _count: { _all: true },
+        _avg: { times_used: true },
       })
 
       return successResponse({
@@ -149,9 +149,9 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         session: activeSession
           ? {
               id: activeSession.id,
-              title: activeSession.sessionTitle,
+              title: activeSession.session_title,
               platform: activeSession.platform,
-              startedAt: activeSession.startedAt,
+              started_at: activeSession.started_at,
             }
           : null,
         activeHeist: activeHeist
@@ -164,10 +164,10 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         recentHistory,
         leaderboard,
         triviaPool: {
-          totalQuestions: triviaStats._count.id,
-          avgTimesUsed: Math.round(triviaStats._avg.timesUsed || 0),
+          totalQuestions: triviaStats._count?._all ?? 0,
+          avgTimesUsed: Math.round(triviaStats._avg?.times_used ?? 0),
         },
-        eventTypes: Object.values(HEIST_EVENT_TYPES),
+        event_types: Object.values(HEIST_EVENT_TYPES),
       })
     }
 

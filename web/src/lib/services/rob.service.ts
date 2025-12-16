@@ -55,7 +55,7 @@ export interface RobResult {
 interface PlayerInfo {
   id: number
   username: string
-  kingpinName: string | null
+  kingpin_name: string | null
   level: number
   wealth: bigint
 }
@@ -82,17 +82,17 @@ export const RobService = {
     }
 
     // 2. Find target user
-    const target = await prisma.user.findFirst({
+    const target = await prisma.users.findFirst({
       where: {
         OR: [
           { username: { equals: cleanTarget, mode: 'insensitive' } },
-          { kingpinName: { equals: cleanTarget, mode: 'insensitive' } },
+          { kingpin_name: { equals: cleanTarget, mode: 'insensitive' } },
         ],
       },
       select: {
         id: true,
         username: true,
-        kingpinName: true,
+        kingpin_name: true,
         level: true,
         wealth: true,
       },
@@ -114,24 +114,24 @@ export const RobService = {
     }
 
     // 4. Check if target has wealth
-    if (target.wealth <= 0) {
+    if ((target.wealth ?? BigInt(0)) <= 0) {
       return {
         canRob: false,
-        reason: `${target.kingpinName || target.username} has no wealth to steal!`,
+        reason: `${target.kingpin_name || target.username} has no wealth to steal!`,
         targetId: target.id,
         targetUsername: target.username,
       }
     }
 
     // 5. Check for Juicernaut immunity
-    const immunityBuff = await prisma.activeBuff.findFirst({
+    const immunityBuff = await prisma.active_buffs.findFirst({
       where: {
-        userId: target.id,
-        buffType: 'juicernaut_immunity',
-        isActive: true,
+        user_id: target.id,
+        buff_type: 'juicernaut_immunity',
+        is_active: true,
         OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
+          { expires_at: null },
+          { expires_at: { gt: new Date() } },
         ],
       },
     })
@@ -139,7 +139,7 @@ export const RobService = {
     if (immunityBuff) {
       return {
         canRob: false,
-        reason: `${target.kingpinName || target.username} is the current Juicernaut and cannot be robbed!`,
+        reason: `${target.kingpin_name || target.username} is the current Juicernaut and cannot be robbed!`,
         targetId: target.id,
         targetUsername: target.username,
       }
@@ -157,16 +157,16 @@ export const RobService = {
       const minutes = Math.floor(((cooldownStatus.remainingSeconds || 0) % 3600) / 60)
       return {
         canRob: false,
-        reason: `You already robbed ${target.kingpinName || target.username} recently. Try again in ${hours}h ${minutes}m.`,
+        reason: `You already robbed ${target.kingpin_name || target.username} recently. Try again in ${hours}h ${minutes}m.`,
         targetId: target.id,
         targetUsername: target.username,
-        cooldownExpiresAt: cooldownStatus.expiresAt || undefined,
+        cooldownExpiresAt: cooldownStatus.expires_at || undefined,
       }
     }
 
     // 7. Calculate success rate for preview
     const [attacker, attackerEquipped, defenderEquipped] = await Promise.all([
-      prisma.user.findUnique({
+      prisma.users.findUnique({
         where: { id: attackerId },
         select: { level: true },
       }),
@@ -174,12 +174,12 @@ export const RobService = {
       InventoryService.getEquippedItems(target.id),
     ])
 
-    const weaponBonus = attackerEquipped.weapon?.robBonus || 0
-    const armorBonus = defenderEquipped.armor?.defenseBonus || 0
+    const weaponBonus = attackerEquipped.weapon?.rob_bonus || 0
+    const armorBonus = defenderEquipped.armor?.defense_bonus || 0
 
     const successRate = calculateRobSuccessRate({
-      attackerLevel: attacker?.level || 1,
-      defenderLevel: target.level,
+      attackerLevel: attacker?.level ?? 1,
+      defenderLevel: target.level ?? 1,
       attackerWeaponBonus: weaponBonus,
       defenderArmorBonus: armorBonus,
     })
@@ -188,7 +188,7 @@ export const RobService = {
       canRob: true,
       targetId: target.id,
       targetUsername: target.username,
-      targetWealth: target.wealth,
+      targetWealth: target.wealth ?? BigInt(0),
       successRate: Math.round(successRate * 100),
     }
   },
@@ -199,13 +199,13 @@ export const RobService = {
   async executeRob(attackerId: number, targetId: number): Promise<RobResult> {
     // Get both players' info
     const [attacker, target] = await Promise.all([
-      prisma.user.findUnique({
+      prisma.users.findUnique({
         where: { id: attackerId },
-        select: { id: true, username: true, kingpinName: true, level: true, wealth: true },
+        select: { id: true, username: true, kingpin_name: true, level: true, wealth: true },
       }),
-      prisma.user.findUnique({
+      prisma.users.findUnique({
         where: { id: targetId },
-        select: { id: true, username: true, kingpinName: true, level: true, wealth: true },
+        select: { id: true, username: true, kingpin_name: true, level: true, wealth: true },
       }),
     ])
 
@@ -220,8 +220,8 @@ export const RobService = {
     ])
 
     // Calculate success rate
-    const weaponBonus = attackerEquipped.weapon?.robBonus || 0
-    const armorBonus = defenderEquipped.armor?.defenseBonus || 0
+    const weaponBonus = attackerEquipped.weapon?.rob_bonus || 0
+    const armorBonus = defenderEquipped.armor?.defense_bonus || 0
 
     // Get faction buffs for attacker and defender
     const [attackerFactionBuffs, defenderFactionBuffs] = await Promise.all([
@@ -235,8 +235,8 @@ export const RobService = {
     const factionDefenseBonus = defenderFactionBuffs['defense'] || 0
 
     const successRate = calculateRobSuccessRate({
-      attackerLevel: attacker.level,
-      defenderLevel: target.level,
+      attackerLevel: attacker.level ?? 1,
+      defenderLevel: target.level ?? 1,
       attackerWeaponBonus: weaponBonus + factionRobBonus,
       defenderArmorBonus: armorBonus + factionDefenseBonus,
     })
@@ -258,8 +258,8 @@ export const RobService = {
       const baseSteal = Math.floor(Number(target.wealth) * stealPercent)
 
       // Apply housing insurance
-      const insurancePercent = defenderEquipped.housing?.insurancePercent || 0
-      insuranceSaved = Math.floor(baseSteal * insurancePercent)
+      const insurance_percent = defenderEquipped.housing?.insurance_percent || 0
+      insuranceSaved = Math.floor(baseSteal * insurance_percent)
       wealthStolen = baseSteal - insuranceSaved
 
       // Roll for item theft (5% chance)
@@ -278,19 +278,19 @@ export const RobService = {
     const { attackerWeaponDamage, defenderArmorDamage } = await prisma.$transaction(async (tx) => {
       // 1. Transfer wealth (if successful)
       if (isSuccess && wealthStolen > 0) {
-        await tx.user.update({
+        await tx.users.update({
           where: { id: targetId },
           data: { wealth: { decrement: wealthStolen } },
         })
 
-        await tx.user.update({
+        await tx.users.update({
           where: { id: attackerId },
           data: { wealth: { increment: wealthStolen } },
         })
       }
 
       // 2. Add XP to attacker
-      await tx.user.update({
+      await tx.users.update({
         where: { id: attackerId },
         data: { xp: { increment: xpGained } },
       })
@@ -311,32 +311,32 @@ export const RobService = {
       )
 
       // 5. Log event for attacker
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId: attackerId,
-          eventType: 'rob',
-          wealthChange: wealthStolen,
-          xpChange: xpGained,
-          targetUserId: targetId,
+          user_id: attackerId,
+          event_type: 'rob',
+          wealth_change: wealthStolen,
+          xp_change: xpGained,
+          target_user_id: targetId,
           success: isSuccess,
-          eventDescription: isSuccess
-            ? `Robbed ${target.kingpinName || target.username} for ${formatWealth(wealthStolen)}${stolenItem ? ` and stole their ${stolenItem.name}!` : ''}`
-            : `Failed to rob ${target.kingpinName || target.username}`,
+          event_description: isSuccess
+            ? `Robbed ${target.kingpin_name || target.username} for ${formatWealth(wealthStolen)}${stolenItem ? ` and stole their ${stolenItem.name}!` : ''}`
+            : `Failed to rob ${target.kingpin_name || target.username}`,
         },
       })
 
       // 6. Log event for defender
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId: targetId,
-          eventType: 'rob_victim',
-          wealthChange: -wealthStolen,
-          xpChange: 0,
-          targetUserId: attackerId,
+          user_id: targetId,
+          event_type: 'rob_victim',
+          wealth_change: -wealthStolen,
+          xp_change: 0,
+          target_user_id: attackerId,
           success: !isSuccess, // Success from defender's perspective means the rob failed
-          eventDescription: isSuccess
-            ? `Was robbed by ${attacker.kingpinName || attacker.username} for ${formatWealth(wealthStolen)}${insuranceSaved > 0 ? ` (insurance saved ${formatWealth(insuranceSaved)})` : ''}`
-            : `Defended against robbery attempt by ${attacker.kingpinName || attacker.username}`,
+          event_description: isSuccess
+            ? `Was robbed by ${attacker.kingpin_name || attacker.username} for ${formatWealth(wealthStolen)}${insuranceSaved > 0 ? ` (insurance saved ${formatWealth(insuranceSaved)})` : ''}`
+            : `Defended against robbery attempt by ${attacker.kingpin_name || attacker.username}`,
         },
       })
 
@@ -347,10 +347,10 @@ export const RobService = {
     // Update leaderboard snapshots
     await safeVoid(
       () => LeaderboardService.updateSnapshot(attackerId, {
-        robCount: 1,
-        robSuccessCount: isSuccess ? 1 : 0,
-        wealthEarned: wealthStolen,
-        xpEarned: xpGained,
+        rob_count: 1,
+        rob_success_count: isSuccess ? 1 : 0,
+        wealth_earned: wealthStolen,
+        xp_earned: xpGained,
       }),
       'rob.service:leaderboard'
     )
@@ -375,7 +375,7 @@ export const RobService = {
       )
       await safeVoid(
         () => MissionService.updateProgress(attackerId, MISSION_OBJECTIVE_TYPES.WEALTH_EARNED, wealthStolen),
-        'rob.service:mission:wealthEarned'
+        'rob.service:mission:wealth_earned'
       )
     }
 
@@ -387,7 +387,7 @@ export const RobService = {
       )
       await safeVoid(
         () => AchievementService.incrementProgress(attackerId, ACHIEVEMENT_REQUIREMENT_TYPES.TOTAL_WEALTH_EARNED, wealthStolen),
-        'rob.service:achievement:wealthEarned'
+        'rob.service:achievement:wealth_earned'
       )
     }
 
@@ -406,7 +406,7 @@ export const RobService = {
     )
 
     // Notify defender of robbery outcome
-    const attackerName = attacker.kingpinName || attacker.username
+    const attackerName = attacker.kingpin_name || attacker.username
     if (isSuccess) {
       // Notify defender they were robbed
       await safeVoid(
@@ -423,7 +423,7 @@ export const RobService = {
         await safeVoid(
           () => DiscordService.postItemTheft(
             attackerName,
-            target.kingpinName || target.username,
+            target.kingpin_name || target.username,
             stolenItem.name,
             stolenItem.tier
           ),
@@ -439,7 +439,7 @@ export const RobService = {
     }
 
     // Build result message
-    const targetName = target.kingpinName || target.username
+    const targetName = target.kingpin_name || target.username
     let message: string
     if (isSuccess) {
       message = `💰 You robbed ${targetName} for ${formatWealth(wealthStolen)}!`
@@ -454,7 +454,7 @@ export const RobService = {
     }
 
     if (attackerWeaponDamage.destroyed) {
-      message += `\n⚠️ Your ${attackerWeaponDamage.itemName} broke!`
+      message += `\n⚠️ Your ${attackerWeaponDamage.itemName ?? 'weapon'} broke!`
     }
 
     return {
@@ -497,30 +497,30 @@ export const RobService = {
     // Transfer item from defender to attacker
     await prisma.$transaction(async (tx) => {
       // Unequip from defender
-      await tx.userInventory.update({
+      await tx.user_inventory.update({
         where: { id: itemToSteal.id },
         data: {
-          isEquipped: false,
+          is_equipped: false,
           slot: null,
-          equippedAt: null,
+          equipped_at: null,
         },
       })
 
       // Check if attacker has inventory space
-      const attackerInventoryCount = await tx.userInventory.count({
-        where: { userId: attackerId, isEscrowed: false },
+      const attackerInventoryCount = await tx.user_inventory.count({
+        where: { user_id: attackerId, is_escrowed: false },
       })
 
       const hasSpace = attackerInventoryCount < 10 // MAX_INVENTORY_SIZE
 
       // Transfer to attacker (or escrow if no space)
       // HIGH-02 fix: Stolen items use 48-hour escrow (longer than normal)
-      await tx.userInventory.update({
+      await tx.user_inventory.update({
         where: { id: itemToSteal.id },
         data: {
-          userId: attackerId,
-          isEscrowed: !hasSpace,
-          escrowExpiresAt: hasSpace ? null : new Date(Date.now() + STOLEN_ITEM_ESCROW_HOURS * 60 * 60 * 1000),
+          user_id: attackerId,
+          is_escrowed: !hasSpace,
+          escrow_expires_at: hasSpace ? null : new Date(Date.now() + STOLEN_ITEM_ESCROW_HOURS * 60 * 60 * 1000),
         },
       })
     })
@@ -528,7 +528,7 @@ export const RobService = {
     return {
       id: itemToSteal.id,
       name: itemToSteal.itemName,
-      type: itemToSteal.itemType,
+      type: itemToSteal.type,
       tier: itemToSteal.tier,
     }
   },
@@ -536,39 +536,39 @@ export const RobService = {
   /**
    * Get recent rob events for a user (both as attacker and defender)
    */
-  async getRobHistory(userId: number, limit: number = 10): Promise<Array<{
+  async getRobHistory(user_id: number, limit: number = 10): Promise<Array<{
     id: number
-    eventType: string
+    event_type: string
     targetUsername: string | null
-    wealthChange: bigint
+    wealth_change: bigint
     success: boolean
     description: string
-    createdAt: Date
+    created_at: Date
   }>> {
-    const events = await prisma.gameEvent.findMany({
+    const events = await prisma.game_events.findMany({
       where: {
         OR: [
-          { userId, eventType: 'rob' },
-          { userId, eventType: 'rob_victim' },
+          { user_id, event_type: 'rob' },
+          { user_id, event_type: 'rob_victim' },
         ],
       },
       include: {
-        targetUser: {
-          select: { username: true, kingpinName: true },
+        users_game_events_target_user_idTousers: {
+          select: { username: true, kingpin_name: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       take: limit,
     })
 
     return events.map((event) => ({
       id: event.id,
-      eventType: event.eventType,
-      targetUsername: event.targetUser?.kingpinName || event.targetUser?.username || null,
-      wealthChange: event.wealthChange,
-      success: event.success,
-      description: event.eventDescription || '',
-      createdAt: event.createdAt,
+      event_type: event.event_type,
+      targetUsername: event.users_game_events_target_user_idTousers?.kingpin_name || event.users_game_events_target_user_idTousers?.username || null,
+      wealth_change: event.wealth_change ?? BigInt(0),
+      success: event.success ?? false,
+      description: event.event_description || '',
+      created_at: event.created_at ?? new Date(),
     }))
   },
 }

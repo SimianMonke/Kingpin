@@ -12,27 +12,27 @@ export type PrismaTransactionClient = Omit<PrismaClient, '$connect' | '$disconne
 
 export interface InventoryItem {
   id: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: string
+  type: string
   tier: string
   durability: number
-  maxDurability: number
-  isEquipped: boolean
+  maxDurability: number | null
+  is_equipped: boolean | null
   slot: string | null
-  isEscrowed: boolean
-  escrowExpiresAt: Date | null
-  acquiredAt: Date
-  equippedAt: Date | null
+  is_escrowed: boolean | null
+  escrow_expires_at: Date | null
+  acquired_at: Date | null
+  equipped_at: Date | null
   // Item stats
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
-  sellPrice: number | null
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
+  sell_price: number | null
   description: string | null
-  flavorText: string | null
+  flavor_text: string | null
 }
 
 export interface EquippedItems {
@@ -57,58 +57,58 @@ export const InventoryService = {
   /**
    * Get user's full inventory
    */
-  async getInventory(userId: number): Promise<InventoryItem[]> {
-    const items = await prisma.userInventory.findMany({
+  async getInventory(user_id: number): Promise<InventoryItem[]> {
+    const items = await prisma.user_inventory.findMany({
       where: {
-        userId,
-        isEscrowed: false,
+        user_id,
+        is_escrowed: false,
       },
       include: {
-        item: true,
+        items: true,
       },
       orderBy: [
-        { isEquipped: 'desc' },
+        { is_equipped: 'desc' },
         { slot: 'asc' },
-        { acquiredAt: 'desc' },
+        { acquired_at: 'desc' },
       ],
     })
 
     return items.map((inv) => ({
       id: inv.id,
-      itemId: inv.item.id,
-      itemName: inv.item.itemName,
-      itemType: inv.item.itemType,
-      tier: inv.item.tier,
+      item_id: inv.items.id,
+      itemName: inv.items.name,
+      type: inv.items.type,
+      tier: inv.items.tier,
       durability: inv.durability,
-      maxDurability: inv.item.baseDurability,
-      isEquipped: inv.isEquipped,
+      maxDurability: inv.items.base_durability,
+      is_equipped: inv.is_equipped,
       slot: inv.slot,
-      isEscrowed: inv.isEscrowed,
-      escrowExpiresAt: inv.escrowExpiresAt,
-      acquiredAt: inv.acquiredAt,
-      equippedAt: inv.equippedAt,
-      robBonus: inv.item.robBonus ? Number(inv.item.robBonus) : null,
-      defenseBonus: inv.item.defenseBonus ? Number(inv.item.defenseBonus) : null,
-      revenueMin: inv.item.revenueMin,
-      revenueMax: inv.item.revenueMax,
-      insurancePercent: inv.item.insurancePercent ? Number(inv.item.insurancePercent) : null,
-      sellPrice: inv.item.sellPrice,
-      description: inv.item.description,
-      flavorText: inv.item.flavorText,
+      is_escrowed: inv.is_escrowed,
+      escrow_expires_at: inv.escrow_expires_at,
+      acquired_at: inv.acquired_at,
+      equipped_at: inv.equipped_at,
+      rob_bonus: inv.items.rob_bonus ? Number(inv.items.rob_bonus) : null,
+      defense_bonus: inv.items.defense_bonus ? Number(inv.items.defense_bonus) : null,
+      revenue_min: inv.items.revenue_min,
+      revenue_max: inv.items.revenue_max,
+      insurance_percent: inv.items.insurance_percent ? Number(inv.items.insurance_percent) : null,
+      sell_price: inv.items.sell_price,
+      description: inv.items.description,
+      flavor_text: inv.items.flavor_text,
     }))
   },
 
   /**
    * Get user's equipped items
    */
-  async getEquippedItems(userId: number): Promise<EquippedItems> {
-    const equipped = await prisma.userInventory.findMany({
+  async getEquippedItems(user_id: number): Promise<EquippedItems> {
+    const equipped = await prisma.user_inventory.findMany({
       where: {
-        userId,
-        isEquipped: true,
+        user_id,
+        is_equipped: true,
       },
       include: {
-        item: true,
+        items: true,
       },
     })
 
@@ -122,26 +122,26 @@ export const InventoryService = {
     for (const inv of equipped) {
       const item: InventoryItem = {
         id: inv.id,
-        itemId: inv.item.id,
-        itemName: inv.item.itemName,
-        itemType: inv.item.itemType,
-        tier: inv.item.tier,
+        item_id: inv.items.id,
+        itemName: inv.items.name,
+        type: inv.items.type,
+        tier: inv.items.tier,
         durability: inv.durability,
-        maxDurability: inv.item.baseDurability,
-        isEquipped: inv.isEquipped,
+        maxDurability: inv.items.base_durability,
+        is_equipped: inv.is_equipped,
         slot: inv.slot,
-        isEscrowed: inv.isEscrowed,
-        escrowExpiresAt: inv.escrowExpiresAt,
-        acquiredAt: inv.acquiredAt,
-        equippedAt: inv.equippedAt,
-        robBonus: inv.item.robBonus ? Number(inv.item.robBonus) : null,
-        defenseBonus: inv.item.defenseBonus ? Number(inv.item.defenseBonus) : null,
-        revenueMin: inv.item.revenueMin,
-        revenueMax: inv.item.revenueMax,
-        insurancePercent: inv.item.insurancePercent ? Number(inv.item.insurancePercent) : null,
-        sellPrice: inv.item.sellPrice,
-        description: inv.item.description,
-        flavorText: inv.item.flavorText,
+        is_escrowed: inv.is_escrowed,
+        escrow_expires_at: inv.escrow_expires_at,
+        acquired_at: inv.acquired_at,
+        equipped_at: inv.equipped_at,
+        rob_bonus: inv.items.rob_bonus ? Number(inv.items.rob_bonus) : null,
+        defense_bonus: inv.items.defense_bonus ? Number(inv.items.defense_bonus) : null,
+        revenue_min: inv.items.revenue_min,
+        revenue_max: inv.items.revenue_max,
+        insurance_percent: inv.items.insurance_percent ? Number(inv.items.insurance_percent) : null,
+        sell_price: inv.items.sell_price,
+        description: inv.items.description,
+        flavor_text: inv.items.flavor_text,
       }
 
       if (inv.slot === ITEM_TYPES.WEAPON) result.weapon = item
@@ -156,13 +156,13 @@ export const InventoryService = {
   /**
    * Get inventory stats
    */
-  async getInventoryStats(userId: number): Promise<InventoryStats> {
+  async getInventoryStats(user_id: number): Promise<InventoryStats> {
     const [regularCount, escrowedCount] = await Promise.all([
-      prisma.userInventory.count({
-        where: { userId, isEscrowed: false },
+      prisma.user_inventory.count({
+        where: { user_id, is_escrowed: false },
       }),
-      prisma.userInventory.count({
-        where: { userId, isEscrowed: true },
+      prisma.user_inventory.count({
+        where: { user_id, is_escrowed: true },
       }),
     ])
 
@@ -177,9 +177,9 @@ export const InventoryService = {
   /**
    * Check if inventory has space
    */
-  async hasSpace(userId: number): Promise<boolean> {
-    const count = await prisma.userInventory.count({
-      where: { userId, isEscrowed: false },
+  async hasSpace(user_id: number): Promise<boolean> {
+    const count = await prisma.user_inventory.count({
+      where: { user_id, is_escrowed: false },
     })
     return count < MAX_INVENTORY_SIZE
   },
@@ -188,9 +188,9 @@ export const InventoryService = {
    * Check if inventory has space (with transaction client)
    * @internal Used by addItem when inside a transaction
    */
-  async hasSpaceWithClient(userId: number, db: PrismaTransactionClient | typeof prisma): Promise<boolean> {
-    const count = await db.userInventory.count({
-      where: { userId, isEscrowed: false },
+  async hasSpaceWithClient(user_id: number, db: PrismaTransactionClient | typeof prisma): Promise<boolean> {
+    const count = await db.user_inventory.count({
+      where: { user_id, is_escrowed: false },
     })
     return count < MAX_INVENTORY_SIZE
   },
@@ -201,8 +201,8 @@ export const InventoryService = {
    * CRIT-05 fix: Enforces 3-item escrow limit
    */
   async addItem(
-    userId: number,
-    itemId: number,
+    user_id: number,
+    item_id: number,
     options: { durability?: number; toEscrow?: boolean } = {},
     tx?: PrismaTransactionClient
   ): Promise<{ success: boolean; inventoryId?: number; toEscrow: boolean; reason?: string }> {
@@ -210,8 +210,8 @@ export const InventoryService = {
 
     // Check both inventory and escrow counts
     const [inventoryCount, escrowCount] = await Promise.all([
-      db.userInventory.count({ where: { userId, isEscrowed: false } }),
-      db.userInventory.count({ where: { userId, isEscrowed: true } }),
+      db.user_inventory.count({ where: { user_id, is_escrowed: false } }),
+      db.user_inventory.count({ where: { user_id, is_escrowed: true } }),
     ])
 
     const hasSpace = inventoryCount < MAX_INVENTORY_SIZE
@@ -233,29 +233,29 @@ export const InventoryService = {
     }
 
     // Get item's base durability
-    const item = await db.item.findUnique({
-      where: { id: itemId },
-      select: { baseDurability: true },
+    const item = await db.items.findUnique({
+      where: { id: item_id },
+      select: { base_durability: true },
     })
 
     if (!item) {
       throw new Error('Item not found')
     }
 
-    const durability = options.durability ?? item.baseDurability
+    const durability = options.durability ?? item.base_durability ?? 100
 
     // Calculate escrow expiry using constant
-    const escrowExpiresAt = toEscrow
+    const escrow_expires_at = toEscrow
       ? new Date(Date.now() + ITEM_ESCROW_HOURS * 60 * 60 * 1000)
       : null
 
-    const inventoryItem = await db.userInventory.create({
+    const inventoryItem = await db.user_inventory.create({
       data: {
-        userId,
-        itemId,
+        user_id,
+        item_id,
         durability,
-        isEscrowed: toEscrow,
-        escrowExpiresAt,
+        is_escrowed: toEscrow,
+        escrow_expires_at,
       },
     })
 
@@ -269,10 +269,10 @@ export const InventoryService = {
   /**
    * Remove item from inventory
    */
-  async removeItem(userId: number, inventoryId: number): Promise<boolean> {
+  async removeItem(user_id: number, inventoryId: number): Promise<boolean> {
     // Check ownership
-    const item = await prisma.userInventory.findFirst({
-      where: { id: inventoryId, userId },
+    const item = await prisma.user_inventory.findFirst({
+      where: { id: inventoryId, user_id },
     })
 
     if (!item) {
@@ -280,11 +280,11 @@ export const InventoryService = {
     }
 
     // Can't remove equipped items
-    if (item.isEquipped) {
+    if (item.is_equipped) {
       throw new Error('Cannot remove equipped item. Unequip first.')
     }
 
-    await prisma.userInventory.delete({
+    await prisma.user_inventory.delete({
       where: { id: inventoryId },
     })
 
@@ -294,54 +294,54 @@ export const InventoryService = {
   /**
    * Equip an item
    */
-  async equipItem(userId: number, inventoryId: number): Promise<{ success: boolean; previousItem?: InventoryItem }> {
+  async equipItem(user_id: number, inventoryId: number): Promise<{ success: boolean; previousItem?: InventoryItem }> {
     // Get the item to equip
-    const itemToEquip = await prisma.userInventory.findFirst({
-      where: { id: inventoryId, userId, isEscrowed: false },
-      include: { item: true },
+    const itemToEquip = await prisma.user_inventory.findFirst({
+      where: { id: inventoryId, user_id, is_escrowed: false },
+      include: { items: true },
     })
 
     if (!itemToEquip) {
       throw new Error('Item not found in inventory')
     }
 
-    if (itemToEquip.isEquipped) {
+    if (itemToEquip.is_equipped) {
       return { success: true } // Already equipped
     }
 
-    const slot = itemToEquip.item.itemType as EquipmentSlot
+    const slot = itemToEquip.items.type as EquipmentSlot
 
     // Get currently equipped item in that slot
-    const currentlyEquipped = await prisma.userInventory.findFirst({
+    const currentlyEquipped = await prisma.user_inventory.findFirst({
       where: {
-        userId,
-        isEquipped: true,
+        user_id,
+        is_equipped: true,
         slot,
       },
-      include: { item: true },
+      include: { items: true },
     })
 
     // Transaction to swap equipment
     await prisma.$transaction(async (tx) => {
       // Unequip current item if any
       if (currentlyEquipped) {
-        await tx.userInventory.update({
+        await tx.user_inventory.update({
           where: { id: currentlyEquipped.id },
           data: {
-            isEquipped: false,
+            is_equipped: false,
             slot: null,
-            equippedAt: null,
+            equipped_at: null,
           },
         })
       }
 
       // Equip new item
-      await tx.userInventory.update({
+      await tx.user_inventory.update({
         where: { id: inventoryId },
         data: {
-          isEquipped: true,
+          is_equipped: true,
           slot,
-          equippedAt: new Date(),
+          equipped_at: new Date(),
         },
       })
     })
@@ -349,26 +349,26 @@ export const InventoryService = {
     const previousItem = currentlyEquipped
       ? {
           id: currentlyEquipped.id,
-          itemId: currentlyEquipped.item.id,
-          itemName: currentlyEquipped.item.itemName,
-          itemType: currentlyEquipped.item.itemType,
-          tier: currentlyEquipped.item.tier,
+          item_id: currentlyEquipped.items.id,
+          itemName: currentlyEquipped.items.name,
+          type: currentlyEquipped.items.type,
+          tier: currentlyEquipped.items.tier,
           durability: currentlyEquipped.durability,
-          maxDurability: currentlyEquipped.item.baseDurability,
-          isEquipped: false,
+          maxDurability: currentlyEquipped.items.base_durability,
+          is_equipped: false,
           slot: null,
-          isEscrowed: currentlyEquipped.isEscrowed,
-          escrowExpiresAt: currentlyEquipped.escrowExpiresAt,
-          acquiredAt: currentlyEquipped.acquiredAt,
-          equippedAt: null,
-          robBonus: currentlyEquipped.item.robBonus ? Number(currentlyEquipped.item.robBonus) : null,
-          defenseBonus: currentlyEquipped.item.defenseBonus ? Number(currentlyEquipped.item.defenseBonus) : null,
-          revenueMin: currentlyEquipped.item.revenueMin,
-          revenueMax: currentlyEquipped.item.revenueMax,
-          insurancePercent: currentlyEquipped.item.insurancePercent ? Number(currentlyEquipped.item.insurancePercent) : null,
-          sellPrice: currentlyEquipped.item.sellPrice,
-          description: currentlyEquipped.item.description,
-          flavorText: currentlyEquipped.item.flavorText,
+          is_escrowed: currentlyEquipped.is_escrowed,
+          escrow_expires_at: currentlyEquipped.escrow_expires_at,
+          acquired_at: currentlyEquipped.acquired_at,
+          equipped_at: null,
+          rob_bonus: currentlyEquipped.items.rob_bonus ? Number(currentlyEquipped.items.rob_bonus) : null,
+          defense_bonus: currentlyEquipped.items.defense_bonus ? Number(currentlyEquipped.items.defense_bonus) : null,
+          revenue_min: currentlyEquipped.items.revenue_min,
+          revenue_max: currentlyEquipped.items.revenue_max,
+          insurance_percent: currentlyEquipped.items.insurance_percent ? Number(currentlyEquipped.items.insurance_percent) : null,
+          sell_price: currentlyEquipped.items.sell_price,
+          description: currentlyEquipped.items.description,
+          flavor_text: currentlyEquipped.items.flavor_text,
         }
       : undefined
 
@@ -378,26 +378,26 @@ export const InventoryService = {
   /**
    * Unequip an item by slot
    */
-  async unequipSlot(userId: number, slot: EquipmentSlot): Promise<{ success: boolean; unequippedItem?: InventoryItem }> {
-    const equipped = await prisma.userInventory.findFirst({
+  async unequipSlot(user_id: number, slot: EquipmentSlot): Promise<{ success: boolean; unequippedItem?: InventoryItem }> {
+    const equipped = await prisma.user_inventory.findFirst({
       where: {
-        userId,
-        isEquipped: true,
+        user_id,
+        is_equipped: true,
         slot,
       },
-      include: { item: true },
+      include: { items: true },
     })
 
     if (!equipped) {
       return { success: false }
     }
 
-    await prisma.userInventory.update({
+    await prisma.user_inventory.update({
       where: { id: equipped.id },
       data: {
-        isEquipped: false,
+        is_equipped: false,
         slot: null,
-        equippedAt: null,
+        equipped_at: null,
       },
     })
 
@@ -405,26 +405,26 @@ export const InventoryService = {
       success: true,
       unequippedItem: {
         id: equipped.id,
-        itemId: equipped.item.id,
-        itemName: equipped.item.itemName,
-        itemType: equipped.item.itemType,
-        tier: equipped.item.tier,
+        item_id: equipped.items.id,
+        itemName: equipped.items.name,
+        type: equipped.items.type,
+        tier: equipped.items.tier,
         durability: equipped.durability,
-        maxDurability: equipped.item.baseDurability,
-        isEquipped: false,
+        maxDurability: equipped.items.base_durability,
+        is_equipped: false,
         slot: null,
-        isEscrowed: equipped.isEscrowed,
-        escrowExpiresAt: equipped.escrowExpiresAt,
-        acquiredAt: equipped.acquiredAt,
-        equippedAt: null,
-        robBonus: equipped.item.robBonus ? Number(equipped.item.robBonus) : null,
-        defenseBonus: equipped.item.defenseBonus ? Number(equipped.item.defenseBonus) : null,
-        revenueMin: equipped.item.revenueMin,
-        revenueMax: equipped.item.revenueMax,
-        insurancePercent: equipped.item.insurancePercent ? Number(equipped.item.insurancePercent) : null,
-        sellPrice: equipped.item.sellPrice,
-        description: equipped.item.description,
-        flavorText: equipped.item.flavorText,
+        is_escrowed: equipped.is_escrowed,
+        escrow_expires_at: equipped.escrow_expires_at,
+        acquired_at: equipped.acquired_at,
+        equipped_at: null,
+        rob_bonus: equipped.items.rob_bonus ? Number(equipped.items.rob_bonus) : null,
+        defense_bonus: equipped.items.defense_bonus ? Number(equipped.items.defense_bonus) : null,
+        revenue_min: equipped.items.revenue_min,
+        revenue_max: equipped.items.revenue_max,
+        insurance_percent: equipped.items.insurance_percent ? Number(equipped.items.insurance_percent) : null,
+        sell_price: equipped.items.sell_price,
+        description: equipped.items.description,
+        flavor_text: equipped.items.flavor_text,
       },
     }
   },
@@ -440,9 +440,9 @@ export const InventoryService = {
   ): Promise<{ newDurability: number; destroyed: boolean }> {
     const db = tx || prisma
 
-    const item = await db.userInventory.findUnique({
+    const item = await db.user_inventory.findUnique({
       where: { id: inventoryId },
-      include: { item: true },
+      include: { items: true },
     })
 
     if (!item) {
@@ -454,12 +454,12 @@ export const InventoryService = {
 
     if (destroyed) {
       // Delete the item
-      await db.userInventory.delete({
+      await db.user_inventory.delete({
         where: { id: inventoryId },
       })
     } else {
       // Update durability
-      await db.userInventory.update({
+      await db.user_inventory.update({
         where: { id: inventoryId },
         data: { durability: newDurability },
       })
@@ -473,16 +473,16 @@ export const InventoryService = {
    * HIGH-01 fix: Now uses random range (-2 to -3) per game design spec
    * @param tx - Optional transaction client for atomic operations
    */
-  async degradeAttackerWeapon(userId: number, tx?: PrismaTransactionClient): Promise<{ degraded: boolean; destroyed: boolean; itemName?: string }> {
+  async degradeAttackerWeapon(user_id: number, tx?: PrismaTransactionClient): Promise<{ degraded: boolean; destroyed: boolean; itemName?: string }> {
     const db = tx || prisma
 
-    const weapon = await db.userInventory.findFirst({
+    const weapon = await db.user_inventory.findFirst({
       where: {
-        userId,
-        isEquipped: true,
+        user_id,
+        is_equipped: true,
         slot: ITEM_TYPES.WEAPON,
       },
-      include: { item: true },
+      include: { items: true },
     })
 
     if (!weapon) {
@@ -497,7 +497,7 @@ export const InventoryService = {
     return {
       degraded: true,
       destroyed: result.destroyed,
-      itemName: result.destroyed ? weapon.item.itemName : undefined,
+      itemName: result.destroyed ? weapon.items.name : undefined,
     }
   },
 
@@ -506,16 +506,16 @@ export const InventoryService = {
    * HIGH-01 fix: Now uses random range (-2 to -3) per game design spec
    * @param tx - Optional transaction client for atomic operations
    */
-  async degradeDefenderArmor(userId: number, tx?: PrismaTransactionClient): Promise<{ degraded: boolean; destroyed: boolean; itemName?: string }> {
+  async degradeDefenderArmor(user_id: number, tx?: PrismaTransactionClient): Promise<{ degraded: boolean; destroyed: boolean; itemName?: string }> {
     const db = tx || prisma
 
-    const armor = await db.userInventory.findFirst({
+    const armor = await db.user_inventory.findFirst({
       where: {
-        userId,
-        isEquipped: true,
+        user_id,
+        is_equipped: true,
         slot: ITEM_TYPES.ARMOR,
       },
-      include: { item: true },
+      include: { items: true },
     })
 
     if (!armor) {
@@ -530,25 +530,25 @@ export const InventoryService = {
     return {
       degraded: true,
       destroyed: result.destroyed,
-      itemName: result.destroyed ? armor.item.itemName : undefined,
+      itemName: result.destroyed ? armor.items.name : undefined,
     }
   },
 
   /**
    * Claim item from escrow
    */
-  async claimFromEscrow(userId: number, inventoryId: number): Promise<{ success: boolean; reason?: string }> {
-    const hasSpace = await this.hasSpace(userId)
+  async claimFromEscrow(user_id: number, inventoryId: number): Promise<{ success: boolean; reason?: string }> {
+    const hasSpace = await this.hasSpace(user_id)
 
     if (!hasSpace) {
       return { success: false, reason: 'Inventory is full' }
     }
 
-    const item = await prisma.userInventory.findFirst({
+    const item = await prisma.user_inventory.findFirst({
       where: {
         id: inventoryId,
-        userId,
-        isEscrowed: true,
+        user_id,
+        is_escrowed: true,
       },
     })
 
@@ -557,20 +557,20 @@ export const InventoryService = {
     }
 
     // Check if escrow expired
-    if (item.escrowExpiresAt && item.escrowExpiresAt < new Date()) {
+    if (item.escrow_expires_at && item.escrow_expires_at < new Date()) {
       // Delete expired item
-      await prisma.userInventory.delete({
+      await prisma.user_inventory.delete({
         where: { id: inventoryId },
       })
       return { success: false, reason: 'Escrow expired' }
     }
 
     // Move from escrow to inventory
-    await prisma.userInventory.update({
+    await prisma.user_inventory.update({
       where: { id: inventoryId },
       data: {
-        isEscrowed: false,
-        escrowExpiresAt: null,
+        is_escrowed: false,
+        escrow_expires_at: null,
       },
     })
 
@@ -580,40 +580,40 @@ export const InventoryService = {
   /**
    * Get escrowed items
    */
-  async getEscrowedItems(userId: number): Promise<InventoryItem[]> {
-    const items = await prisma.userInventory.findMany({
+  async getEscrowedItems(user_id: number): Promise<InventoryItem[]> {
+    const items = await prisma.user_inventory.findMany({
       where: {
-        userId,
-        isEscrowed: true,
+        user_id,
+        is_escrowed: true,
       },
       include: {
-        item: true,
+        items: true,
       },
-      orderBy: { escrowExpiresAt: 'asc' },
+      orderBy: { escrow_expires_at: 'asc' },
     })
 
     return items.map((inv) => ({
       id: inv.id,
-      itemId: inv.item.id,
-      itemName: inv.item.itemName,
-      itemType: inv.item.itemType,
-      tier: inv.item.tier,
+      item_id: inv.items.id,
+      itemName: inv.items.name,
+      type: inv.items.type,
+      tier: inv.items.tier,
       durability: inv.durability,
-      maxDurability: inv.item.baseDurability,
-      isEquipped: inv.isEquipped,
+      maxDurability: inv.items.base_durability,
+      is_equipped: inv.is_equipped,
       slot: inv.slot,
-      isEscrowed: inv.isEscrowed,
-      escrowExpiresAt: inv.escrowExpiresAt,
-      acquiredAt: inv.acquiredAt,
-      equippedAt: inv.equippedAt,
-      robBonus: inv.item.robBonus ? Number(inv.item.robBonus) : null,
-      defenseBonus: inv.item.defenseBonus ? Number(inv.item.defenseBonus) : null,
-      revenueMin: inv.item.revenueMin,
-      revenueMax: inv.item.revenueMax,
-      insurancePercent: inv.item.insurancePercent ? Number(inv.item.insurancePercent) : null,
-      sellPrice: inv.item.sellPrice,
-      description: inv.item.description,
-      flavorText: inv.item.flavorText,
+      is_escrowed: inv.is_escrowed,
+      escrow_expires_at: inv.escrow_expires_at,
+      acquired_at: inv.acquired_at,
+      equipped_at: inv.equipped_at,
+      rob_bonus: inv.items.rob_bonus ? Number(inv.items.rob_bonus) : null,
+      defense_bonus: inv.items.defense_bonus ? Number(inv.items.defense_bonus) : null,
+      revenue_min: inv.items.revenue_min,
+      revenue_max: inv.items.revenue_max,
+      insurance_percent: inv.items.insurance_percent ? Number(inv.items.insurance_percent) : null,
+      sell_price: inv.items.sell_price,
+      description: inv.items.description,
+      flavor_text: inv.items.flavor_text,
     }))
   },
 
@@ -621,10 +621,10 @@ export const InventoryService = {
    * Clean up expired escrow items (for scheduled job)
    */
   async cleanupExpiredEscrow(): Promise<number> {
-    const result = await prisma.userInventory.deleteMany({
+    const result = await prisma.user_inventory.deleteMany({
       where: {
-        isEscrowed: true,
-        escrowExpiresAt: { lt: new Date() },
+        is_escrowed: true,
+        escrow_expires_at: { lt: new Date() },
       },
     })
 
@@ -634,42 +634,42 @@ export const InventoryService = {
   /**
    * Sell an item
    */
-  async sellItem(userId: number, inventoryId: number): Promise<{ success: boolean; wealthGained: number; itemName: string }> {
-    const item = await prisma.userInventory.findFirst({
-      where: { id: inventoryId, userId, isEscrowed: false },
-      include: { item: true },
+  async sellItem(user_id: number, inventoryId: number): Promise<{ success: boolean; wealthGained: number; itemName: string }> {
+    const item = await prisma.user_inventory.findFirst({
+      where: { id: inventoryId, user_id, is_escrowed: false },
+      include: { items: true },
     })
 
     if (!item) {
       throw new Error('Item not found in inventory')
     }
 
-    if (item.isEquipped) {
+    if (item.is_equipped) {
       throw new Error('Cannot sell equipped item. Unequip first.')
     }
 
-    const sellPrice = item.item.sellPrice ?? Math.floor(item.item.purchasePrice / 2)
+    const sell_price = item.items.sell_price ?? Math.floor(item.items.purchase_price / 2)
 
     await prisma.$transaction(async (tx) => {
       // Add wealth to user
-      await tx.user.update({
-        where: { id: userId },
-        data: { wealth: { increment: sellPrice } },
+      await tx.users.update({
+        where: { id: user_id },
+        data: { wealth: { increment: sell_price } },
       })
 
       // Remove item from inventory
-      await tx.userInventory.delete({
+      await tx.user_inventory.delete({
         where: { id: inventoryId },
       })
 
       // Record sale event
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId,
-          eventType: 'item_sell',
-          wealthChange: sellPrice,
-          xpChange: 0,
-          eventDescription: `Sold ${item.item.itemName} for $${sellPrice.toLocaleString()}`,
+          user_id,
+          event_type: 'item_sell',
+          wealth_change: sell_price,
+          xp_change: 0,
+          event_description: `Sold ${item.items.name} for $${sell_price.toLocaleString()}`,
           success: true,
         },
       })
@@ -677,8 +677,8 @@ export const InventoryService = {
 
     return {
       success: true,
-      wealthGained: sellPrice,
-      itemName: item.item.itemName,
+      wealthGained: sell_price,
+      itemName: item.items.name,
     }
   },
 }

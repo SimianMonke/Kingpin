@@ -4,25 +4,25 @@ import { useEffect, useState } from 'react'
 
 interface ShopItem {
   shopItemId: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: string
+  type: string
   tier: string
   price: number
-  originalPrice: number
-  isPurchased: boolean
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
+  original_price: number
+  is_purchased: boolean
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
   description: string | null
-  flavorText: string | null
+  flavor_text: string | null
 }
 
 interface ShopData {
   items: ShopItem[]
-  generatedAt: string | null
+  generated_at: string | null
   playerTier: string
   accessibleTiers: string[]
   stats: {
@@ -227,14 +227,14 @@ export default function ShopPage() {
               >
                 <div className="flex items-start justify-between mb-2">
                   <p className={`text-xs uppercase ${TIER_COLORS[item.tier].split(' ')[0]}`}>{item.tier}</p>
-                  <p className="text-xs text-gray-400 capitalize">{item.itemType}</p>
+                  <p className="text-xs text-gray-400 capitalize">{item.type}</p>
                 </div>
                 <p className="font-semibold mb-2">{item.itemName}</p>
                 <div className="space-y-1 text-xs mb-3">
-                  {item.robBonus && <p className="text-red-400">+{item.robBonus}% Rob Bonus</p>}
-                  {item.defenseBonus && <p className="text-blue-400">+{item.defenseBonus}% Defense</p>}
-                  {item.insurancePercent && <p className="text-green-400">{item.insurancePercent}% Insurance</p>}
-                  {item.revenueMin && <p className="text-yellow-400">${item.revenueMin}-{item.revenueMax} Revenue</p>}
+                  {item.rob_bonus && <p className="text-red-400">+{item.rob_bonus}% Rob Bonus</p>}
+                  {item.defense_bonus && <p className="text-blue-400">+{item.defense_bonus}% Defense</p>}
+                  {item.insurance_percent && <p className="text-green-400">{item.insurance_percent}% Insurance</p>}
+                  {item.revenue_min && <p className="text-yellow-400">${item.revenue_min}-{item.revenue_max} Revenue</p>}
                 </div>
                 <div className="flex items-center justify-between">
                   <p className={`font-bold ${userWealth >= item.price ? 'text-green-400' : 'text-red-400'}`}>
@@ -289,7 +289,7 @@ export default function ShopPage() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className={`text-xs uppercase ${TIER_COLORS[selectedItem.tier].split(' ')[0]}`}>
-                  {selectedItem.tier} {selectedItem.itemType}
+                  {selectedItem.tier} {selectedItem.type}
                 </p>
                 <h3 className="text-xl font-bold mt-1">{selectedItem.itemName}</h3>
               </div>
@@ -301,33 +301,33 @@ export default function ShopPage() {
             {selectedItem.description && (
               <p className="text-gray-300 text-sm mb-2">{selectedItem.description}</p>
             )}
-            {selectedItem.flavorText && (
-              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavorText}"</p>
+            {selectedItem.flavor_text && (
+              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavor_text}"</p>
             )}
 
             <div className="space-y-2 text-sm mb-4">
-              {selectedItem.robBonus && (
+              {selectedItem.rob_bonus && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Rob Bonus</span>
-                  <span className="text-red-400">+{selectedItem.robBonus}%</span>
+                  <span className="text-red-400">+{selectedItem.rob_bonus}%</span>
                 </div>
               )}
-              {selectedItem.defenseBonus && (
+              {selectedItem.defense_bonus && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Defense Bonus</span>
-                  <span className="text-blue-400">+{selectedItem.defenseBonus}%</span>
+                  <span className="text-blue-400">+{selectedItem.defense_bonus}%</span>
                 </div>
               )}
-              {selectedItem.insurancePercent && (
+              {selectedItem.insurance_percent && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Insurance</span>
-                  <span className="text-green-400">{selectedItem.insurancePercent}%</span>
+                  <span className="text-green-400">{selectedItem.insurance_percent}%</span>
                 </div>
               )}
-              {selectedItem.revenueMin && (
+              {selectedItem.revenue_min && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Revenue</span>
-                  <span className="text-yellow-400">${selectedItem.revenueMin}-{selectedItem.revenueMax}</span>
+                  <span className="text-yellow-400">${selectedItem.revenue_min}-{selectedItem.revenue_max}</span>
                 </div>
               )}
             </div>

@@ -15,21 +15,21 @@ export const GET = withErrorHandling(async () => {
   // Group territories by control status
   const controlled = territories.filter(t => t.controllingFaction !== null)
   const neutral = territories.filter(t => t.controllingFaction === null)
-  const contested = territories.filter(t => t.isContested)
-  const standard = territories.filter(t => !t.isContested)
+  const contested = territories.filter(t => t.is_contested)
+  const standard = territories.filter(t => !t.is_contested)
 
   // Calculate control summary per faction
-  const controlSummary: Record<string, { name: string; count: number; colorHex: string | null }> = {}
+  const controlSummary: Record<string, { name: string; count: number; color_hex: string | null }> = {}
   for (const t of controlled) {
-    const factionName = t.controllingFaction!.name
-    if (!controlSummary[factionName]) {
-      controlSummary[factionName] = {
-        name: factionName,
+    const faction_name = t.controllingFaction!.name
+    if (!controlSummary[faction_name]) {
+      controlSummary[faction_name] = {
+        name: faction_name,
         count: 0,
-        colorHex: t.controllingFaction!.colorHex,
+        color_hex: t.controllingFaction!.color_hex,
       }
     }
-    controlSummary[factionName].count++
+    controlSummary[faction_name].count++
   }
 
   return successResponse({

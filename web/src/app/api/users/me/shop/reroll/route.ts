@@ -15,7 +15,7 @@ import { EconomyModeService, ECONOMY_MODE_ERROR } from '@/lib/services/economy-m
  *
  * This endpoint can be called:
  * 1. From the website directly (authenticated user) - only when OFFLINE
- * 2. From the bot via webhook (with bot API key + userId) - always allowed
+ * 2. From the bot via webhook (with bot API key + user_id) - always allowed
  */
 export const POST = withErrorHandling(async (request: NextRequest) => {
   // Check for bot API key first (for webhook integration)
@@ -23,22 +23,22 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const botKey = process.env.BOT_API_KEY
   const isBotRequest = EconomyModeService.isBotRequest(apiKey, botKey)
 
-  let userId: number
+  let user_id: number
 
   if (isBotRequest) {
-    // Bot request - get userId from body (bypasses economy mode check)
+    // Bot request - get user_id from body (bypasses economy mode check)
     const body = await request.json()
-    if (!body.userId || typeof body.userId !== 'number') {
-      return errorResponse('userId required for bot requests')
+    if (!body.user_id || typeof body.user_id !== 'number') {
+      return errorResponse('user_id required for bot requests')
     }
-    userId = body.userId
+    user_id = body.user_id
   } else {
     // Website request - use session
     const session = await getAuthSession()
     if (!session?.user?.id) {
       return unauthorizedResponse()
     }
-    userId = session.user.id
+    user_id = session.user.id
 
     // Check economy mode - webapp only allowed when offline
     const canExecuteFree = await EconomyModeService.canExecuteFree()
@@ -47,7 +47,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
   }
 
-  const result = await ShopService.rerollShop(userId)
+  const result = await ShopService.rerollShop(user_id)
 
   return successResponse({
     success: result.success,

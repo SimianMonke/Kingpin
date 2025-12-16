@@ -6,14 +6,14 @@ import { useSearchParams } from 'next/navigation'
 
 interface UserProfile {
   id: string
-  kingpinName: string | null
+  kingpin_name: string | null
   wealth: number
   level: number
   xp: number
   tier: string
   checkInStreak: number
   lastCheckIn: string | null
-  createdAt: string
+  created_at: string
   linkedAccounts: {
     kick: { username: string; id: string } | null
     twitch: { username: string; id: string } | null
@@ -44,7 +44,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [kingpinName, setKingpinName] = useState('')
+  const [kingpin_name, setKingpinName] = useState('')
   const [editingName, setEditingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [linkingPlatform, setLinkingPlatform] = useState<Platform | null>(null)
@@ -77,7 +77,7 @@ export default function ProfilePage() {
       if (res.ok) {
         const data = await res.json()
         setProfile(data.data)
-        setKingpinName(data.data.kingpinName || '')
+        setKingpinName(data.data.kingpin_name || '')
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error)
@@ -87,17 +87,17 @@ export default function ProfilePage() {
   }
 
   const handleUpdateName = async () => {
-    if (!kingpinName.trim()) {
+    if (!kingpin_name.trim()) {
       setNameError('Name cannot be empty')
       return
     }
 
-    if (kingpinName.length < 3 || kingpinName.length > 20) {
+    if (kingpin_name.length < 3 || kingpin_name.length > 20) {
       setNameError('Name must be 3-20 characters')
       return
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(kingpinName)) {
+    if (!/^[a-zA-Z0-9_]+$/.test(kingpin_name)) {
       setNameError('Only letters, numbers, and underscores allowed')
       return
     }
@@ -109,7 +109,7 @@ export default function ProfilePage() {
       const res = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kingpinName }),
+        body: JSON.stringify({ kingpin_name }),
       })
 
       const data = await res.json()
@@ -204,7 +204,7 @@ export default function ProfilePage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                value={kingpinName}
+                value={kingpin_name}
                 onChange={(e) => setKingpinName(e.target.value)}
                 maxLength={20}
                 className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500"
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     setEditingName(false)
-                    setKingpinName(profile?.kingpinName || '')
+                    setKingpinName(profile?.kingpin_name || '')
                     setNameError(null)
                   }}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium transition-colors"
@@ -233,7 +233,7 @@ export default function ProfilePage() {
           ) : (
             <div className="flex items-center gap-4">
               <span className="text-xl font-semibold text-gradient">
-                {profile?.kingpinName || 'Not set'}
+                {profile?.kingpin_name || 'Not set'}
               </span>
               <button
                 onClick={() => setEditingName(true)}
@@ -255,7 +255,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
           <div>
             <span className="text-sm text-gray-400">Member Since</span>
-            <p className="text-lg">{profile?.createdAt ? formatDate(profile.createdAt) : '-'}</p>
+            <p className="text-lg">{profile?.created_at ? formatDate(profile.created_at) : '-'}</p>
           </div>
           <div>
             <span className="text-sm text-gray-400">Current Tier</span>

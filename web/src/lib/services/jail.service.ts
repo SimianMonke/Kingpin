@@ -9,7 +9,7 @@ import type { PrismaTransactionClient } from './inventory.service'
 
 export interface JailStatus {
   isJailed: boolean
-  expiresAt: Date | null
+  expires_at: Date | null
   remainingSeconds: number | null
   remainingFormatted: string | null
 }
@@ -22,9 +22,9 @@ export interface BailResult {
 }
 
 export interface CooldownInfo {
-  commandType: string
-  targetIdentifier: string | null
-  expiresAt: Date
+  command_type: string
+  target_identifier: string | null
+  expires_at: Date
   remainingSeconds: number
   remainingFormatted: string
 }
@@ -37,70 +37,70 @@ export const JailService = {
   /**
    * Check if a user is currently jailed
    */
-  async getJailStatus(userId: number): Promise<JailStatus> {
-    const cooldown = await prisma.cooldown.findFirst({
+  async getJailStatus(user_id: number): Promise<JailStatus> {
+    const cooldown = await prisma.cooldowns.findFirst({
       where: {
-        userId,
-        commandType: 'jail',
-        expiresAt: { gt: new Date() },
+        user_id,
+        command_type: 'jail',
+        expires_at: { gt: new Date() },
       },
     })
 
     if (!cooldown) {
       return {
         isJailed: false,
-        expiresAt: null,
+        expires_at: null,
         remainingSeconds: null,
         remainingFormatted: null,
       }
     }
 
     const now = new Date()
-    const remainingMs = cooldown.expiresAt.getTime() - now.getTime()
+    const remainingMs = cooldown.expires_at.getTime() - now.getTime()
     const remainingSeconds = Math.ceil(remainingMs / 1000)
 
     return {
       isJailed: true,
-      expiresAt: cooldown.expiresAt,
+      expires_at: cooldown.expires_at,
       remainingSeconds,
-      remainingFormatted: formatTimeRemaining(cooldown.expiresAt),
+      remainingFormatted: formatTimeRemaining(cooldown.expires_at),
     }
   },
 
   /**
    * Put a user in jail
    */
-  async jailUser(userId: number, durationMinutes: number = JAIL_CONFIG.DURATION_MINUTES): Promise<Date> {
-    const expiresAt = new Date()
-    expiresAt.setMinutes(expiresAt.getMinutes() + durationMinutes)
+  async jailUser(user_id: number, durationMinutes: number = JAIL_CONFIG.DURATION_MINUTES): Promise<Date> {
+    const expires_at = new Date()
+    expires_at.setMinutes(expires_at.getMinutes() + durationMinutes)
 
-    await prisma.cooldown.upsert({
+    await prisma.cooldowns.upsert({
       where: {
-        userId_commandType_targetIdentifier: {
-          userId,
-          commandType: 'jail',
-          targetIdentifier: '',
+        user_id_command_type_target_identifier: {
+          user_id,
+          command_type: 'jail',
+          target_identifier: '',
         },
       },
       update: {
-        expiresAt,
+        expires_at,
       },
       create: {
-        userId,
-        commandType: 'jail',
-        targetIdentifier: '',
-        expiresAt,
+        user_id,
+        command_type: 'jail',
+        target_identifier: '',
+        expires_at,
       },
     })
 
-    return expiresAt
+    return expires_at
   },
 
   /**
    * Process bail payment
    */
-  async payBail(userId: number): Promise<BailResult> {
-    const jailStatus = await this.getJailStatus(userId)
+  async payBail(user_id: number): Promise<BailResult> {
+    const jailStatus = await this.getJailStatus(user_id)
 
     if (!jailStatus.isJailed) {
       return {
@@ -112,8 +112,8 @@ export const JailService = {
     }
 
     // Get user's current wealth
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       select: { wealth: true },
     })
 
@@ -134,8 +134,8 @@ export const JailService = {
     // Process bail in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Deduct bail cost
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
+      const updatedUser = await tx.users.update({
+        where: { id: user_id },
         data: {
           wealth: { decrement: actualCost },
         },
@@ -143,21 +143,21 @@ export const JailService = {
       })
 
       // Remove jail cooldown
-      await tx.cooldown.deleteMany({
+      await tx.cooldowns.deleteMany({
         where: {
-          userId,
-          commandType: 'jail',
+          user_id,
+          command_type: 'jail',
         },
       })
 
       // Record bail event
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId,
-          eventType: 'bail',
-          wealthChange: -actualCost,
-          xpChange: 0,
-          eventDescription: `Paid bail to escape jail`,
+          user_id,
+          event_type: 'bail',
+          wealth_change: -actualCost,
+          xp_change: 0,
+          event_description: `Paid bail to escape jail`,
           success: true,
         },
       })
@@ -169,18 +169,18 @@ export const JailService = {
       success: true,
       wasJailed: true,
       bailCost: actualCost,
-      newWealth: result.wealth,
+      newWealth: result.wealth ?? BigInt(0),
     }
   },
 
   /**
    * Clear jail (for admin or expired cooldown cleanup)
    */
-  async clearJail(userId: number): Promise<boolean> {
-    const result = await prisma.cooldown.deleteMany({
+  async clearJail(user_id: number): Promise<boolean> {
+    const result = await prisma.cooldowns.deleteMany({
       where: {
-        userId,
-        commandType: 'jail',
+        user_id,
+        command_type: 'jail',
       },
     })
 
@@ -190,26 +190,26 @@ export const JailService = {
   /**
    * Get all active cooldowns for a user
    */
-  async getAllCooldowns(userId: number): Promise<CooldownInfo[]> {
-    const cooldowns = await prisma.cooldown.findMany({
+  async getAllCooldowns(user_id: number): Promise<CooldownInfo[]> {
+    const cooldowns = await prisma.cooldowns.findMany({
       where: {
-        userId,
-        expiresAt: { gt: new Date() },
+        user_id,
+        expires_at: { gt: new Date() },
       },
-      orderBy: { expiresAt: 'asc' },
+      orderBy: { expires_at: 'asc' },
     })
 
     return cooldowns.map((cd) => {
       const now = new Date()
-      const remainingMs = cd.expiresAt.getTime() - now.getTime()
+      const remainingMs = cd.expires_at.getTime() - now.getTime()
       const remainingSeconds = Math.ceil(remainingMs / 1000)
 
       return {
-        commandType: cd.commandType,
-        targetIdentifier: cd.targetIdentifier,
-        expiresAt: cd.expiresAt,
+        command_type: cd.command_type,
+        target_identifier: cd.target_identifier,
+        expires_at: cd.expires_at,
         remainingSeconds,
-        remainingFormatted: formatTimeRemaining(cd.expiresAt),
+        remainingFormatted: formatTimeRemaining(cd.expires_at),
       }
     })
   },
@@ -219,64 +219,64 @@ export const JailService = {
    * @param tx - Optional transaction client for atomic operations
    */
   async setCooldown(
-    userId: number,
-    commandType: string,
+    user_id: number,
+    command_type: string,
     durationSeconds: number,
-    targetIdentifier: string = '',
+    target_identifier: string = '',
     tx?: PrismaTransactionClient
   ): Promise<Date> {
     const db = tx || prisma
-    const expiresAt = new Date()
-    expiresAt.setSeconds(expiresAt.getSeconds() + durationSeconds)
+    const expires_at = new Date()
+    expires_at.setSeconds(expires_at.getSeconds() + durationSeconds)
 
-    await db.cooldown.upsert({
+    await db.cooldowns.upsert({
       where: {
-        userId_commandType_targetIdentifier: {
-          userId,
-          commandType,
-          targetIdentifier,
+        user_id_command_type_target_identifier: {
+          user_id,
+          command_type,
+          target_identifier,
         },
       },
       update: {
-        expiresAt,
+        expires_at,
       },
       create: {
-        userId,
-        commandType,
-        targetIdentifier,
-        expiresAt,
+        user_id,
+        command_type,
+        target_identifier,
+        expires_at,
       },
     })
 
-    return expiresAt
+    return expires_at
   },
 
   /**
    * Check if a specific cooldown is active
    */
   async hasCooldown(
-    userId: number,
-    commandType: string,
-    targetIdentifier: string = ''
-  ): Promise<{ active: boolean; expiresAt: Date | null; remainingSeconds: number | null }> {
-    const cooldown = await prisma.cooldown.findUnique({
+    user_id: number,
+    command_type: string,
+    target_identifier: string = ''
+  ): Promise<{ active: boolean; expires_at: Date | null; remainingSeconds: number | null }> {
+    const cooldown = await prisma.cooldowns.findUnique({
       where: {
-        userId_commandType_targetIdentifier: {
-          userId,
-          commandType,
-          targetIdentifier,
+        user_id_command_type_target_identifier: {
+          user_id,
+          command_type,
+          target_identifier,
         },
       },
     })
 
-    if (!cooldown || cooldown.expiresAt <= new Date()) {
-      return { active: false, expiresAt: null, remainingSeconds: null }
+    if (!cooldown || cooldown.expires_at <= new Date()) {
+      return { active: false, expires_at: null, remainingSeconds: null }
     }
 
-    const remainingMs = cooldown.expiresAt.getTime() - new Date().getTime()
+    const remainingMs = cooldown.expires_at.getTime() - new Date().getTime()
     return {
       active: true,
-      expiresAt: cooldown.expiresAt,
+      expires_at: cooldown.expires_at,
       remainingSeconds: Math.ceil(remainingMs / 1000),
     }
   },
@@ -285,15 +285,15 @@ export const JailService = {
    * Clear a specific cooldown
    */
   async clearCooldown(
-    userId: number,
-    commandType: string,
-    targetIdentifier: string = ''
+    user_id: number,
+    command_type: string,
+    target_identifier: string = ''
   ): Promise<boolean> {
-    const result = await prisma.cooldown.deleteMany({
+    const result = await prisma.cooldowns.deleteMany({
       where: {
-        userId,
-        commandType,
-        targetIdentifier,
+        user_id,
+        command_type,
+        target_identifier,
       },
     })
 
@@ -304,9 +304,9 @@ export const JailService = {
    * Clean up all expired cooldowns (for scheduled job)
    */
   async cleanupExpiredCooldowns(): Promise<number> {
-    const result = await prisma.cooldown.deleteMany({
+    const result = await prisma.cooldowns.deleteMany({
       where: {
-        expiresAt: { lt: new Date() },
+        expires_at: { lt: new Date() },
       },
     })
 

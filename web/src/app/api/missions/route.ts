@@ -18,13 +18,13 @@ export const GET = withErrorHandling(async () => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
 
   // Ensure missions are assigned
-  await MissionService.ensureMissionsAssigned(userId)
+  await MissionService.ensureMissionsAssigned(user_id)
 
   // Get active missions
-  const missions = await MissionService.getActiveMissions(userId)
+  const missions = await MissionService.getActiveMissions(user_id)
 
   return successResponse(missions)
 })

@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     // Get raw body for signature verification
     const rawBody = await request.text()
     const signature = request.headers.get('kick-signature')
-    const eventType = request.headers.get('kick-event-type')
+    const event_type = request.headers.get('kick-event-type')
     const eventId = request.headers.get('kick-event-id')
 
     // Verify signature
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!eventType || !eventId) {
+    if (!event_type || !eventId) {
       return NextResponse.json(
         { error: 'Missing event headers' },
         { status: 400 }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle different event types
-    switch (eventType) {
+    switch (event_type) {
       case KICK_EVENTS.SUBSCRIPTION_NEW: {
         const subPayload = payload as KickSubscriptionPayload
         const tier = extractTier(subPayload)
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           rewards: {
             wealth: result.wealth,
             xp: result.xp,
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           giftCount,
           rewards: {
             wealth: result.wealth,
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           kickCount,
           rewards: {
             wealth: result.wealth,
@@ -205,10 +205,10 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled Kick event type: ${eventType}`)
+        console.log(`Unhandled Kick event type: ${event_type}`)
         return NextResponse.json({
           success: true,
-          message: `Event type ${eventType} not handled`,
+          message: `Event type ${event_type} not handled`,
         })
     }
   } catch (error) {

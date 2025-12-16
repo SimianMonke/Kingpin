@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
         if (!platformField) return false
 
         // Check if user exists with this platform ID
-        let dbUser = await prisma.user.findFirst({
+        let dbUser = await prisma.users.findFirst({
           where: { [platformField]: account.providerAccountId },
         })
 
@@ -75,11 +75,11 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Create new user (only for Kick/Twitch)
-          dbUser = await prisma.user.create({
+          dbUser = await prisma.users.create({
             data: {
               [platformField]: account.providerAccountId,
               username: user.name || `user_${account.providerAccountId}`,
-              displayName: user.name,
+              display_name: user.name,
             },
           })
 
@@ -88,7 +88,7 @@ export const authOptions: NextAuthOptions = {
           // User exists - allow sign-in
           // For Discord logins, verify the user has Kick or Twitch linked (security check)
           if (account.provider === 'discord') {
-            if (!dbUser.kickUserId && !dbUser.twitchUserId) {
+            if (!dbUser.kick_user_id && !dbUser.twitch_user_id) {
               // This shouldn't happen in normal flow, but prevents orphaned Discord-only accounts
               console.log(`Discord sign-in rejected: User ${dbUser.id} has no Kick/Twitch linked`)
               return '/login?error=DiscordAccountNotLinked'
@@ -96,9 +96,9 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Update last seen
-          await prisma.user.update({
+          await prisma.users.update({
             where: { id: dbUser.id },
-            data: { lastSeen: new Date() },
+            data: { last_seen: new Date() },
           })
         }
 
@@ -114,12 +114,12 @@ export const authOptions: NextAuthOptions = {
       if (account && user) {
         const platformField = getPlatformField(account.provider)
         if (platformField) {
-          const dbUser = await prisma.user.findFirst({
+          const dbUser = await prisma.users.findFirst({
             where: { [platformField]: account.providerAccountId },
           })
 
           if (dbUser) {
-            token.userId = dbUser.id
+            token.user_id = dbUser.id
             token.provider = account.provider
             token.platformId = account.providerAccountId
           }
@@ -131,8 +131,8 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       // Add user ID and platform info to session
-      if (token.userId) {
-        session.user.id = token.userId as number
+      if (token.user_id) {
+        session.user.id = token.user_id as number
         session.user.provider = token.provider as string
         session.user.platformId = token.platformId as string
       }
@@ -159,11 +159,11 @@ export const authOptions: NextAuthOptions = {
 function getPlatformField(provider: string): string | null {
   switch (provider) {
     case 'kick':
-      return 'kickUserId'
+      return 'kick_user_id'
     case 'twitch':
-      return 'twitchUserId'
+      return 'twitch_user_id'
     case 'discord':
-      return 'discordUserId'
+      return 'discord_user_id'
     default:
       return null
   }
@@ -185,7 +185,7 @@ declare module 'next-auth' {
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    userId?: number
+    user_id?: number
     provider?: string
     platformId?: string
   }

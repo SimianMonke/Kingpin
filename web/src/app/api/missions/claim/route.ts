@@ -21,16 +21,16 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
   const body = await request.json()
 
-  const missionType = body.type as MissionType
+  const mission_type = body.type as MissionType
 
-  if (missionType !== MISSION_TYPES.DAILY && missionType !== MISSION_TYPES.WEEKLY) {
+  if (mission_type !== MISSION_TYPES.DAILY && mission_type !== MISSION_TYPES.WEEKLY) {
     return errorResponse('Invalid mission type. Must be "daily" or "weekly"', 400)
   }
 
-  const result = await MissionService.claimRewards(userId, missionType)
+  const result = await MissionService.claimRewards(user_id, mission_type)
 
   if (!result.success) {
     return errorResponse(result.error ?? 'Unable to claim rewards', 400)

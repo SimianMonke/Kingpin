@@ -21,7 +21,7 @@ export const LumiaService = {
   /**
    * Get webhook URL by event type
    */
-  getWebhookUrl(eventType: string): string | null {
+  getWebhookUrl(event_type: string): string | null {
     const webhookMap: Record<string, string | undefined> = {
       session_start: process.env.LUMIA_WEBHOOK_SESSION_START,
       session_end: process.env.LUMIA_WEBHOOK_SESSION_END,
@@ -29,17 +29,17 @@ export const LumiaService = {
       leaderboard: process.env.LUMIA_WEBHOOK_LEADERBOARD,
     }
 
-    return webhookMap[eventType] ?? null
+    return webhookMap[event_type] ?? null
   },
 
   /**
    * Send a webhook to Lumia Stream
    */
-  async sendWebhook(eventType: string, payload: LumiaEventPayload): Promise<boolean> {
-    const webhookUrl = this.getWebhookUrl(eventType)
+  async sendWebhook(event_type: string, payload: LumiaEventPayload): Promise<boolean> {
+    const webhookUrl = this.getWebhookUrl(event_type)
 
     if (!webhookUrl) {
-      console.warn(`LUMIA_WEBHOOK_${eventType.toUpperCase()} not configured`)
+      console.warn(`LUMIA_WEBHOOK_${event_type.toUpperCase()} not configured`)
       return false
     }
 
@@ -72,14 +72,14 @@ export const LumiaService = {
    * Trigger session start alert
    */
   async triggerSessionStart(
-    sessionId: number,
+    session_id: number,
     platform: string,
     title?: string
   ): Promise<boolean> {
     return this.sendWebhook('session_start', {
       event: 'session_start',
       data: {
-        session_id: sessionId,
+        session_id: session_id,
         platform,
         title: title ?? 'Kingpin Session Started',
         timestamp: new Date().toISOString(),
@@ -91,9 +91,9 @@ export const LumiaService = {
    * Trigger session end alert with stats
    */
   async triggerSessionEnd(
-    sessionId: number,
+    session_id: number,
     stats: {
-      totalContributionsUsd: number
+      total_contributions_usd: number
       totalContributors: number
       winnerName?: string
       winnerContributionUsd?: number
@@ -103,8 +103,8 @@ export const LumiaService = {
     return this.sendWebhook('session_end', {
       event: 'session_end',
       data: {
-        session_id: sessionId,
-        total_usd: stats.totalContributionsUsd,
+        session_id: session_id,
+        total_usd: stats.total_contributions_usd,
         total_contributors: stats.totalContributors,
         winner: stats.winnerName ?? null,
         winner_usd: stats.winnerContributionUsd ?? 0,
@@ -137,14 +137,14 @@ export const LumiaService = {
    * Trigger periodic leaderboard update (every 30 minutes)
    */
   async triggerLeaderboardUpdate(
-    sessionId: number,
+    session_id: number,
     top3: LumiaContributor[],
     totalContributions: number
   ): Promise<boolean> {
     return this.sendWebhook('leaderboard', {
       event: 'leaderboard_update',
       data: {
-        session_id: sessionId,
+        session_id: session_id,
         top_contributors: top3.map((c, index) => ({
           rank: index + 1,
           name: c.name,

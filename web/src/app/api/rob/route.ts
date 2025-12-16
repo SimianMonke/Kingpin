@@ -15,7 +15,7 @@ import { EconomyModeService, ECONOMY_MODE_ERROR } from '@/lib/services/economy-m
  *
  * This endpoint can be called:
  * 1. From the website directly (authenticated user) - only when OFFLINE
- * 2. From the bot via webhook (with bot API key + userId + target) - always allowed
+ * 2. From the bot via webhook (with bot API key + user_id + target) - always allowed
  *
  * Body: { target: string } - target username to rob
  */
@@ -25,8 +25,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const botKey = process.env.BOT_API_KEY
   const isBotRequest = EconomyModeService.isBotRequest(apiKey, botKey)
 
-  let userId: number
-  let body: { userId?: number; target?: string }
+  let user_id: number
+  let body: { user_id?: number; target?: string }
 
   try {
     body = await request.json()
@@ -35,18 +35,18 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   if (isBotRequest) {
-    // Bot request - get userId from body (bypasses economy mode check)
-    if (!body.userId || typeof body.userId !== 'number') {
-      return errorResponse('userId required for bot requests')
+    // Bot request - get user_id from body (bypasses economy mode check)
+    if (!body.user_id || typeof body.user_id !== 'number') {
+      return errorResponse('user_id required for bot requests')
     }
-    userId = body.userId
+    user_id = body.user_id
   } else {
     // Website request - use session
     const session = await getAuthSession()
     if (!session?.user?.id) {
       return unauthorizedResponse()
     }
-    userId = session.user.id
+    user_id = session.user.id
 
     // Check economy mode - webapp only allowed when offline
     const canExecuteFree = await EconomyModeService.canExecuteFree()
@@ -61,14 +61,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   // Pre-check if robbery is possible
-  const preCheck = await RobService.canRob(userId, body.target)
+  const preCheck = await RobService.canRob(user_id, body.target)
 
   if (!preCheck.canRob) {
     return errorResponse(preCheck.reason || 'Cannot rob this target', 400)
   }
 
   // Execute robbery
-  const result = await RobService.executeRob(userId, preCheck.targetId!)
+  const result = await RobService.executeRob(user_id, preCheck.targetId!)
 
   return successResponse(result)
 })

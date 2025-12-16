@@ -35,13 +35,13 @@ export async function GET(
       return NextResponse.redirect(loginUrl)
     }
 
-    const userId = typeof session.user.id === 'string'
+    const user_id = typeof session.user.id === 'string'
       ? parseInt(session.user.id, 10)
       : session.user.id
 
     // Generate and store state token for CSRF protection
     const state = OAuthLinkService.generateState()
-    await OAuthLinkService.storeState(state, userId, platform as LinkPlatform)
+    await OAuthLinkService.storeState(state, user_id, platform as LinkPlatform)
 
     // Build OAuth URL and redirect
     const authUrl = OAuthLinkService.buildAuthUrl(platform as LinkPlatform, state)

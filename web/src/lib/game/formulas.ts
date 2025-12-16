@@ -75,12 +75,12 @@ export function xpProgressInLevel(totalXp: number): { current: number; required:
   const level = levelFromXp(totalXp)
   const xpForCurrentLevel = totalXpForLevel(level - 1)
   const xpForNextLevel = xpForLevel(level)
-  const currentProgress = totalXp - xpForCurrentLevel
+  const current_progress = totalXp - xpForCurrentLevel
 
   return {
-    current: currentProgress,
+    current: current_progress,
     required: xpForNextLevel,
-    percentage: Math.floor((currentProgress / xpForNextLevel) * 100),
+    percentage: Math.floor((current_progress / xpForNextLevel) * 100),
   }
 }
 
@@ -171,8 +171,8 @@ export function calculateRobAmount(targetWealth: number): number {
 /**
  * Calculate insurance protection amount
  */
-export function calculateInsuranceProtection(robAmount: number, insurancePercent: number): number {
-  return Math.floor(robAmount * insurancePercent)
+export function calculateInsuranceProtection(robAmount: number, insurance_percent: number): number {
+  return Math.floor(robAmount * insurance_percent)
 }
 
 // =============================================================================
@@ -202,18 +202,18 @@ export function selectPlayEvent(): PlayEventType {
  * Calculate play rewards with tier multiplier
  */
 export function calculatePlayRewards(
-  eventType: PlayEventType,
+  event_type: PlayEventType,
   tier: Tier,
   isJuicernaut: boolean = false
 ): { wealth: number; xp: number } {
-  const event = PLAY_EVENTS[eventType]
-  const tierMultiplier = getTierMultiplier(tier)
+  const event = PLAY_EVENTS[event_type]
+  const tier_multiplier = getTierMultiplier(tier)
 
   let wealth = Math.floor(
-    (event.wealth.min + Math.random() * (event.wealth.max - event.wealth.min)) * tierMultiplier
+    (event.wealth.min + Math.random() * (event.wealth.max - event.wealth.min)) * tier_multiplier
   )
   let xp = Math.floor(
-    (event.xp.min + Math.random() * (event.xp.max - event.xp.min)) * tierMultiplier
+    (event.xp.min + Math.random() * (event.xp.max - event.xp.min)) * tier_multiplier
   )
 
   // Apply Juicernaut buffs
@@ -309,8 +309,8 @@ type CrateDropType = 'weapon' | 'armor' | 'wealth' | 'title'
 /**
  * Roll what type of drop from a crate
  */
-export function rollCrateDropType(crateTier: CrateTier): CrateDropType {
-  const table = CRATE_DROP_TABLES[crateTier]
+export function rollCrateDropType(crate_tier: CrateTier): CrateDropType {
+  const table = CRATE_DROP_TABLES[crate_tier]
   const roll = Math.random()
 
   let cumulative = 0
@@ -329,8 +329,8 @@ export function rollCrateDropType(crateTier: CrateTier): CrateDropType {
 /**
  * Roll item tier from crate
  */
-export function rollCrateItemTier(crateTier: CrateTier): ItemTier {
-  const weights = CRATE_DROP_TABLES[crateTier].itemTierWeights
+export function rollCrateItemTier(crate_tier: CrateTier): ItemTier {
+  const weights = CRATE_DROP_TABLES[crate_tier].item_tierWeights
   const roll = Math.random()
 
   let cumulative = 0
@@ -347,8 +347,8 @@ export function rollCrateItemTier(crateTier: CrateTier): ItemTier {
 /**
  * Roll wealth amount from crate
  */
-export function rollCrateWealth(crateTier: CrateTier): number {
-  const range = CRATE_DROP_TABLES[crateTier].wealthRange
+export function rollCrateWealth(crate_tier: CrateTier): number {
+  const range = CRATE_DROP_TABLES[crate_tier].wealthRange
   return Math.floor(range.min + Math.random() * (range.max - range.min))
 }
 
@@ -669,8 +669,8 @@ export function generateLotteryNumbers(): number[] {
 /**
  * Check lottery ticket match count
  */
-export function checkLotteryMatch(ticketNumbers: number[], winningNumbers: number[]): number {
-  return ticketNumbers.filter(n => winningNumbers.includes(n)).length
+export function checkLotteryMatch(ticketNumbers: number[], winning_numbers: number[]): number {
+  return ticketNumbers.filter(n => winning_numbers.includes(n)).length
 }
 
 /**
@@ -679,9 +679,9 @@ export function checkLotteryMatch(ticketNumbers: number[], winningNumbers: numbe
  * 2 match = 10x ticket cost
  * 1 match = 2x ticket cost
  */
-export function calculateLotteryPayout(matches: number, ticketCost: bigint, prizePool: bigint): bigint {
+export function calculateLotteryPayout(matches: number, ticketCost: bigint, prize_pool: bigint): bigint {
   switch (matches) {
-    case 3: return prizePool
+    case 3: return prize_pool
     case 2: return ticketCost * BigInt(10)
     case 1: return ticketCost * BigInt(2)
     default: return BigInt(0)
@@ -692,27 +692,27 @@ export function calculateLotteryPayout(matches: number, ticketCost: bigint, priz
  * Update win/loss streak
  */
 export function updateGamblingStreak(
-  currentWinStreak: number,
-  currentLossStreak: number,
-  bestWinStreak: number,
-  worstLossStreak: number,
+  current_win_streak: number,
+  current_loss_streak: number,
+  best_win_streak: number,
+  worst_loss_streak: number,
   isWin: boolean
 ): { winStreak: number; lossStreak: number; bestWin: number; worstLoss: number } {
   if (isWin) {
-    const newWinStreak = currentWinStreak + 1
+    const newWinStreak = current_win_streak + 1
     return {
       winStreak: newWinStreak,
       lossStreak: 0,
-      bestWin: Math.max(bestWinStreak, newWinStreak),
-      worstLoss: worstLossStreak,
+      bestWin: Math.max(best_win_streak, newWinStreak),
+      worstLoss: worst_loss_streak,
     }
   } else {
-    const newLossStreak = currentLossStreak + 1
+    const newLossStreak = current_loss_streak + 1
     return {
       winStreak: 0,
       lossStreak: newLossStreak,
-      bestWin: bestWinStreak,
-      worstLoss: Math.max(worstLossStreak, newLossStreak),
+      bestWin: best_win_streak,
+      worstLoss: Math.max(worst_loss_streak, newLossStreak),
     }
   }
 }

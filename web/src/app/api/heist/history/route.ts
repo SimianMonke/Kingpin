@@ -10,21 +10,21 @@ import { HeistService } from '@/lib/services/heist.service'
  * GET /api/heist/history
  * Get heist event history
  * Query params:
- * - sessionId: Filter by session
+ * - session_id: Filter by session
  * - limit: Max results (default 20)
  * - leaderboard: Include heist win leaderboard
  */
 export const GET = withErrorHandling(async (request: NextRequest) => {
   const url = new URL(request.url)
-  const sessionIdParam = url.searchParams.get('sessionId')
+  const session_idParam = url.searchParams.get('session_id')
   const limitParam = url.searchParams.get('limit')
   const includeLeaderboard = url.searchParams.get('leaderboard') === 'true'
 
-  const sessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : undefined
+  const session_id = session_idParam ? parseInt(session_idParam, 10) : undefined
   const limit = limitParam ? parseInt(limitParam, 10) : 20
 
   // Get history
-  const history = await HeistService.getHeistHistory(sessionId, limit)
+  const history = await HeistService.getHeistHistory(session_id, limit)
 
   // Get leaderboard if requested
   let leaderboard = undefined

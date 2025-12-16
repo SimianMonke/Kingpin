@@ -63,7 +63,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       if (change.newFactionId !== change.previousFactionId) {
         await DiscordService.postTerritoryCapture(
           change.newFactionName || 'Unclaimed',
-          change.territoryName,
+          change.name,
           change.previousFactionName || undefined
         )
       }

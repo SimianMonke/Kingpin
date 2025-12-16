@@ -38,13 +38,13 @@ export function DashboardNav() {
           <div className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const is_active = pathname === item.href
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
+                    is_active
                       ? 'bg-purple-500/20 text-purple-400'
                       : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                   }`}
@@ -87,14 +87,14 @@ export function DashboardNav() {
             <div className="grid grid-cols-2 gap-2">
               {navItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href
+                const is_active = pathname === item.href
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
+                      is_active
                         ? 'bg-purple-500/20 text-purple-400'
                         : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                     }`}

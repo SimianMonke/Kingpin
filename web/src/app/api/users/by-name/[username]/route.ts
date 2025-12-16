@@ -30,7 +30,7 @@ export const GET = withErrorHandling(async (
     return notFoundResponse('Username required')
   }
 
-  // Look up user by username (case-insensitive, checks username, displayName, kingpinName)
+  // Look up user by username (case-insensitive, checks username, display_name, kingpin_name)
   const user = await UserService.findByUsername(username)
 
   if (!user) {

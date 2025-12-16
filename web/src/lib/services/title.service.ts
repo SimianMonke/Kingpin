@@ -6,8 +6,8 @@ import { prisma } from '../db'
 
 export interface UserTitleInfo {
   title: string
-  isEquipped: boolean
-  unlockedAt: Date
+  is_equipped: boolean | null
+  unlocked_at: Date | null
 }
 
 export interface TitleEquipResult {
@@ -24,25 +24,25 @@ export const TitleService = {
   /**
    * Get all unlocked titles for a user
    */
-  async getTitles(userId: number): Promise<UserTitleInfo[]> {
-    const titles = await prisma.userTitle.findMany({
-      where: { userId },
-      orderBy: { unlockedAt: 'desc' },
+  async getTitles(user_id: number): Promise<UserTitleInfo[]> {
+    const titles = await prisma.user_titles.findMany({
+      where: { user_id },
+      orderBy: { unlocked_at: 'desc' },
     })
 
     return titles.map(t => ({
       title: t.title,
-      isEquipped: t.isEquipped,
-      unlockedAt: t.unlockedAt,
+      is_equipped: t.is_equipped,
+      unlocked_at: t.unlocked_at,
     }))
   },
 
   /**
    * Get currently equipped title
    */
-  async getEquippedTitle(userId: number): Promise<string | null> {
-    const equipped = await prisma.userTitle.findFirst({
-      where: { userId, isEquipped: true },
+  async getEquippedTitle(user_id: number): Promise<string | null> {
+    const equipped = await prisma.user_titles.findFirst({
+      where: { user_id, is_equipped: true },
     })
 
     return equipped?.title ?? null
@@ -51,11 +51,11 @@ export const TitleService = {
   /**
    * Equip a title
    */
-  async equipTitle(userId: number, title: string): Promise<TitleEquipResult> {
+  async equipTitle(user_id: number, title: string): Promise<TitleEquipResult> {
     // Check if user owns this title
-    const userTitle = await prisma.userTitle.findUnique({
+    const userTitle = await prisma.user_titles.findUnique({
       where: {
-        userId_title: { userId, title },
+        user_id_title: { user_id, title },
       },
     })
 
@@ -70,17 +70,17 @@ export const TitleService = {
     // Unequip current title and equip new one in transaction
     await prisma.$transaction(async (tx) => {
       // Unequip all titles
-      await tx.userTitle.updateMany({
-        where: { userId, isEquipped: true },
-        data: { isEquipped: false },
+      await tx.user_titles.updateMany({
+        where: { user_id, is_equipped: true },
+        data: { is_equipped: false },
       })
 
       // Equip selected title
-      await tx.userTitle.update({
+      await tx.user_titles.update({
         where: {
-          userId_title: { userId, title },
+          user_id_title: { user_id, title },
         },
-        data: { isEquipped: true },
+        data: { is_equipped: true },
       })
     })
 
@@ -93,10 +93,10 @@ export const TitleService = {
   /**
    * Unequip current title
    */
-  async unequipTitle(userId: number): Promise<TitleEquipResult> {
-    await prisma.userTitle.updateMany({
-      where: { userId, isEquipped: true },
-      data: { isEquipped: false },
+  async unequipTitle(user_id: number): Promise<TitleEquipResult> {
+    await prisma.user_titles.updateMany({
+      where: { user_id, is_equipped: true },
+      data: { is_equipped: false },
     })
 
     return {
@@ -108,16 +108,16 @@ export const TitleService = {
   /**
    * Unlock a new title for a user
    */
-  async unlockTitle(userId: number, title: string): Promise<boolean> {
+  async unlockTitle(user_id: number, title: string): Promise<boolean> {
     try {
-      await prisma.userTitle.upsert({
+      await prisma.user_titles.upsert({
         where: {
-          userId_title: { userId, title },
+          user_id_title: { user_id, title },
         },
         create: {
-          userId,
+          user_id,
           title,
-          isEquipped: false,
+          is_equipped: false,
         },
         update: {}, // Already owned
       })
@@ -130,10 +130,10 @@ export const TitleService = {
   /**
    * Check if user owns a title
    */
-  async hasTitle(userId: number, title: string): Promise<boolean> {
-    const userTitle = await prisma.userTitle.findUnique({
+  async hasTitle(user_id: number, title: string): Promise<boolean> {
+    const userTitle = await prisma.user_titles.findUnique({
       where: {
-        userId_title: { userId, title },
+        user_id_title: { user_id, title },
       },
     })
 
@@ -143,18 +143,18 @@ export const TitleService = {
   /**
    * Get title count for a user
    */
-  async getTitleCount(userId: number): Promise<number> {
-    return prisma.userTitle.count({
-      where: { userId },
+  async getTitleCount(user_id: number): Promise<number> {
+    return prisma.user_titles.count({
+      where: { user_id },
     })
   },
 
   /**
    * Format display name with title
    */
-  formatWithTitle(displayName: string, title: string | null): string {
-    if (!title) return displayName
-    return `[${title}] ${displayName}`
+  formatWithTitle(display_name: string, title: string | null): string {
+    if (!title) return display_name
+    return `[${title}] ${display_name}`
   },
 }
 

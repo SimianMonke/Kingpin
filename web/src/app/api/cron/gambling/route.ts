@@ -60,7 +60,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     const lotteryResult = await GamblingService.checkAndExecuteLotteryDraws()
     results.jobs = {
       ...results.jobs as object,
-      lotteryDraw: {
+      lottery_draws: {
         success: true,
         ...lotteryResult,
       },
@@ -69,7 +69,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     console.error('Lottery draw check failed:', error)
     results.jobs = {
       ...results.jobs as object,
-      lotteryDraw: {
+      lottery_draws: {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       },

@@ -6,9 +6,9 @@ interface CrateInfo {
   id: number
   tier: string
   source: string | null
-  acquiredAt: string
-  isEscrowed: boolean
-  escrowExpiresAt: string | null
+  acquired_at: string
+  is_escrowed: boolean
+  escrow_expires_at: string | null
 }
 
 interface CrateStats {
@@ -37,8 +37,8 @@ interface ItemReward {
 
 interface CrateOpenResult {
   crateId: number
-  crateTier: string
-  dropType: 'weapon' | 'armor' | 'wealth' | 'title'
+  crate_tier: string
+  drop_type: 'weapon' | 'armor' | 'wealth' | 'title'
   reward: {
     item?: ItemReward
     wealth?: { amount: number }
@@ -205,8 +205,8 @@ export default function CratesPage() {
     }
   }
 
-  function formatTimeRemaining(expiresAt: string): string {
-    const diff = new Date(expiresAt).getTime() - Date.now()
+  function formatTimeRemaining(expires_at: string): string {
+    const diff = new Date(expires_at).getTime() - Date.now()
     if (diff <= 0) return 'Expired'
 
     const minutes = Math.floor(diff / 60000)
@@ -230,8 +230,8 @@ export default function CratesPage() {
     )
   }
 
-  const regularCrates = data.crates.filter(c => !c.isEscrowed)
-  const escrowedCrates = data.crates.filter(c => c.isEscrowed)
+  const regularCrates = data.crates.filter(c => !c.is_escrowed)
+  const escrowedCrates = data.crates.filter(c => c.is_escrowed)
 
   // Group crates by tier
   const cratesByTier: Record<string, CrateInfo[]> = {}
@@ -385,9 +385,9 @@ export default function CratesPage() {
               >
                 <p className="text-xs uppercase opacity-70">{crate.tier}</p>
                 <div className="text-3xl my-2">📦</div>
-                {crate.escrowExpiresAt && (
+                {crate.escrow_expires_at && (
                   <p className="text-xs text-orange-400 mb-2">
-                    {formatTimeRemaining(crate.escrowExpiresAt)}
+                    {formatTimeRemaining(crate.escrow_expires_at)}
                   </p>
                 )}
                 <button
@@ -421,12 +421,12 @@ export default function CratesPage() {
         >
           <div
             className={`bg-gray-900 border-2 rounded-xl p-8 max-w-md w-full text-center ${
-              TIER_COLORS[openResult.crateTier]
-            } ${TIER_GLOW[openResult.crateTier]}`}
+              TIER_COLORS[openResult.crate_tier]
+            } ${TIER_GLOW[openResult.crate_tier]}`}
             onClick={e => e.stopPropagation()}
           >
-            <p className={`text-sm uppercase font-bold ${TIER_COLORS[openResult.crateTier].split(' ')[0]} mb-2`}>
-              {openResult.crateTier} Crate
+            <p className={`text-sm uppercase font-bold ${TIER_COLORS[openResult.crate_tier].split(' ')[0]} mb-2`}>
+              {openResult.crate_tier} Crate
             </p>
 
             {/* Reward Display */}
@@ -434,7 +434,7 @@ export default function CratesPage() {
               {openResult.reward.item && (
                 <>
                   <div className="text-6xl mb-4">
-                    {openResult.dropType === 'weapon' ? '⚔️' : '🛡️'}
+                    {openResult.drop_type === 'weapon' ? '⚔️' : '🛡️'}
                   </div>
                   <h3 className={`text-2xl font-bold ${TIER_COLORS[openResult.reward.item.tier].split(' ')[0]}`}>
                     {openResult.reward.item.name}

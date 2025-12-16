@@ -36,8 +36,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   // Check for active streaming session
-  const activeSession = await prisma.streamingSession.findFirst({
-    where: { isActive: true },
+  const activeSession = await prisma.streaming_sessions.findFirst({
+    where: { is_active: true },
   })
 
   if (!activeSession) {
@@ -48,8 +48,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     })
   }
 
-  results.sessionId = activeSession.id
-  results.sessionTitle = activeSession.sessionTitle
+  results.session_id = activeSession.id
+  results.session_title = activeSession.session_title
 
   // Check and trigger scheduled heist if due
   try {
@@ -62,7 +62,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       results.heistTrigger = {
         triggered: false,
         reason: 'Not scheduled yet',
-        nextHeistAt: schedule?.nextHeistAt,
+        next_heist_at: schedule?.next_heist_at,
         timeUntilMs: schedule?.timeUntilMs,
       }
     } else if (triggerResult.success) {
@@ -70,9 +70,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         triggered: true,
         heist: {
           id: triggerResult.heist?.id,
-          eventType: triggerResult.heist?.eventType,
+          event_type: triggerResult.heist?.event_type,
           difficulty: triggerResult.heist?.difficulty,
-          timeLimitSeconds: triggerResult.heist?.timeLimitSeconds,
+          time_limit_seconds: triggerResult.heist?.time_limit_seconds,
         },
       }
     } else {
@@ -109,8 +109,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   if (activeHeist) {
     results.activeHeist = {
       id: activeHeist.id,
-      eventType: activeHeist.eventType,
-      isActive: activeHeist.isActive,
+      event_type: activeHeist.event_type,
+      is_active: activeHeist.is_active,
       timeRemainingMs: activeHeist.timeRemainingMs,
       hasWinner: !!activeHeist.winner,
     }

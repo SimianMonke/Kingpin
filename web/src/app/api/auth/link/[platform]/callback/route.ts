@@ -81,14 +81,14 @@ export async function GET(
     )
 
     if (linkStatus.isLinked) {
-      if (linkStatus.userId === stateData.userId) {
+      if (linkStatus.user_id === stateData.user_id) {
         // Already linked to this user - success (no-op)
         return NextResponse.redirect(
           new URL(`/profile?success=already_linked&platform=${platform}`, request.url)
         )
       } else {
         // Linked to a different user - cannot link
-        console.error(`Platform ${platform} ID ${platformUser.id} already linked to user ${linkStatus.userId}`)
+        console.error(`Platform ${platform} ID ${platformUser.id} already linked to user ${linkStatus.user_id}`)
         return NextResponse.redirect(
           new URL(`/profile?error=already_linked_other&platform=${platform}`, request.url)
         )
@@ -97,14 +97,14 @@ export async function GET(
 
     // Link the verified platform to user's account
     await OAuthLinkService.linkPlatform(
-      stateData.userId,
+      stateData.user_id,
       platform as LinkPlatform,
       platformUser.id,
       platformUser.username
     )
 
     // Success!
-    console.log(`Successfully linked ${platform} account ${platformUser.id} (${platformUser.username}) to user ${stateData.userId}`)
+    console.log(`Successfully linked ${platform} account ${platformUser.id} (${platformUser.username}) to user ${stateData.user_id}`)
     return NextResponse.redirect(
       new URL(`/profile?success=linked&platform=${platform}`, request.url)
     )

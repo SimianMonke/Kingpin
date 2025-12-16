@@ -5,20 +5,20 @@ import { useEffect, useState } from 'react'
 
 interface Achievement {
   id: number
-  achievementName: string
-  achievementKey: string
+  name: string
+  key: string
   description: string
   category: string
   tier: string
-  requirementType: string
-  requirementValue: string
-  rewardWealth: number
-  rewardXp: number
-  rewardTitle: string | null
-  isHidden: boolean
-  currentProgress: string
-  isCompleted: boolean
-  completedAt: string | null
+  requirement_type: string
+  requirement_value: string
+  reward_wealth: number
+  reward_xp: number
+  reward_title: string | null
+  is_hidden: boolean
+  current_progress: string
+  is_completed: boolean
+  completed_at: string | null
 }
 
 interface AchievementCategory {
@@ -36,10 +36,10 @@ interface AchievementStats {
 }
 
 interface RecentUnlock {
-  achievementName: string
-  achievementKey: string
+  name: string
+  key: string
   tier: string
-  completedAt: string
+  completed_at: string
 }
 
 const CATEGORY_INFO: Record<string, { name: string; icon: string; color: string }> = {
@@ -184,7 +184,7 @@ export default function AchievementsPage() {
               >
                 <div className="flex items-center gap-2">
                   <span>{TIER_ICONS[unlock.tier] || '🏅'}</span>
-                  <span className="font-semibold">{unlock.achievementName}</span>
+                  <span className="font-semibold">{unlock.name}</span>
                 </div>
               </div>
             ))}
@@ -220,7 +220,7 @@ export default function AchievementsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {activeAchievements.map((achievement) => {
           // Hide locked hidden achievements
-          if (achievement.isHidden && !achievement.isCompleted) {
+          if (achievement.is_hidden && !achievement.is_completed) {
             return (
               <div
                 key={achievement.id}
@@ -238,15 +238,15 @@ export default function AchievementsPage() {
           }
 
           const progressPercent = getProgressPercent(
-            achievement.currentProgress,
-            achievement.requirementValue
+            achievement.current_progress,
+            achievement.requirement_value
           )
 
           return (
             <div
               key={achievement.id}
               className={`relative bg-gray-800/50 border rounded-xl p-4 overflow-hidden ${
-                achievement.isCompleted
+                achievement.is_completed
                   ? `border-l-4 ${TIER_COLORS[achievement.tier]?.split(' ')[0] || 'border-gray-600'}`
                   : 'border-gray-700'
               }`}
@@ -259,20 +259,20 @@ export default function AchievementsPage() {
               {/* Content */}
               <div className="pr-10">
                 <h3 className="font-semibold mb-1 flex items-center gap-2">
-                  {achievement.achievementName}
-                  {achievement.isCompleted && (
+                  {achievement.name}
+                  {achievement.is_completed && (
                     <span className="text-green-400">✓</span>
                   )}
                 </h3>
                 <p className="text-sm text-gray-400 mb-3">{achievement.description}</p>
 
                 {/* Progress */}
-                {!achievement.isCompleted && (
+                {!achievement.is_completed && (
                   <div className="mb-3">
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
                       <span>Progress</span>
                       <span>
-                        {formatValue(achievement.currentProgress)} / {formatValue(achievement.requirementValue)}
+                        {formatValue(achievement.current_progress)} / {formatValue(achievement.requirement_value)}
                       </span>
                     </div>
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -287,22 +287,22 @@ export default function AchievementsPage() {
                 {/* Rewards */}
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-yellow-400">
-                    +${achievement.rewardWealth.toLocaleString()}
+                    +${achievement.reward_wealth.toLocaleString()}
                   </span>
                   <span className="text-purple-400">
-                    +{achievement.rewardXp} XP
+                    +{achievement.reward_xp} XP
                   </span>
-                  {achievement.rewardTitle && (
+                  {achievement.reward_title && (
                     <span className="text-cyan-400 text-xs bg-cyan-400/10 px-2 py-0.5 rounded">
-                      Title: {achievement.rewardTitle}
+                      Title: {achievement.reward_title}
                     </span>
                   )}
                 </div>
 
                 {/* Completion Date */}
-                {achievement.isCompleted && achievement.completedAt && (
+                {achievement.is_completed && achievement.completed_at && (
                   <p className="text-xs text-gray-500 mt-2">
-                    Completed: {new Date(achievement.completedAt).toLocaleDateString()}
+                    Completed: {new Date(achievement.completed_at).toLocaleDateString()}
                   </p>
                 )}
               </div>

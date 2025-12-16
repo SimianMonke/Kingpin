@@ -20,27 +20,27 @@ import { FactionService } from './faction.service'
 
 export interface UserMissionWithTemplate {
   id: number
-  templateId: string
-  missionType: string
-  assignedTier: string
-  tierMultiplier: number
-  objectiveValue: number
-  rewardWealth: number
-  rewardXp: number
-  currentProgress: number
-  isCompleted: boolean
-  completedAt: Date | null
-  assignedAt: Date
-  expiresAt: Date
-  status: string
-  template: {
+  template_id: string | null
+  mission_type: string
+  assigned_tier: string
+  tier_multiplier: number
+  objective_value: number
+  reward_wealth: number
+  reward_xp: number
+  current_progress: number | null
+  is_completed: boolean | null
+  completed_at: Date | null
+  assigned_at: Date | null
+  expires_at: Date
+  status: string | null
+  mission_templates: {
     id: string
     name: string
     description: string
     category: string
     difficulty: string
-    objectiveType: string
-  }
+    objective_type: string
+  } | null
 }
 
 export interface MissionClaimResult {
@@ -73,74 +73,74 @@ export const MissionService = {
   /**
    * Get active missions for a user
    */
-  async getActiveMissions(userId: number): Promise<ActiveMissions> {
+  async getActiveMissions(user_id: number): Promise<ActiveMissions> {
     const now = new Date()
 
     // Get all active missions
-    const missions = await prisma.userMission.findMany({
+    const missions = await prisma.user_missions.findMany({
       where: {
-        userId,
+        user_id,
         status: 'active',
-        expiresAt: { gt: now },
+        expires_at: { gt: now },
       },
       include: {
-        template: {
+        mission_templates: {
           select: {
             id: true,
             name: true,
             description: true,
             category: true,
             difficulty: true,
-            objectiveType: true,
+            objective_type: true,
           },
         },
       },
-      orderBy: { assignedAt: 'asc' },
+      orderBy: { assigned_at: 'asc' },
     })
 
-    const daily = missions.filter(m => m.missionType === MISSION_TYPES.DAILY)
-    const weekly = missions.filter(m => m.missionType === MISSION_TYPES.WEEKLY)
+    const daily = missions.filter(m => m.mission_type === MISSION_TYPES.DAILY)
+    const weekly = missions.filter(m => m.mission_type === MISSION_TYPES.WEEKLY)
 
     // Check if already claimed today/this week
     const todayStart = this.getDailyResetTime()
     const weekStart = this.getWeeklyResetTime()
 
     const [dailyClaim, weeklyClaim] = await Promise.all([
-      prisma.missionCompletion.findFirst({
+      prisma.mission_completions.findFirst({
         where: {
-          userId,
-          completionType: MISSION_TYPES.DAILY,
-          completedDate: { gte: todayStart },
+          user_id,
+          completion_type: MISSION_TYPES.DAILY,
+          completed_date: { gte: todayStart },
         },
       }),
-      prisma.missionCompletion.findFirst({
+      prisma.mission_completions.findFirst({
         where: {
-          userId,
-          completionType: MISSION_TYPES.WEEKLY,
-          completedDate: { gte: weekStart },
+          user_id,
+          completion_type: MISSION_TYPES.WEEKLY,
+          completed_date: { gte: weekStart },
         },
       }),
     ])
 
     const canClaimDaily = daily.length === MISSION_CONFIG.DAILY_COUNT &&
-      daily.every(m => m.isCompleted) &&
+      daily.every(m => m.is_completed) &&
       !dailyClaim
 
     const canClaimWeekly = weekly.length === MISSION_CONFIG.WEEKLY_COUNT &&
-      weekly.every(m => m.isCompleted) &&
+      weekly.every(m => m.is_completed) &&
       !weeklyClaim
 
     return {
       daily: daily.map(m => ({
         ...m,
-        tierMultiplier: Number(m.tierMultiplier),
+        tier_multiplier: Number(m.tier_multiplier),
       })) as UserMissionWithTemplate[],
       weekly: weekly.map(m => ({
         ...m,
-        tierMultiplier: Number(m.tierMultiplier),
+        tier_multiplier: Number(m.tier_multiplier),
       })) as UserMissionWithTemplate[],
-      dailyExpiresAt: daily[0]?.expiresAt ?? null,
-      weeklyExpiresAt: weekly[0]?.expiresAt ?? null,
+      dailyExpiresAt: daily[0]?.expires_at ?? null,
+      weeklyExpiresAt: weekly[0]?.expires_at ?? null,
       canClaimDaily,
       canClaimWeekly,
       dailyAlreadyClaimed: !!dailyClaim,
@@ -151,21 +151,21 @@ export const MissionService = {
   /**
    * Assign daily missions to a user
    */
-  async assignDailyMissions(userId: number): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { level: true, statusTier: true },
+  async assignDailyMissions(user_id: number): Promise<void> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { level: true, status_tier: true },
     })
 
     if (!user) return
 
-    const tier = user.statusTier as Tier
+    const tier = user.status_tier as Tier
     const multiplier = TIER_MULTIPLIERS[tier] ?? 1.0
-    const expiresAt = this.getNextDailyReset()
+    const expires_at = this.getNextDailyReset()
 
     // Get available templates
-    const templates = await prisma.missionTemplate.findMany({
-      where: { missionType: MISSION_TYPES.DAILY },
+    const templates = await prisma.mission_templates.findMany({
+      where: { mission_type: MISSION_TYPES.DAILY },
     })
 
     // Select missions ensuring variety (max 1 per category)
@@ -175,17 +175,17 @@ export const MissionService = {
     )
 
     // Create user missions
-    await prisma.userMission.createMany({
+    await prisma.user_missions.createMany({
       data: selectedTemplates.map(t => ({
-        userId,
-        templateId: t.id,
-        missionType: MISSION_TYPES.DAILY,
-        assignedTier: tier,
-        tierMultiplier: multiplier,
-        objectiveValue: Math.ceil(t.objectiveBaseValue * multiplier),
-        rewardWealth: Math.floor(t.rewardWealth * multiplier),
-        rewardXp: Math.floor(t.rewardXp * multiplier),
-        expiresAt,
+        user_id,
+        template_id: t.id,
+        mission_type: MISSION_TYPES.DAILY,
+        assigned_tier: tier,
+        tier_multiplier: multiplier,
+        objective_value: Math.ceil(t.objective_base_value * multiplier),
+        reward_wealth: Math.floor(t.reward_wealth * multiplier),
+        reward_xp: Math.floor(t.reward_xp * multiplier),
+        expires_at,
         status: 'active',
       })),
     })
@@ -194,21 +194,21 @@ export const MissionService = {
   /**
    * Assign weekly missions to a user
    */
-  async assignWeeklyMissions(userId: number): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { level: true, statusTier: true },
+  async assignWeeklyMissions(user_id: number): Promise<void> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { level: true, status_tier: true },
     })
 
     if (!user) return
 
-    const tier = user.statusTier as Tier
+    const tier = user.status_tier as Tier
     const multiplier = TIER_MULTIPLIERS[tier] ?? 1.0
-    const expiresAt = this.getNextWeeklyReset()
+    const expires_at = this.getNextWeeklyReset()
 
     // Get available templates
-    const templates = await prisma.missionTemplate.findMany({
-      where: { missionType: MISSION_TYPES.WEEKLY },
+    const templates = await prisma.mission_templates.findMany({
+      where: { mission_type: MISSION_TYPES.WEEKLY },
     })
 
     // Select missions ensuring variety
@@ -218,17 +218,17 @@ export const MissionService = {
     )
 
     // Create user missions
-    await prisma.userMission.createMany({
+    await prisma.user_missions.createMany({
       data: selectedTemplates.map(t => ({
-        userId,
-        templateId: t.id,
-        missionType: MISSION_TYPES.WEEKLY,
-        assignedTier: tier,
-        tierMultiplier: multiplier,
-        objectiveValue: Math.ceil(t.objectiveBaseValue * multiplier),
-        rewardWealth: Math.floor(t.rewardWealth * multiplier),
-        rewardXp: Math.floor(t.rewardXp * multiplier),
-        expiresAt,
+        user_id,
+        template_id: t.id,
+        mission_type: MISSION_TYPES.WEEKLY,
+        assigned_tier: tier,
+        tier_multiplier: multiplier,
+        objective_value: Math.ceil(t.objective_base_value * multiplier),
+        reward_wealth: Math.floor(t.reward_wealth * multiplier),
+        reward_xp: Math.floor(t.reward_xp * multiplier),
+        expires_at,
         status: 'active',
       })),
     })
@@ -237,53 +237,53 @@ export const MissionService = {
   /**
    * Ensure user has missions assigned (call on login/action)
    */
-  async ensureMissionsAssigned(userId: number): Promise<void> {
+  async ensureMissionsAssigned(user_id: number): Promise<void> {
     const now = new Date()
 
     // Check for active daily missions
-    const dailyCount = await prisma.userMission.count({
+    const dailyCount = await prisma.user_missions.count({
       where: {
-        userId,
-        missionType: MISSION_TYPES.DAILY,
+        user_id,
+        mission_type: MISSION_TYPES.DAILY,
         status: 'active',
-        expiresAt: { gt: now },
+        expires_at: { gt: now },
       },
     })
 
     if (dailyCount === 0) {
       // Expire old daily missions
-      await prisma.userMission.updateMany({
+      await prisma.user_missions.updateMany({
         where: {
-          userId,
-          missionType: MISSION_TYPES.DAILY,
+          user_id,
+          mission_type: MISSION_TYPES.DAILY,
           status: 'active',
         },
         data: { status: 'expired' },
       })
-      await this.assignDailyMissions(userId)
+      await this.assignDailyMissions(user_id)
     }
 
     // Check for active weekly missions
-    const weeklyCount = await prisma.userMission.count({
+    const weeklyCount = await prisma.user_missions.count({
       where: {
-        userId,
-        missionType: MISSION_TYPES.WEEKLY,
+        user_id,
+        mission_type: MISSION_TYPES.WEEKLY,
         status: 'active',
-        expiresAt: { gt: now },
+        expires_at: { gt: now },
       },
     })
 
     if (weeklyCount === 0) {
       // Expire old weekly missions
-      await prisma.userMission.updateMany({
+      await prisma.user_missions.updateMany({
         where: {
-          userId,
-          missionType: MISSION_TYPES.WEEKLY,
+          user_id,
+          mission_type: MISSION_TYPES.WEEKLY,
           status: 'active',
         },
         data: { status: 'expired' },
       })
-      await this.assignWeeklyMissions(userId)
+      await this.assignWeeklyMissions(user_id)
     }
   },
 
@@ -291,37 +291,37 @@ export const MissionService = {
    * Update progress for missions matching objective type
    */
   async updateProgress(
-    userId: number,
+    user_id: number,
     objectiveType: MissionObjectiveType,
     increment: number = 1
   ): Promise<void> {
     const now = new Date()
 
     // Get active missions with matching objective type
-    const missions = await prisma.userMission.findMany({
+    const missions = await prisma.user_missions.findMany({
       where: {
-        userId,
+        user_id,
         status: 'active',
-        isCompleted: false,
-        expiresAt: { gt: now },
-        template: { objectiveType },
+        is_completed: false,
+        expires_at: { gt: now },
+        mission_templates: { objective_type: objectiveType },
       },
-      include: { template: true },
+      include: { mission_templates: true },
     })
 
     for (const mission of missions) {
       const newProgress = Math.min(
-        mission.currentProgress + increment,
-        mission.objectiveValue
+        (mission.current_progress ?? 0) + increment,
+        mission.objective_value
       )
-      const isCompleted = newProgress >= mission.objectiveValue
+      const is_completed = newProgress >= mission.objective_value
 
-      await prisma.userMission.update({
+      await prisma.user_missions.update({
         where: { id: mission.id },
         data: {
-          currentProgress: newProgress,
-          isCompleted,
-          completedAt: isCompleted ? new Date() : null,
+          current_progress: newProgress,
+          is_completed,
+          completed_at: is_completed ? new Date() : null,
         },
       })
     }
@@ -331,32 +331,32 @@ export const MissionService = {
    * Set progress to absolute value (for streak-type missions)
    */
   async setProgress(
-    userId: number,
+    user_id: number,
     objectiveType: MissionObjectiveType,
     value: number
   ): Promise<void> {
     const now = new Date()
 
-    const missions = await prisma.userMission.findMany({
+    const missions = await prisma.user_missions.findMany({
       where: {
-        userId,
+        user_id,
         status: 'active',
-        isCompleted: false,
-        expiresAt: { gt: now },
-        template: { objectiveType },
+        is_completed: false,
+        expires_at: { gt: now },
+        mission_templates: { objective_type: objectiveType },
       },
     })
 
     for (const mission of missions) {
-      const newProgress = Math.min(value, mission.objectiveValue)
-      const isCompleted = newProgress >= mission.objectiveValue
+      const newProgress = Math.min(value, mission.objective_value)
+      const is_completed = newProgress >= mission.objective_value
 
-      await prisma.userMission.update({
+      await prisma.user_missions.update({
         where: { id: mission.id },
         data: {
-          currentProgress: newProgress,
-          isCompleted,
-          completedAt: isCompleted ? new Date() : null,
+          current_progress: newProgress,
+          is_completed,
+          completed_at: is_completed ? new Date() : null,
         },
       })
     }
@@ -366,18 +366,18 @@ export const MissionService = {
    * Claim rewards for completed missions
    */
   async claimRewards(
-    userId: number,
+    user_id: number,
     type: MissionType
   ): Promise<MissionClaimResult> {
     const now = new Date()
 
     // Get completed missions of this type
-    const missions = await prisma.userMission.findMany({
+    const missions = await prisma.user_missions.findMany({
       where: {
-        userId,
-        missionType: type,
+        user_id,
+        mission_type: type,
         status: 'active',
-        expiresAt: { gt: now },
+        expires_at: { gt: now },
       },
     })
 
@@ -399,7 +399,7 @@ export const MissionService = {
       }
     }
 
-    const completedCount = missions.filter(m => m.isCompleted).length
+    const completedCount = missions.filter(m => m.is_completed).length
     if (completedCount !== expectedCount) {
       return {
         success: false,
@@ -418,11 +418,11 @@ export const MissionService = {
       ? this.getDailyResetTime()
       : this.getWeeklyResetTime()
 
-    const existingClaim = await prisma.missionCompletion.findFirst({
+    const existingClaim = await prisma.mission_completions.findFirst({
       where: {
-        userId,
-        completionType: type,
-        completedDate: { gte: checkDate },
+        user_id,
+        completion_type: type,
+        completed_date: { gte: checkDate },
       },
     })
 
@@ -440,22 +440,22 @@ export const MissionService = {
     }
 
     // Calculate rewards
-    const totalWealth = missions.reduce((sum, m) => sum + m.rewardWealth, 0)
-    const totalXp = missions.reduce((sum, m) => sum + m.rewardXp, 0)
+    const totalWealth = missions.reduce((sum, m) => sum + m.reward_wealth, 0)
+    const totalXp = missions.reduce((sum, m) => sum + m.reward_xp, 0)
     const bonus = MISSION_COMPLETION_BONUS[type]
     const crateAwarded = bonus.crate
 
     // Get user tier for completion record
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { statusTier: true },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { status_tier: true },
     })
 
     // Process rewards in transaction
     await prisma.$transaction(async (tx) => {
       // Award wealth and XP
-      await tx.user.update({
-        where: { id: userId },
+      await tx.users.update({
+        where: { id: user_id },
         data: {
           wealth: { increment: totalWealth + bonus.wealth },
           xp: { increment: totalXp + bonus.xp },
@@ -463,35 +463,35 @@ export const MissionService = {
       })
 
       // Mark missions as claimed
-      await tx.userMission.updateMany({
+      await tx.user_missions.updateMany({
         where: { id: { in: missions.map(m => m.id) } },
         data: { status: 'claimed' },
       })
 
       // Record completion
-      await tx.missionCompletion.create({
+      await tx.mission_completions.create({
         data: {
-          userId,
-          completionType: type,
-          completedDate: new Date(),
-          missionIds: missions.map(m => m.id),
-          totalWealth,
-          totalXp,
-          bonusWealth: bonus.wealth,
-          bonusXp: bonus.xp,
-          crateAwarded,
-          playerTier: user?.statusTier ?? 'Rookie',
+          user_id,
+          completion_type: type,
+          completed_date: new Date(),
+          mission_ids: missions.map(m => m.id),
+          total_wealth: totalWealth,
+          total_xp: totalXp,
+          bonus_wealth: bonus.wealth,
+          bonus_xp: bonus.xp,
+          crate_awarded: crateAwarded,
+          player_tier: user?.status_tier ?? 'Rookie',
         },
       })
     })
 
     // Award crate if applicable (outside transaction to use CrateService)
     if (crateAwarded) {
-      await CrateService.awardCrate(userId, crateAwarded as CrateTier, CRATE_SOURCES.MISSION)
+      await CrateService.awardCrate(user_id, crateAwarded as CrateTier, CRATE_SOURCES.MISSION)
     }
 
     // Add territory score for faction (25 points per mission batch completion)
-    await FactionService.addTerritoryScore(userId, 'mission')
+    await FactionService.addTerritoryScore(user_id, 'mission')
 
     return {
       success: true,
@@ -507,7 +507,7 @@ export const MissionService = {
   /**
    * Select missions with variety guarantee
    */
-  selectMissions<T extends { id: string; category: string; isLuckBased: boolean }>(
+  selectMissions<T extends { id: string; category: string; is_luck_based: boolean | null; objective_base_value: number; reward_wealth: number; reward_xp: number }>(
     templates: T[],
     count: number
   ): T[] {
@@ -525,11 +525,11 @@ export const MissionService = {
       if (usedCategories.has(template.category)) continue
 
       // Max 1 luck-based per day
-      if (template.isLuckBased && luckBasedCount >= 1) continue
+      if (template.is_luck_based && luckBasedCount >= 1) continue
 
       selected.push(template)
       usedCategories.add(template.category)
-      if (template.isLuckBased) luckBasedCount++
+      if (template.is_luck_based) luckBasedCount++
     }
 
     // If we couldn't fill with variety, add any remaining
@@ -596,10 +596,10 @@ export const MissionService = {
   /**
    * Get mission history for a user
    */
-  async getMissionHistory(userId: number, limit: number = 20) {
-    return prisma.missionCompletion.findMany({
-      where: { userId },
-      orderBy: { completedAt: 'desc' },
+  async getMissionHistory(user_id: number, limit: number = 20) {
+    return prisma.mission_completions.findMany({
+      where: { user_id },
+      orderBy: { completed_at: 'desc' },
       take: limit,
     })
   },

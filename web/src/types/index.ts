@@ -11,21 +11,21 @@ import type { Tier, ItemType, ItemTier, CrateTier, EquipmentSlot } from '@/lib/g
 export interface UserProfile {
   id: number
   username: string
-  displayName: string | null
-  kingpinName: string | null
+  display_name: string | null
+  kingpin_name: string | null
   wealth: bigint
   xp: bigint
   level: number
-  statusTier: Tier
+  status_tier: Tier
   hp: number
-  checkinStreak: number
-  lastCheckinDate: Date | null
-  totalPlayCount: number
+  checkin_streak: number
+  last_checkin_date: Date | null
+  total_play_count: number
   wins: number
   losses: number
-  factionId: number | null
-  createdAt: Date
-  lastSeen: Date
+  faction_id: number | null
+  created_at: Date
+  last_seen: Date
 }
 
 export interface UserStats {
@@ -38,7 +38,7 @@ export interface UserStats {
     required: number
     percentage: number
   }
-  checkinStreak: number
+  checkin_streak: number
   totalPlays: number
   winRate: number
 }
@@ -49,23 +49,23 @@ export interface UserStats {
 
 export interface InventoryItem {
   id: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: ItemType
+  type: ItemType
   tier: ItemTier
   durability: number
   maxDurability: number
-  isEquipped: boolean
+  is_equipped: boolean
   slot: EquipmentSlot | null
-  isEscrowed: boolean
-  escrowExpiresAt: Date | null
-  acquiredAt: Date
+  is_escrowed: boolean
+  escrow_expires_at: Date | null
+  acquired_at: Date
   // Stats
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
 }
 
 export interface EquippedItems {
@@ -81,16 +81,16 @@ export interface EquippedItems {
 
 export interface UserCrateInfo {
   id: number
-  crateTier: CrateTier
-  isEscrowed: boolean
-  escrowExpiresAt: Date | null
-  acquiredAt: Date
+  crate_tier: CrateTier
+  is_escrowed: boolean
+  escrow_expires_at: Date | null
+  acquired_at: Date
   source: string | null
 }
 
 export interface CrateOpenResult {
-  crateTier: CrateTier
-  dropType: 'item' | 'wealth' | 'title'
+  crate_tier: CrateTier
+  drop_type: 'item' | 'wealth' | 'title'
   item?: {
     id: number
     name: string
@@ -101,7 +101,7 @@ export interface CrateOpenResult {
   title?: {
     name: string
     wasDuplicate: boolean
-    duplicateConversion?: number
+    duplicate_conversion?: number
   }
 }
 
@@ -111,27 +111,27 @@ export interface CrateOpenResult {
 
 export interface ShopItem {
   id: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: ItemType
+  type: ItemType
   tier: ItemTier
   price: number
   description: string | null
   // Stats for display
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
 }
 
 export interface BlackMarketItem extends ShopItem {
-  stockQuantity: number
-  originalStock: number
-  isFeatured: boolean
-  discountPercent: number
+  stock_quantity: number
+  original_stock: number
+  is_featured: boolean
+  discount_percent: number
   discountedPrice: number
-  availableUntil: Date
+  available_until: Date
 }
 
 // =============================================================================
@@ -139,8 +139,8 @@ export interface BlackMarketItem extends ShopItem {
 // =============================================================================
 
 export interface PlayResult {
-  eventType: string
-  eventDescription: string
+  event_type: string
+  event_description: string
   tier: number
   wealth: number
   xp: number
@@ -149,8 +149,8 @@ export interface PlayResult {
   tierPromotion: boolean
   newTier?: Tier
   crateDropped: boolean
-  crateTier?: CrateTier
-  wasBusted: boolean
+  crate_tier?: CrateTier
+  was_busted: boolean
   jailUntil?: Date
 }
 
@@ -160,7 +160,7 @@ export interface RobResult {
   wealthStolen: number
   wealthProtectedByInsurance: number
   netWealthStolen: number
-  xpEarned: number
+  xp_earned: number
   itemStolen: boolean
   stolenItem?: {
     id: number
@@ -185,21 +185,21 @@ export interface BailResult {
 export interface Mission {
   id: number
   templateId: string
-  missionType: 'daily' | 'weekly'
+  mission_type: 'daily' | 'weekly'
   name: string
   description: string
   objectiveType: string
-  objectiveValue: number
-  currentProgress: number
-  rewardWealth: number
-  rewardXp: number
-  isCompleted: boolean
-  expiresAt: Date
+  objective_value: number
+  current_progress: number
+  reward_wealth: number
+  reward_xp: number
+  is_completed: boolean
+  expires_at: Date
   assignedTier: Tier
 }
 
 export interface MissionCompletionResult {
-  completionType: 'daily' | 'weekly'
+  completion_type: 'daily' | 'weekly'
   missions: Mission[]
   totalWealth: number
   totalXp: number
@@ -219,23 +219,23 @@ export interface Achievement {
   description: string
   category: string
   tier: string
-  requirementType: string
-  requirementValue: number
-  currentProgress: number
-  isCompleted: boolean
-  completedAt: Date | null
-  rewardWealth: number
-  rewardXp: number
-  rewardTitle: string | null
+  requirement_type: string
+  requirement_value: number
+  current_progress: number
+  is_completed: boolean
+  completed_at: Date | null
+  reward_wealth: number
+  reward_xp: number
+  reward_title: string | null
   iconUrl: string | null
-  isHidden: boolean
+  is_hidden: boolean
 }
 
 export interface Title {
   id: number
   title: string
-  isEquipped: boolean
-  unlockedAt: Date
+  is_equipped: boolean
+  unlocked_at: Date
 }
 
 // =============================================================================
@@ -246,21 +246,21 @@ export interface Faction {
   id: number
   name: string
   description: string | null
-  colorHex: string | null
+  color_hex: string | null
   motto: string | null
-  totalMembers: number
-  territoriesControlled: number
+  total_members: number
+  territories_controlled: number
 }
 
 export interface Territory {
   id: number
   name: string
   description: string | null
-  controllingFactionId: number | null
-  controllingFactionName: string | null
-  isContested: boolean
-  buffType: string | null
-  buffValue: number | null
+  controlling_faction_id: number | null
+  factionsName: string | null
+  is_contested: boolean
+  buff_type: string | null
+  buff_value: number | null
 }
 
 export interface FactionBuff {
@@ -278,9 +278,9 @@ export type LeaderboardType = 'wealth' | 'xp' | 'chatters' | 'donations'
 
 export interface LeaderboardEntry {
   rank: number
-  userId: number
+  user_id: number
   username: string
-  displayName: string | null
+  display_name: string | null
   value: number | bigint
   equippedTitle: string | null
 }
@@ -291,19 +291,19 @@ export interface LeaderboardEntry {
 
 export interface JuicernautSession {
   id: number
-  isActive: boolean
-  startedAt: Date
-  endedAt: Date | null
-  totalContributionsUsd: number
-  currentJuicernaut: {
-    userId: number
+  is_active: boolean
+  started_at: Date
+  ended_at: Date | null
+  total_contributions_usd: number
+  current_juicernaut: {
+    user_id: number
     username: string
     totalUsd: number
   } | null
 }
 
 export interface JuicernautContribution {
-  userId: number
+  user_id: number
   username: string
   totalUsd: number
   contributionsCount: number
@@ -346,11 +346,11 @@ export interface Notification {
   title: string
   message: string
   icon: string | null
-  linkType: string | null
-  linkId: string | null
-  isSeen: boolean
-  isDismissed: boolean
-  createdAt: Date
+  link_type: string | null
+  link_id: string | null
+  is_seen: boolean
+  is_dismissed: boolean
+  created_at: Date
 }
 
 // =============================================================================
@@ -400,17 +400,17 @@ export type HeistDifficulty = 'easy' | 'medium' | 'hard'
 
 export interface HeistEvent {
   id: number
-  eventType: HeistEventType
+  event_type: HeistEventType
   difficulty: HeistDifficulty
   prompt: string
   timeLimit: number
-  startedAt: Date
-  endedAt: Date | null
+  started_at: Date
+  ended_at: Date | null
   winner: {
-    userId: number
+    user_id: number
     username: string
     platform: Platform
-    responseTimeMs: number
+    response_time_ms: number
   } | null
-  crateTier: CrateTier | null
+  crate_tier: CrateTier | null
 }

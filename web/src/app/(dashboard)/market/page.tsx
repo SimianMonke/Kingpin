@@ -4,30 +4,30 @@ import { useEffect, useState } from 'react'
 
 interface BlackMarketItem {
   marketId: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: string
+  type: string
   tier: string
   price: number
-  originalPrice: number
-  discountPercent: number
-  stockQuantity: number
-  originalStock: number
-  isFeatured: boolean
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
+  original_price: number
+  discount_percent: number
+  stock_quantity: number
+  original_stock: number
+  is_featured: boolean
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
   description: string | null
-  flavorText: string | null
+  flavor_text: string | null
 }
 
 interface MarketData {
   items: BlackMarketItem[]
-  rotationId: number
-  availableFrom: string
-  availableUntil: string
+  rotation_id: number
+  available_from: string
+  available_until: string
   timeRemaining: string
   featuredItem: BlackMarketItem | null
 }
@@ -61,11 +61,11 @@ export default function BlackMarketPage() {
 
   // Update countdown timer
   useEffect(() => {
-    if (!marketData?.availableUntil) return
+    if (!marketData?.available_until) return
 
     const interval = setInterval(() => {
       const now = new Date()
-      const end = new Date(marketData.availableUntil)
+      const end = new Date(marketData.available_until)
       const diff = end.getTime() - now.getTime()
 
       if (diff <= 0) {
@@ -80,7 +80,7 @@ export default function BlackMarketPage() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [marketData?.availableUntil])
+  }, [marketData?.available_until])
 
   async function fetchData() {
     try {
@@ -154,7 +154,7 @@ export default function BlackMarketPage() {
     )
   }
 
-  const regularItems = marketData.items.filter((item) => !item.isFeatured)
+  const regularItems = marketData.items.filter((item) => !item.is_featured)
 
   return (
     <div className="space-y-8">
@@ -195,9 +195,9 @@ export default function BlackMarketPage() {
           <div className="flex items-center gap-2 mb-4">
             <StarIcon className="w-5 h-5 text-yellow-400" />
             <h2 className="text-lg font-semibold text-yellow-400">Featured Deal</h2>
-            {marketData.featuredItem.discountPercent > 0 && (
+            {marketData.featuredItem.discount_percent > 0 && (
               <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded">
-                -{marketData.featuredItem.discountPercent}% OFF
+                -{marketData.featuredItem.discount_percent}% OFF
               </span>
             )}
           </div>
@@ -208,32 +208,32 @@ export default function BlackMarketPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <p className={`text-xs uppercase ${TIER_COLORS[marketData.featuredItem.tier].split(' ')[0]}`}>
-                  {marketData.featuredItem.tier} {marketData.featuredItem.itemType}
+                  {marketData.featuredItem.tier} {marketData.featuredItem.type}
                 </p>
                 <h3 className="text-2xl font-bold mt-1">{marketData.featuredItem.itemName}</h3>
                 {marketData.featuredItem.description && (
                   <p className="text-gray-400 text-sm mt-2">{marketData.featuredItem.description}</p>
                 )}
                 <div className="flex flex-wrap gap-4 mt-3 text-sm">
-                  {marketData.featuredItem.robBonus && (
-                    <span className="text-red-400">+{marketData.featuredItem.robBonus}% Rob</span>
+                  {marketData.featuredItem.rob_bonus && (
+                    <span className="text-red-400">+{marketData.featuredItem.rob_bonus}% Rob</span>
                   )}
-                  {marketData.featuredItem.defenseBonus && (
-                    <span className="text-blue-400">+{marketData.featuredItem.defenseBonus}% Def</span>
+                  {marketData.featuredItem.defense_bonus && (
+                    <span className="text-blue-400">+{marketData.featuredItem.defense_bonus}% Def</span>
                   )}
-                  {marketData.featuredItem.insurancePercent && (
-                    <span className="text-green-400">{marketData.featuredItem.insurancePercent}% Insurance</span>
+                  {marketData.featuredItem.insurance_percent && (
+                    <span className="text-green-400">{marketData.featuredItem.insurance_percent}% Insurance</span>
                   )}
-                  {marketData.featuredItem.revenueMin && (
-                    <span className="text-yellow-400">${marketData.featuredItem.revenueMin}-{marketData.featuredItem.revenueMax}</span>
+                  {marketData.featuredItem.revenue_min && (
+                    <span className="text-yellow-400">${marketData.featuredItem.revenue_min}-{marketData.featuredItem.revenue_max}</span>
                   )}
                 </div>
               </div>
               <div className="text-right">
                 <div className="mb-2">
-                  {marketData.featuredItem.discountPercent > 0 && (
+                  {marketData.featuredItem.discount_percent > 0 && (
                     <p className="text-sm text-gray-500 line-through">
-                      ${marketData.featuredItem.originalPrice.toLocaleString()}
+                      ${marketData.featuredItem.original_price.toLocaleString()}
                     </p>
                   )}
                   <p className={`text-2xl font-bold ${userWealth >= marketData.featuredItem.price ? 'text-green-400' : 'text-red-400'}`}>
@@ -241,23 +241,23 @@ export default function BlackMarketPage() {
                   </p>
                 </div>
                 <p className="text-sm text-gray-400 mb-3">
-                  {marketData.featuredItem.stockQuantity}/{marketData.featuredItem.originalStock} left
+                  {marketData.featuredItem.stock_quantity}/{marketData.featuredItem.original_stock} left
                 </p>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     handleBuy(marketData.featuredItem!.marketId, marketData.featuredItem!.itemName, marketData.featuredItem!.price)
                   }}
-                  disabled={actionLoading === `buy-${marketData.featuredItem.marketId}` || userWealth < marketData.featuredItem.price || marketData.featuredItem.stockQuantity === 0}
+                  disabled={actionLoading === `buy-${marketData.featuredItem.marketId}` || userWealth < marketData.featuredItem.price || marketData.featuredItem.stock_quantity === 0}
                   className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                    userWealth >= marketData.featuredItem.price && marketData.featuredItem.stockQuantity > 0
+                    userWealth >= marketData.featuredItem.price && marketData.featuredItem.stock_quantity > 0
                       ? 'bg-yellow-500 hover:bg-yellow-600 text-black'
                       : 'bg-gray-700 cursor-not-allowed opacity-50'
                   }`}
                 >
                   {actionLoading === `buy-${marketData.featuredItem.marketId}`
                     ? 'Buying...'
-                    : marketData.featuredItem.stockQuantity === 0
+                    : marketData.featuredItem.stock_quantity === 0
                     ? 'Sold Out'
                     : 'Buy Now'}
                 </button>
@@ -280,21 +280,21 @@ export default function BlackMarketPage() {
               <div
                 key={item.marketId}
                 className={`p-4 rounded-lg border ${TIER_COLORS[item.tier]} ${TIER_BG[item.tier]} cursor-pointer hover:scale-105 transition-transform ${
-                  item.stockQuantity === 0 ? 'opacity-50' : ''
+                  item.stock_quantity === 0 ? 'opacity-50' : ''
                 }`}
                 onClick={() => setSelectedItem(item)}
               >
                 <div className="flex items-start justify-between mb-2">
                   <p className={`text-xs uppercase ${TIER_COLORS[item.tier].split(' ')[0]}`}>{item.tier}</p>
-                  <p className="text-xs text-gray-400">{item.stockQuantity}/{item.originalStock}</p>
+                  <p className="text-xs text-gray-400">{item.stock_quantity}/{item.original_stock}</p>
                 </div>
                 <p className="font-semibold mb-1">{item.itemName}</p>
-                <p className="text-xs text-gray-400 capitalize mb-3">{item.itemType}</p>
+                <p className="text-xs text-gray-400 capitalize mb-3">{item.type}</p>
                 <div className="space-y-1 text-xs mb-3">
-                  {item.robBonus && <p className="text-red-400">+{item.robBonus}% Rob</p>}
-                  {item.defenseBonus && <p className="text-blue-400">+{item.defenseBonus}% Def</p>}
-                  {item.insurancePercent && <p className="text-green-400">{item.insurancePercent}% Ins</p>}
-                  {item.revenueMin && <p className="text-yellow-400">${item.revenueMin}-{item.revenueMax}</p>}
+                  {item.rob_bonus && <p className="text-red-400">+{item.rob_bonus}% Rob</p>}
+                  {item.defense_bonus && <p className="text-blue-400">+{item.defense_bonus}% Def</p>}
+                  {item.insurance_percent && <p className="text-green-400">{item.insurance_percent}% Ins</p>}
+                  {item.revenue_min && <p className="text-yellow-400">${item.revenue_min}-{item.revenue_max}</p>}
                 </div>
                 <div className="flex items-center justify-between">
                   <p className={`font-bold ${userWealth >= item.price ? 'text-green-400' : 'text-red-400'}`}>
@@ -305,14 +305,14 @@ export default function BlackMarketPage() {
                       e.stopPropagation()
                       handleBuy(item.marketId, item.itemName, item.price)
                     }}
-                    disabled={actionLoading === `buy-${item.marketId}` || userWealth < item.price || item.stockQuantity === 0}
+                    disabled={actionLoading === `buy-${item.marketId}` || userWealth < item.price || item.stock_quantity === 0}
                     className={`px-3 py-1 text-sm rounded transition-colors ${
-                      userWealth >= item.price && item.stockQuantity > 0
+                      userWealth >= item.price && item.stock_quantity > 0
                         ? 'bg-red-500 hover:bg-red-600'
                         : 'bg-gray-700 cursor-not-allowed opacity-50'
                     }`}
                   >
-                    {actionLoading === `buy-${item.marketId}` ? '...' : item.stockQuantity === 0 ? 'Sold' : 'Buy'}
+                    {actionLoading === `buy-${item.marketId}` ? '...' : item.stock_quantity === 0 ? 'Sold' : 'Buy'}
                   </button>
                 </div>
               </div>
@@ -335,11 +335,11 @@ export default function BlackMarketPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className={`text-xs uppercase ${TIER_COLORS[selectedItem.tier].split(' ')[0]}`}>
-                    {selectedItem.tier} {selectedItem.itemType}
+                    {selectedItem.tier} {selectedItem.type}
                   </p>
-                  {selectedItem.isFeatured && selectedItem.discountPercent > 0 && (
+                  {selectedItem.is_featured && selectedItem.discount_percent > 0 && (
                     <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded">
-                      -{selectedItem.discountPercent}%
+                      -{selectedItem.discount_percent}%
                     </span>
                   )}
                 </div>
@@ -353,39 +353,39 @@ export default function BlackMarketPage() {
             {selectedItem.description && (
               <p className="text-gray-300 text-sm mb-2">{selectedItem.description}</p>
             )}
-            {selectedItem.flavorText && (
-              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavorText}"</p>
+            {selectedItem.flavor_text && (
+              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavor_text}"</p>
             )}
 
             <div className="space-y-2 text-sm mb-4">
-              {selectedItem.robBonus && (
+              {selectedItem.rob_bonus && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Rob Bonus</span>
-                  <span className="text-red-400">+{selectedItem.robBonus}%</span>
+                  <span className="text-red-400">+{selectedItem.rob_bonus}%</span>
                 </div>
               )}
-              {selectedItem.defenseBonus && (
+              {selectedItem.defense_bonus && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Defense Bonus</span>
-                  <span className="text-blue-400">+{selectedItem.defenseBonus}%</span>
+                  <span className="text-blue-400">+{selectedItem.defense_bonus}%</span>
                 </div>
               )}
-              {selectedItem.insurancePercent && (
+              {selectedItem.insurance_percent && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Insurance</span>
-                  <span className="text-green-400">{selectedItem.insurancePercent}%</span>
+                  <span className="text-green-400">{selectedItem.insurance_percent}%</span>
                 </div>
               )}
-              {selectedItem.revenueMin && (
+              {selectedItem.revenue_min && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Revenue</span>
-                  <span className="text-yellow-400">${selectedItem.revenueMin}-{selectedItem.revenueMax}</span>
+                  <span className="text-yellow-400">${selectedItem.revenue_min}-{selectedItem.revenue_max}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-400">Stock</span>
-                <span className={selectedItem.stockQuantity === 0 ? 'text-red-400' : ''}>
-                  {selectedItem.stockQuantity}/{selectedItem.originalStock}
+                <span className={selectedItem.stock_quantity === 0 ? 'text-red-400' : ''}>
+                  {selectedItem.stock_quantity}/{selectedItem.original_stock}
                 </span>
               </div>
             </div>
@@ -394,9 +394,9 @@ export default function BlackMarketPage() {
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-400">Price</span>
                 <div className="text-right">
-                  {selectedItem.discountPercent > 0 && (
+                  {selectedItem.discount_percent > 0 && (
                     <p className="text-sm text-gray-500 line-through">
-                      ${selectedItem.originalPrice.toLocaleString()}
+                      ${selectedItem.original_price.toLocaleString()}
                     </p>
                   )}
                   <span className={`text-xl font-bold ${userWealth >= selectedItem.price ? 'text-green-400' : 'text-red-400'}`}>
@@ -406,16 +406,16 @@ export default function BlackMarketPage() {
               </div>
               <button
                 onClick={() => handleBuy(selectedItem.marketId, selectedItem.itemName, selectedItem.price)}
-                disabled={actionLoading === `buy-${selectedItem.marketId}` || userWealth < selectedItem.price || selectedItem.stockQuantity === 0}
+                disabled={actionLoading === `buy-${selectedItem.marketId}` || userWealth < selectedItem.price || selectedItem.stock_quantity === 0}
                 className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                  userWealth >= selectedItem.price && selectedItem.stockQuantity > 0
+                  userWealth >= selectedItem.price && selectedItem.stock_quantity > 0
                     ? 'bg-red-500 hover:bg-red-600'
                     : 'bg-gray-700 cursor-not-allowed'
                 }`}
               >
                 {actionLoading === `buy-${selectedItem.marketId}`
                   ? 'Purchasing...'
-                  : selectedItem.stockQuantity === 0
+                  : selectedItem.stock_quantity === 0
                   ? 'Sold Out'
                   : userWealth >= selectedItem.price
                   ? 'Purchase'

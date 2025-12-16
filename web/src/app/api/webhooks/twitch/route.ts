@@ -213,12 +213,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Use message ID as external event ID for deduplication
-    const externalEventId = `twitch_${messageId}`
+    const external_event_id = `twitch_${messageId}`
 
     // Check for duplicate event
-    const isDuplicate = await MonetizationService.isEventProcessed(externalEventId)
+    const isDuplicate = await MonetizationService.isEventProcessed(external_event_id)
     if (isDuplicate) {
-      console.log(`Twitch webhook event ${externalEventId} already processed`)
+      console.log(`Twitch webhook event ${external_event_id} already processed`)
       return NextResponse.json({ success: true, message: 'Already processed' })
     }
 
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
           subEvent.user_id,
           subEvent.user_login,
           tier,
-          externalEventId,
+          external_event_id,
           event as Record<string, unknown>
         )
 
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           rewards: {
             wealth: result.wealth,
             xp: result.xp,
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
           giftEvent.user_login,
           giftEvent.total,
           tier,
-          externalEventId,
+          external_event_id,
           event as Record<string, unknown>
         )
 
@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           giftCount: giftEvent.total,
           rewards: {
             wealth: result.wealth,
@@ -315,7 +315,7 @@ export async function POST(request: NextRequest) {
           cheerEvent.user_id,
           cheerEvent.user_login,
           cheerEvent.bits,
-          externalEventId,
+          external_event_id,
           event as Record<string, unknown>
         )
 
@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           bits: cheerEvent.bits,
           rewards: {
             wealth: result.wealth,
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
           raidEvent.from_broadcaster_user_id,
           raidEvent.from_broadcaster_user_login,
           raidEvent.viewers,
-          externalEventId,
+          external_event_id,
           event as Record<string, unknown>
         )
 
@@ -353,7 +353,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
+          user_id: result.user_id,
           viewers: raidEvent.viewers,
           rewards: {
             wealth: result.wealth,

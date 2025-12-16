@@ -19,19 +19,19 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   const apiKey = request.headers.get('x-api-key')
-  let userId: number
+  let user_id: number
 
   if (apiKey && apiKey === process.env.BOT_API_KEY) {
-    // Bot request - validate userId type
-    if (!body.userId || typeof body.userId !== 'number') {
-      return errorResponse('userId required and must be a number', 400)
+    // Bot request - validate user_id type
+    if (!body.user_id || typeof body.user_id !== 'number') {
+      return errorResponse('user_id required and must be a number', 400)
     }
-    userId = body.userId
+    user_id = body.user_id
   } else {
     // Session request
     const session = await getAuthSession()
     if (!session?.user?.id) return unauthorizedResponse()
-    userId = typeof session.user.id === 'string'
+    user_id = typeof session.user.id === 'string'
       ? parseInt(session.user.id, 10)
       : session.user.id
   }
@@ -48,22 +48,22 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       if (!call || !['heads', 'tails'].includes(call as string)) {
         return errorResponse('Call must be heads or tails', 400)
       }
-      const wagerAmount = BigInt((wager as number) || 0)
-      if (!wagerAmount || wagerAmount <= 0) {
+      const wager_amount = BigInt((wager as number) || 0)
+      if (!wager_amount || wager_amount <= 0) {
         return errorResponse('Invalid wager amount', 400)
       }
-      const createResult = await GamblingService.createCoinFlipChallenge(userId, wagerAmount, call as 'heads' | 'tails')
+      const createResult = await GamblingService.createCoinFlipChallenge(user_id, wager_amount, call as 'heads' | 'tails')
       return successResponse(createResult)
     }
 
     case 'accept': {
       if (!challengeId) return errorResponse('challengeId required', 400)
-      const acceptResult = await GamblingService.acceptCoinFlipChallenge(userId, parseInt(String(challengeId)))
+      const acceptResult = await GamblingService.acceptCoinFlipChallenge(user_id, parseInt(String(challengeId)))
       return successResponse(acceptResult)
     }
 
     case 'cancel': {
-      const cancelResult = await GamblingService.cancelCoinFlipChallenge(userId)
+      const cancelResult = await GamblingService.cancelCoinFlipChallenge(user_id)
       return successResponse(cancelResult)
     }
 

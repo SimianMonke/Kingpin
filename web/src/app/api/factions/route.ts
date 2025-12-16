@@ -26,7 +26,7 @@ export const GET = withErrorHandling(async () => {
 // =============================================================================
 
 interface JoinFactionBody {
-  factionName: string
+  faction_name: string
 }
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
@@ -35,14 +35,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
   const body = await parseJsonBody<JoinFactionBody>(request)
 
-  if (!body.factionName) {
+  if (!body.faction_name) {
     return errorResponse('Faction name is required')
   }
 
-  const result = await FactionService.joinFaction(userId, body.factionName)
+  const result = await FactionService.joinFaction(user_id, body.faction_name)
 
   if (!result.success) {
     return errorResponse(result.error ?? 'Failed to join faction')

@@ -733,6 +733,9 @@ model users {
   last_seen                                                           DateTime?                  @default(now()) @db.Timestamp(6)
   upkeep_debt_days                                                    Int?                       @default(0)
   last_upkeep_check                                                   DateTime?                  @db.Timestamp(6)
+  faction_cooldown_until                                              DateTime?                  @db.Timestamp(6)
+  faction_reward_cooldown_until                                       DateTime?                  @db.Timestamp(6)
+  assigned_territory_id                                               Int?
   active_buffs                                                        active_buffs[]
   business_revenue_history                                            business_revenue_history[]
   chat_messages                                                       chat_messages[]

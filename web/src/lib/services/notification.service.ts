@@ -19,15 +19,15 @@ export interface NotificationData {
   title: string
   message: string
   icon: string
-  linkType: NotificationLinkType | null
-  linkId: string | null
-  isSeen: boolean
-  createdAt: Date
+  link_type: NotificationLinkType | null
+  link_id: string | null
+  is_seen: boolean
+  created_at: Date
 }
 
 export interface CreateNotificationOptions {
-  linkType?: NotificationLinkType
-  linkId?: string
+  link_type?: NotificationLinkType
+  link_id?: string
   customTitle?: string
   customIcon?: string
 }
@@ -47,28 +47,28 @@ export const NotificationService = {
    * Create a notification for a user
    */
   async create(
-    userId: number,
+    user_id: number,
     type: NotificationType,
     message: string,
     options: CreateNotificationOptions = {}
   ): Promise<NotificationData | null> {
     try {
       // Enforce limit first (delete oldest if at max)
-      await this.enforceLimit(userId)
+      await this.enforceLimit(user_id)
 
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + NOTIFICATION_CONFIG.RETENTION_DAYS)
+      const expires_at = new Date()
+      expires_at.setDate(expires_at.getDate() + NOTIFICATION_CONFIG.RETENTION_DAYS)
 
-      const notification = await prisma.userNotification.create({
+      const notification = await prisma.user_notifications.create({
         data: {
-          userId,
-          notificationType: type,
+          user_id,
+          notification_type: type,
           title: options.customTitle ?? NOTIFICATION_TITLES[type],
           message,
           icon: options.customIcon ?? NOTIFICATION_ICONS[type],
-          linkType: options.linkType ?? null,
-          linkId: options.linkId ?? null,
-          expiresAt,
+          link_type: options.link_type ?? null,
+          link_id: options.link_id ?? null,
+          expires_at,
         },
       })
 
@@ -83,27 +83,27 @@ export const NotificationService = {
    * Get notifications for a user
    */
   async getNotifications(
-    userId: number,
+    user_id: number,
     limit = 25,
     includeRead = false
   ): Promise<NotificationListResult> {
     const where = {
-      userId,
-      isDismissed: false,
-      ...(includeRead ? {} : { isSeen: false }),
+      user_id,
+      is_dismissed: false,
+      ...(includeRead ? {} : { is_seen: false }),
     }
 
     const [notifications, unreadCount, total] = await Promise.all([
-      prisma.userNotification.findMany({
+      prisma.user_notifications.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { created_at: 'desc' },
         take: limit,
       }),
-      prisma.userNotification.count({
-        where: { userId, isSeen: false, isDismissed: false },
+      prisma.user_notifications.count({
+        where: { user_id, is_seen: false, is_dismissed: false },
       }),
-      prisma.userNotification.count({
-        where: { userId, isDismissed: false },
+      prisma.user_notifications.count({
+        where: { user_id, is_dismissed: false },
       }),
     ])
 
@@ -117,25 +117,25 @@ export const NotificationService = {
   /**
    * Get unread notification count (lightweight endpoint)
    */
-  async getUnreadCount(userId: number): Promise<number> {
-    return prisma.userNotification.count({
-      where: { userId, isSeen: false, isDismissed: false },
+  async getUnreadCount(user_id: number): Promise<number> {
+    return prisma.user_notifications.count({
+      where: { user_id, is_seen: false, is_dismissed: false },
     })
   },
 
   /**
    * Mark notifications as seen
    */
-  async markAsSeen(userId: number, notificationIds?: number[]): Promise<number> {
-    const result = await prisma.userNotification.updateMany({
+  async markAsSeen(user_id: number, notificationIds?: number[]): Promise<number> {
+    const result = await prisma.user_notifications.updateMany({
       where: {
-        userId,
-        isSeen: false,
+        user_id,
+        is_seen: false,
         ...(notificationIds ? { id: { in: notificationIds } } : {}),
       },
       data: {
-        isSeen: true,
-        seenAt: new Date(),
+        is_seen: true,
+        seen_at: new Date(),
       },
     })
 
@@ -145,12 +145,12 @@ export const NotificationService = {
   /**
    * Dismiss a single notification
    */
-  async dismiss(userId: number, notificationId: number): Promise<boolean> {
-    const result = await prisma.userNotification.updateMany({
-      where: { id: notificationId, userId },
+  async dismiss(user_id: number, notificationId: number): Promise<boolean> {
+    const result = await prisma.user_notifications.updateMany({
+      where: { notification_id: notificationId, user_id },
       data: {
-        isDismissed: true,
-        dismissedAt: new Date(),
+        is_dismissed: true,
+        dismissed_at: new Date(),
       },
     })
 
@@ -160,12 +160,12 @@ export const NotificationService = {
   /**
    * Clear all notifications for a user
    */
-  async clearAll(userId: number): Promise<number> {
-    const result = await prisma.userNotification.updateMany({
-      where: { userId, isDismissed: false },
+  async clearAll(user_id: number): Promise<number> {
+    const result = await prisma.user_notifications.updateMany({
+      where: { user_id, is_dismissed: false },
       data: {
-        isDismissed: true,
-        dismissedAt: new Date(),
+        is_dismissed: true,
+        dismissed_at: new Date(),
       },
     })
 
@@ -175,23 +175,23 @@ export const NotificationService = {
   /**
    * Enforce notification limit (max 25 per user)
    */
-  async enforceLimit(userId: number): Promise<void> {
-    const count = await prisma.userNotification.count({
-      where: { userId, isDismissed: false },
+  async enforceLimit(user_id: number): Promise<void> {
+    const count = await prisma.user_notifications.count({
+      where: { user_id, is_dismissed: false },
     })
 
     if (count >= NOTIFICATION_CONFIG.MAX_PER_USER) {
       // Find the oldest notifications beyond the limit
-      const toDelete = await prisma.userNotification.findMany({
-        where: { userId, isDismissed: false },
-        orderBy: { createdAt: 'asc' },
+      const toDelete = await prisma.user_notifications.findMany({
+        where: { user_id, is_dismissed: false },
+        orderBy: { created_at: 'asc' },
         take: count - NOTIFICATION_CONFIG.MAX_PER_USER + 1,
-        select: { id: true },
+        select: { notification_id: true },
       })
 
       if (toDelete.length > 0) {
-        await prisma.userNotification.deleteMany({
-          where: { id: { in: toDelete.map(n => n.id) } },
+        await prisma.user_notifications.deleteMany({
+          where: { notification_id: { in: toDelete.map(n => n.notification_id) } },
         })
       }
     }
@@ -201,12 +201,12 @@ export const NotificationService = {
    * Cleanup expired notifications (scheduled job)
    */
   async cleanupExpired(): Promise<number> {
-    const result = await prisma.userNotification.deleteMany({
+    const result = await prisma.user_notifications.deleteMany({
       where: {
         OR: [
-          { expiresAt: { lt: new Date() } },
+          { expires_at: { lt: new Date() } },
           {
-            createdAt: {
+            created_at: {
               lt: new Date(Date.now() - NOTIFICATION_CONFIG.RETENTION_DAYS * 24 * 60 * 60 * 1000),
             },
           },
@@ -224,41 +224,41 @@ export const NotificationService = {
   /**
    * Notify user of successful check-in
    */
-  async notifyCheckin(userId: number, streak: number, wealth: number, xp: number): Promise<void> {
+  async notifyCheckin(user_id: number, streak: number, wealth: number, xp: number): Promise<void> {
     const isMilestone = [7, 14, 30, 60, 90, 180, 365].includes(streak)
     const type = isMilestone ? NOTIFICATION_TYPES.CHECKIN_MILESTONE : NOTIFICATION_TYPES.CHECKIN
 
     await this.create(
-      userId,
+      user_id,
       type,
       isMilestone
         ? `${streak}-day streak reached! +$${wealth.toLocaleString()}, +${xp} XP, and a bonus crate!`
         : `Streak: ${streak} days. +$${wealth.toLocaleString()}, +${xp} XP`,
-      { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+      { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
     )
   },
 
   /**
    * Notify user of level up
    */
-  async notifyLevelUp(userId: number, newLevel: number): Promise<void> {
+  async notifyLevelUp(user_id: number, newLevel: number): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.LEVEL_UP,
       `You reached level ${newLevel}!`,
-      { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+      { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
     )
   },
 
   /**
    * Notify user of tier promotion
    */
-  async notifyTierPromotion(userId: number, newTier: string): Promise<void> {
+  async notifyTierPromotion(user_id: number, newTier: string): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.TIER_PROMOTION,
       `You've been promoted to ${newTier}!`,
-      { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+      { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
     )
   },
 
@@ -276,14 +276,14 @@ export const NotificationService = {
         defenderId,
         NOTIFICATION_TYPES.ITEM_STOLEN,
         `${attackerName} robbed you for $${amount.toLocaleString()} and stole your ${itemStolen}!`,
-        { linkType: NOTIFICATION_LINK_TYPES.INVENTORY }
+        { link_type: NOTIFICATION_LINK_TYPES.INVENTORY }
       )
     } else {
       await this.create(
         defenderId,
         NOTIFICATION_TYPES.ROBBED,
         `${attackerName} robbed you for $${amount.toLocaleString()}`,
-        { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+        { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
       )
     }
   },
@@ -296,19 +296,19 @@ export const NotificationService = {
       defenderId,
       NOTIFICATION_TYPES.ROB_DEFENDED,
       `You blocked ${attackerName}'s robbery attempt!`,
-      { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+      { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
     )
   },
 
   /**
    * Notify user that their item broke
    */
-  async notifyItemBroke(userId: number, itemName: string, slot: string): Promise<void> {
+  async notifyItemBroke(user_id: number, itemName: string, slot: string): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.ITEM_BROKE,
       `Your ${itemName} (${slot}) has broken from use!`,
-      { linkType: NOTIFICATION_LINK_TYPES.INVENTORY }
+      { link_type: NOTIFICATION_LINK_TYPES.INVENTORY }
     )
   },
 
@@ -316,31 +316,31 @@ export const NotificationService = {
    * Notify user of crate received
    */
   async notifyCrateReceived(
-    userId: number,
-    crateTier: string,
+    user_id: number,
+    crate_tier: string,
     source: string,
-    isEscrowed = false
+    is_escrowed = false
   ): Promise<void> {
-    const type = isEscrowed ? NOTIFICATION_TYPES.CRATE_ESCROW : NOTIFICATION_TYPES.CRATE_RECEIVED
-    const escrowNote = isEscrowed ? ' (in escrow - claim within 1 hour!)' : ''
+    const type = is_escrowed ? NOTIFICATION_TYPES.CRATE_ESCROW : NOTIFICATION_TYPES.CRATE_RECEIVED
+    const escrowNote = is_escrowed ? ' (in escrow - claim within 1 hour!)' : ''
 
     await this.create(
-      userId,
+      user_id,
       type,
-      `You received a ${crateTier} crate from ${source}${escrowNote}`,
-      { linkType: NOTIFICATION_LINK_TYPES.CRATES }
+      `You received a ${crate_tier} crate from ${source}${escrowNote}`,
+      { link_type: NOTIFICATION_LINK_TYPES.CRATES }
     )
   },
 
   /**
    * Notify user of crate expiration
    */
-  async notifyCrateExpired(userId: number, crateTier: string): Promise<void> {
+  async notifyCrateExpired(user_id: number, crate_tier: string): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.CRATE_EXPIRED,
-      `Your ${crateTier} crate expired! Remember to claim escrowed crates within 1 hour.`,
-      { linkType: NOTIFICATION_LINK_TYPES.CRATES }
+      `Your ${crate_tier} crate expired! Remember to claim escrowed crates within 1 hour.`,
+      { link_type: NOTIFICATION_LINK_TYPES.CRATES }
     )
   },
 
@@ -348,8 +348,8 @@ export const NotificationService = {
    * Notify user of achievement unlock
    */
   async notifyAchievement(
-    userId: number,
-    achievementName: string,
+    user_id: number,
+    name: string,
     tier: string,
     rewards: { wealth?: number; xp?: number; title?: string }
   ): Promise<void> {
@@ -361,22 +361,22 @@ export const NotificationService = {
     const rewardText = rewardParts.length > 0 ? ` Rewards: ${rewardParts.join(', ')}` : ''
 
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.ACHIEVEMENT,
-      `${achievementName} (${tier})!${rewardText}`,
-      { linkType: NOTIFICATION_LINK_TYPES.ACHIEVEMENTS }
+      `${name} (${tier})!${rewardText}`,
+      { link_type: NOTIFICATION_LINK_TYPES.ACHIEVEMENTS }
     )
   },
 
   /**
    * Notify user of title unlock
    */
-  async notifyTitleUnlocked(userId: number, title: string): Promise<void> {
+  async notifyTitleUnlocked(user_id: number, title: string): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.TITLE_UNLOCKED,
       `You unlocked the "${title}" title! Equip it in your profile.`,
-      { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+      { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
     )
   },
 
@@ -384,41 +384,41 @@ export const NotificationService = {
    * Notify user of mission completion
    */
   async notifyMissionComplete(
-    userId: number,
-    missionType: string,
+    user_id: number,
+    mission_type: string,
     totalRewards: { wealth: number; xp: number; crate?: string }
   ): Promise<void> {
     const crateText = totalRewards.crate ? ` + ${totalRewards.crate} crate` : ''
 
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.MISSION_COMPLETE,
-      `All ${missionType} missions complete! +$${totalRewards.wealth.toLocaleString()}, +${totalRewards.xp} XP${crateText}`,
-      { linkType: NOTIFICATION_LINK_TYPES.MISSIONS }
+      `All ${mission_type} missions complete! +$${totalRewards.wealth.toLocaleString()}, +${totalRewards.xp} XP${crateText}`,
+      { link_type: NOTIFICATION_LINK_TYPES.MISSIONS }
     )
   },
 
   /**
    * Notify user of mission expiration
    */
-  async notifyMissionExpired(userId: number, missionType: string, count: number): Promise<void> {
+  async notifyMissionExpired(user_id: number, mission_type: string, count: number): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.MISSION_EXPIRED,
-      `${count} ${missionType} mission${count > 1 ? 's' : ''} expired. New missions available!`,
-      { linkType: NOTIFICATION_LINK_TYPES.MISSIONS }
+      `${count} ${mission_type} mission${count > 1 ? 's' : ''} expired. New missions available!`,
+      { link_type: NOTIFICATION_LINK_TYPES.MISSIONS }
     )
   },
 
   /**
    * Notify user of faction join
    */
-  async notifyFactionJoined(userId: number, factionName: string): Promise<void> {
+  async notifyFactionJoined(user_id: number, faction_name: string): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.FACTION_JOINED,
-      `Welcome to ${factionName}! Start earning territory points for your faction.`,
-      { linkType: NOTIFICATION_LINK_TYPES.FACTION }
+      `Welcome to ${faction_name}! Start earning territory points for your faction.`,
+      { link_type: NOTIFICATION_LINK_TYPES.FACTION }
     )
   },
 
@@ -426,15 +426,15 @@ export const NotificationService = {
    * Notify user of territory capture
    */
   async notifyTerritoryCapture(
-    userId: number,
+    user_id: number,
     territoryName: string,
-    factionName: string
+    faction_name: string
   ): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.TERRITORY_CAPTURED,
-      `${factionName} has captured ${territoryName}!`,
-      { linkType: NOTIFICATION_LINK_TYPES.FACTION }
+      `${faction_name} has captured ${territoryName}!`,
+      { link_type: NOTIFICATION_LINK_TYPES.FACTION }
     )
   },
 
@@ -442,15 +442,15 @@ export const NotificationService = {
    * Notify user of territory loss
    */
   async notifyTerritoryLost(
-    userId: number,
+    user_id: number,
     territoryName: string,
     newControllerName: string
   ): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.TERRITORY_LOST,
       `${territoryName} was lost to ${newControllerName}`,
-      { linkType: NOTIFICATION_LINK_TYPES.FACTION }
+      { link_type: NOTIFICATION_LINK_TYPES.FACTION }
     )
   },
 
@@ -458,40 +458,40 @@ export const NotificationService = {
    * Notify user of faction weekly reward
    */
   async notifyFactionReward(
-    userId: number,
-    factionName: string,
+    user_id: number,
+    faction_name: string,
     wealth: number,
     xp: number
   ): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.FACTION_REWARD,
-      `Weekly ${factionName} reward: +$${wealth.toLocaleString()}, +${xp} XP`,
-      { linkType: NOTIFICATION_LINK_TYPES.FACTION }
+      `Weekly ${faction_name} reward: +$${wealth.toLocaleString()}, +${xp} XP`,
+      { link_type: NOTIFICATION_LINK_TYPES.FACTION }
     )
   },
 
   /**
    * Notify user they became the Juicernaut
    */
-  async notifyJuicernautCrown(userId: number, totalUsd: number): Promise<void> {
+  async notifyJuicernautCrown(user_id: number, totalUsd: number): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.JUICERNAUT_CROWN,
       `You're now the Juicernaut! ($${totalUsd.toFixed(2)}) Enjoy 2x XP, 3x loot, and rob immunity!`,
-      { linkType: NOTIFICATION_LINK_TYPES.LEADERBOARDS }
+      { link_type: NOTIFICATION_LINK_TYPES.LEADERBOARDS }
     )
   },
 
   /**
    * Notify user they lost the Juicernaut crown
    */
-  async notifyJuicernautDethroned(userId: number, newHolderName: string): Promise<void> {
+  async notifyJuicernautDethroned(user_id: number, newHolderName: string): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.JUICERNAUT_DETHRONED,
       `${newHolderName} has taken the Juicernaut crown from you!`,
-      { linkType: NOTIFICATION_LINK_TYPES.LEADERBOARDS }
+      { link_type: NOTIFICATION_LINK_TYPES.LEADERBOARDS }
     )
   },
 
@@ -499,7 +499,7 @@ export const NotificationService = {
    * Notify user of Juicernaut session reward
    */
   async notifyJuicernautReward(
-    userId: number,
+    user_id: number,
     wealth: number,
     xp: number,
     crate?: string
@@ -507,10 +507,10 @@ export const NotificationService = {
     const crateText = crate ? ` + ${crate} crate` : ''
 
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.JUICERNAUT_REWARD,
       `Juicernaut session ended! +$${wealth.toLocaleString()}, +${xp} XP${crateText}`,
-      { linkType: NOTIFICATION_LINK_TYPES.LEADERBOARDS }
+      { link_type: NOTIFICATION_LINK_TYPES.LEADERBOARDS }
     )
   },
 
@@ -518,16 +518,16 @@ export const NotificationService = {
    * Notify user of monetization reward
    */
   async notifyMonetization(
-    userId: number,
-    eventType: string,
+    user_id: number,
+    event_type: string,
     wealth: number,
     xp: number
   ): Promise<void> {
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.MONETIZATION,
-      `Thank you for your ${eventType}! +$${wealth.toLocaleString()}, +${xp} XP`,
-      { linkType: NOTIFICATION_LINK_TYPES.PROFILE }
+      `Thank you for your ${event_type}! +$${wealth.toLocaleString()}, +${xp} XP`,
+      { link_type: NOTIFICATION_LINK_TYPES.PROFILE }
     )
   },
 
@@ -535,39 +535,39 @@ export const NotificationService = {
    * Notify user of heist win
    */
   async notifyHeistWon(
-    userId: number,
-    crateTier: string,
-    responseTimeMs: number
+    user_id: number,
+    crate_tier: string,
+    response_time_ms: number
   ): Promise<void> {
-    const responseTimeSec = (responseTimeMs / 1000).toFixed(2)
+    const responseTimeSec = (response_time_ms / 1000).toFixed(2)
 
     await this.create(
-      userId,
+      user_id,
       NOTIFICATION_TYPES.HEIST_WON,
-      `You won the heist! ${crateTier} crate earned in ${responseTimeSec}s`,
-      { linkType: NOTIFICATION_LINK_TYPES.EVENTS }
+      `You won the heist! ${crate_tier} crate earned in ${responseTimeSec}s`,
+      { link_type: NOTIFICATION_LINK_TYPES.EVENTS }
     )
   },
 
   /**
    * Notify user of black market rotation (bulk notification)
    */
-  async notifyBlackMarketRotation(userIds: number[]): Promise<void> {
+  async notifyBlackMarketRotation(user_ids: number[]): Promise<void> {
     // Use bulk insert for efficiency
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + NOTIFICATION_CONFIG.RETENTION_DAYS)
+    const expires_at = new Date()
+    expires_at.setDate(expires_at.getDate() + NOTIFICATION_CONFIG.RETENTION_DAYS)
 
-    const notifications = userIds.map(userId => ({
-      userId,
-      notificationType: NOTIFICATION_TYPES.BLACK_MARKET_ROTATION,
+    const notifications = user_ids.map(user_id => ({
+      user_id,
+      notification_type: NOTIFICATION_TYPES.BLACK_MARKET_ROTATION,
       title: NOTIFICATION_TITLES[NOTIFICATION_TYPES.BLACK_MARKET_ROTATION],
       message: 'New items available in the Black Market!',
       icon: NOTIFICATION_ICONS[NOTIFICATION_TYPES.BLACK_MARKET_ROTATION],
-      linkType: NOTIFICATION_LINK_TYPES.MARKET,
-      expiresAt,
+      link_type: NOTIFICATION_LINK_TYPES.MARKET,
+      expires_at,
     }))
 
-    await prisma.userNotification.createMany({
+    await prisma.user_notifications.createMany({
       data: notifications,
       skipDuplicates: true,
     })
@@ -581,26 +581,26 @@ export const NotificationService = {
    * Map database notification to NotificationData
    */
   mapNotification(notification: {
-    id: number
-    notificationType: string
+    notification_id: number
+    notification_type: string
     title: string
     message: string
     icon: string | null
-    linkType: string | null
-    linkId: string | null
-    isSeen: boolean
-    createdAt: Date
+    link_type: string | null
+    link_id: string | null
+    is_seen: boolean | null
+    created_at: Date | null
   }): NotificationData {
     return {
-      id: notification.id,
-      type: notification.notificationType as NotificationType,
+      id: notification.notification_id,
+      type: notification.notification_type as NotificationType,
       title: notification.title,
       message: notification.message,
-      icon: notification.icon ?? NOTIFICATION_ICONS[notification.notificationType as NotificationType] ?? '',
-      linkType: notification.linkType as NotificationLinkType | null,
-      linkId: notification.linkId,
-      isSeen: notification.isSeen,
-      createdAt: notification.createdAt,
+      icon: notification.icon ?? NOTIFICATION_ICONS[notification.notification_type as NotificationType] ?? '',
+      link_type: notification.link_type as NotificationLinkType | null,
+      link_id: notification.link_id,
+      is_seen: notification.is_seen ?? false,
+      created_at: notification.created_at ?? new Date(),
     }
   },
 }

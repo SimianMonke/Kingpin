@@ -6,7 +6,7 @@ import { HOUSING_UPKEEP_CONFIG } from '../game'
 // =============================================================================
 
 export interface UpkeepResult {
-  userId: number
+  user_id: number
   housingName: string
   upkeepCost: number
   paid: boolean
@@ -32,7 +32,7 @@ export const HousingService = {
   /**
    * Get all users with equipped housing
    */
-  async getUsersWithHousing(): Promise<{ userId: number; housingId: number; upkeepCost: number; housingName: string }[]> {
+  async getUsersWithHousing(): Promise<{ user_id: number; housingId: number; upkeepCost: number; housingName: string }[]> {
     const equipped = await prisma.user_inventory.findMany({
       where: {
         is_equipped: true,
@@ -51,7 +51,7 @@ export const HousingService = {
     return equipped
       .filter(inv => inv.items.upkeep_cost !== null)
       .map(inv => ({
-        userId: inv.user_id,
+        user_id: inv.user_id,
         housingId: inv.items.id,
         upkeepCost: inv.items.upkeep_cost!,
         housingName: inv.items.name,
@@ -61,11 +61,11 @@ export const HousingService = {
   /**
    * Deduct upkeep for a specific user
    */
-  async deductUpkeep(userId: number): Promise<UpkeepResult | null> {
+  async deductUpkeep(user_id: number): Promise<UpkeepResult | null> {
     // Find user's equipped housing
     const equippedHousing = await prisma.user_inventory.findFirst({
       where: {
-        user_id: userId,
+        user_id: user_id,
         is_equipped: true,
         slot: 'housing',
         items: {
@@ -84,7 +84,7 @@ export const HousingService = {
 
     const upkeepCost = equippedHousing.items.upkeep_cost
     const user = await prisma.users.findUnique({
-      where: { id: userId },
+      where: { id: user_id },
       select: { wealth: true, upkeep_debt_days: true },
     })
 
@@ -105,7 +105,7 @@ export const HousingService = {
       paid = true
 
       await prisma.users.update({
-        where: { id: userId },
+        where: { id: user_id },
         data: {
           wealth: { decrement: upkeepCost },
           upkeep_debt_days: 0,
@@ -117,7 +117,7 @@ export const HousingService = {
       newDebtDays = currentDebtDays + 1
 
       await prisma.users.update({
-        where: { id: userId },
+        where: { id: user_id },
         data: {
           upkeep_debt_days: newDebtDays,
           last_upkeep_check: new Date(),
@@ -127,7 +127,7 @@ export const HousingService = {
       // Apply penalties based on debt days
       if (newDebtDays >= HOUSING_UPKEEP_CONFIG.EVICTION_DAYS) {
         // Eviction - unequip housing
-        await this.evictUser(userId, equippedHousing.id)
+        await this.evictUser(user_id, equippedHousing.id)
         penalty = `Evicted from ${equippedHousing.items.name} after ${newDebtDays} days without payment`
       } else if (newDebtDays >= HOUSING_UPKEEP_CONFIG.GRACE_PERIOD_DAYS) {
         penalty = `${HOUSING_UPKEEP_CONFIG.DEBUFF_PERCENT}% stat debuff applied (${newDebtDays} days overdue)`
@@ -135,7 +135,7 @@ export const HousingService = {
     }
 
     return {
-      userId,
+      user_id,
       housingName: equippedHousing.items.name,
       upkeepCost,
       paid,
@@ -149,7 +149,7 @@ export const HousingService = {
   /**
    * Evict user from housing (unequip due to non-payment)
    */
-  async evictUser(userId: number, inventoryId: number): Promise<void> {
+  async evictUser(user_id: number, inventoryId: number): Promise<void> {
     await prisma.user_inventory.update({
       where: { id: inventoryId },
       data: {
@@ -161,7 +161,7 @@ export const HousingService = {
 
     // Reset debt days since they no longer have housing
     await prisma.users.update({
-      where: { id: userId },
+      where: { id: user_id },
       data: {
         upkeep_debt_days: 0,
       },
@@ -186,7 +186,7 @@ export const HousingService = {
 
       for (const housing of usersWithHousing) {
         try {
-          const result = await this.deductUpkeep(housing.userId)
+          const result = await this.deductUpkeep(housing.user_id)
           if (result) {
             summary.usersProcessed++
             if (result.paid) {
@@ -199,7 +199,7 @@ export const HousingService = {
             }
           }
         } catch (error) {
-          summary.errors.push(`User ${housing.userId}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          summary.errors.push(`User ${housing.user_id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
       }
     } catch (error) {
@@ -212,7 +212,7 @@ export const HousingService = {
   /**
    * Check upkeep status for a user
    */
-  async checkUpkeepStatus(userId: number): Promise<{
+  async checkUpkeepStatus(user_id: number): Promise<{
     hasHousing: boolean
     housingName: string | null
     upkeepCost: number | null
@@ -223,7 +223,7 @@ export const HousingService = {
   }> {
     const equippedHousing = await prisma.user_inventory.findFirst({
       where: {
-        user_id: userId,
+        user_id: user_id,
         is_equipped: true,
         slot: 'housing',
       },
@@ -245,7 +245,7 @@ export const HousingService = {
     }
 
     const user = await prisma.users.findUnique({
-      where: { id: userId },
+      where: { id: user_id },
       select: { upkeep_debt_days: true },
     })
 
@@ -269,9 +269,9 @@ export const HousingService = {
    * Get debuff multiplier for a user based on upkeep debt
    * Returns 1.0 if no debuff, or reduced value if debuff applies
    */
-  async getDebuffMultiplier(userId: number): Promise<number> {
+  async getDebuffMultiplier(user_id: number): Promise<number> {
     const user = await prisma.users.findUnique({
-      where: { id: userId },
+      where: { id: user_id },
       select: { upkeep_debt_days: true },
     })
 

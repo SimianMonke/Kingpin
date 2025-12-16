@@ -26,29 +26,29 @@ export interface CreateUserInput {
   platform: Platform
   platformUserId: string
   username: string
-  displayName?: string
+  display_name?: string
 }
 
 export interface UserProfile {
   id: number
   username: string
-  displayName: string | null
-  kingpinName: string | null
+  display_name: string | null
+  kingpin_name: string | null
   wealth: bigint
   xp: bigint
   level: number
-  statusTier: string
+  status_tier: string
   hp: number
-  checkinStreak: number
-  lastCheckinDate: Date | null
-  totalPlayCount: number
+  checkin_streak: number
+  last_checkin_date: Date | null
+  total_play_count: number
   wins: number
   losses: number
-  factionId: number | null
-  factionName: string | null
+  faction_id: number | null
+  faction_name: string | null
   equippedTitle: string | null
-  createdAt: Date
-  lastSeen: Date
+  created_at: Date
+  last_seen: Date
   linkedPlatforms: Platform[]
 }
 
@@ -56,8 +56,8 @@ export interface CheckinResult {
   success: boolean
   alreadyCheckedIn: boolean
   streak: number
-  wealthEarned: number
-  xpEarned: number
+  wealth_earned: number
+  xp_earned: number
   levelUp: boolean
   newLevel?: number
   tierPromotion: boolean
@@ -73,12 +73,12 @@ export const UserService = {
   /**
    * Find user by internal ID
    */
-  async findById(userId: number) {
-    return prisma.user.findUnique({
-      where: { id: userId },
+  async findById(user_id: number) {
+    return prisma.users.findUnique({
+      where: { id: user_id },
       include: {
-        faction: true,
-        titles: { where: { isEquipped: true } },
+        factions: true,
+        user_titles: { where: { is_equipped: true } },
       },
     })
   },
@@ -90,11 +90,11 @@ export const UserService = {
     const field = getPlatformField(platform)
     if (!field) return null
 
-    return prisma.user.findFirst({
+    return prisma.users.findFirst({
       where: { [field]: platformUserId },
       include: {
-        faction: true,
-        titles: { where: { isEquipped: true } },
+        factions: true,
+        user_titles: { where: { is_equipped: true } },
       },
     })
   },
@@ -103,17 +103,17 @@ export const UserService = {
    * Find user by username (case-insensitive)
    */
   async findByUsername(username: string) {
-    return prisma.user.findFirst({
+    return prisma.users.findFirst({
       where: {
         OR: [
           { username: { equals: username, mode: 'insensitive' } },
-          { displayName: { equals: username, mode: 'insensitive' } },
-          { kingpinName: { equals: username, mode: 'insensitive' } },
+          { display_name: { equals: username, mode: 'insensitive' } },
+          { kingpin_name: { equals: username, mode: 'insensitive' } },
         ],
       },
       include: {
-        faction: true,
-        titles: { where: { isEquipped: true } },
+        factions: true,
+        user_titles: { where: { is_equipped: true } },
       },
     })
   },
@@ -125,19 +125,19 @@ export const UserService = {
     const field = getPlatformField(input.platform)
     if (!field) throw new Error(`Invalid platform: ${input.platform}`)
 
-    return prisma.user.create({
+    return prisma.users.create({
       data: {
         [field]: input.platformUserId,
         username: input.username,
-        displayName: input.displayName || input.username,
+        display_name: input.display_name || input.username,
         ...(input.platform === 'discord' && {
           discordUsername: input.username,
           discordLinkedAt: new Date(),
         }),
       },
       include: {
-        faction: true,
-        titles: { where: { isEquipped: true } },
+        factions: true,
+        user_titles: { where: { is_equipped: true } },
       },
     })
   },
@@ -162,12 +162,12 @@ export const UserService = {
   /**
    * Get full user profile with computed fields
    */
-  async getProfile(userId: number): Promise<UserProfile | null> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+  async getProfile(user_id: number): Promise<UserProfile | null> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       include: {
-        faction: true,
-        titles: { where: { isEquipped: true }, take: 1 },
+        factions: true,
+        user_titles: { where: { is_equipped: true }, take: 1 },
       },
     })
 
@@ -175,30 +175,30 @@ export const UserService = {
 
     // Determine linked platforms
     const linkedPlatforms: Platform[] = []
-    if (user.kickUserId) linkedPlatforms.push('kick')
-    if (user.twitchUserId) linkedPlatforms.push('twitch')
-    if (user.discordUserId) linkedPlatforms.push('discord')
+    if (user.kick_user_id) linkedPlatforms.push('kick')
+    if (user.twitch_user_id) linkedPlatforms.push('twitch')
+    if (user.discord_user_id) linkedPlatforms.push('discord')
 
     return {
       id: user.id,
       username: user.username,
-      displayName: user.displayName,
-      kingpinName: user.kingpinName,
-      wealth: user.wealth,
-      xp: user.xp,
-      level: user.level,
-      statusTier: user.statusTier,
-      hp: user.hp,
-      checkinStreak: user.checkinStreak,
-      lastCheckinDate: user.lastCheckinDate,
-      totalPlayCount: user.totalPlayCount,
-      wins: user.wins,
-      losses: user.losses,
-      factionId: user.factionId,
-      factionName: user.faction?.factionName || null,
-      equippedTitle: user.titles[0]?.title || null,
-      createdAt: user.createdAt,
-      lastSeen: user.lastSeen,
+      display_name: user.display_name,
+      kingpin_name: user.kingpin_name,
+      wealth: user.wealth ?? BigInt(0),
+      xp: user.xp ?? BigInt(0),
+      level: user.level ?? 1,
+      status_tier: user.status_tier ?? 'Punk',
+      hp: user.hp ?? 100,
+      checkin_streak: user.checkin_streak ?? 0,
+      last_checkin_date: user.last_checkin_date,
+      total_play_count: user.total_play_count ?? 0,
+      wins: user.wins ?? 0,
+      losses: user.losses ?? 0,
+      faction_id: user.faction_id,
+      faction_name: user.factions?.name || null,
+      equippedTitle: user.user_titles[0]?.title || null,
+      created_at: user.created_at ?? new Date(),
+      last_seen: user.last_seen ?? new Date(),
       linkedPlatforms,
     }
   },
@@ -206,22 +206,22 @@ export const UserService = {
   /**
    * Link an additional platform to existing user
    */
-  async linkPlatform(userId: number, platform: Platform, platformUserId: string) {
+  async linkPlatform(user_id: number, platform: Platform, platformUserId: string) {
     const field = getPlatformField(platform)
     if (!field) throw new Error(`Invalid platform: ${platform}`)
 
     // Check if this platform ID is already linked to another user
     const existingUser = await this.findByPlatform(platform, platformUserId)
-    if (existingUser && existingUser.id !== userId) {
+    if (existingUser && existingUser.id !== user_id) {
       throw new Error('This account is already linked to another user')
     }
 
-    return prisma.user.update({
-      where: { id: userId },
+    return prisma.users.update({
+      where: { id: user_id },
       data: {
         [field]: platformUserId,
         ...(platform === 'discord' && {
-          discordLinkedAt: new Date(),
+          discord_linked_at: new Date(),
         }),
       },
     })
@@ -230,12 +230,12 @@ export const UserService = {
   /**
    * Unlink a platform from user
    */
-  async unlinkPlatform(userId: number, platform: Platform) {
-    const user = await this.findById(userId)
+  async unlinkPlatform(user_id: number, platform: Platform) {
+    const user = await this.findById(user_id)
     if (!user) throw new Error('User not found')
 
     // Count linked platforms
-    const linkedCount = [user.kickUserId, user.twitchUserId, user.discordUserId].filter(Boolean).length
+    const linkedCount = [user.kick_user_id, user.twitch_user_id, user.discord_user_id].filter(Boolean).length
 
     if (linkedCount <= 1) {
       throw new Error('Cannot unlink the only connected platform')
@@ -244,13 +244,13 @@ export const UserService = {
     const field = getPlatformField(platform)
     if (!field) throw new Error(`Invalid platform: ${platform}`)
 
-    return prisma.user.update({
-      where: { id: userId },
+    return prisma.users.update({
+      where: { id: user_id },
       data: {
         [field]: null,
         ...(platform === 'discord' && {
-          discordUsername: null,
-          discordLinkedAt: null,
+          discord_username: null,
+          discord_linked_at: null,
         }),
       },
     })
@@ -259,19 +259,19 @@ export const UserService = {
   /**
    * Update user's last seen timestamp
    */
-  async updateLastSeen(userId: number) {
-    return prisma.user.update({
-      where: { id: userId },
-      data: { lastSeen: new Date() },
+  async updateLastSeen(user_id: number) {
+    return prisma.users.update({
+      where: { id: user_id },
+      data: { last_seen: new Date() },
     })
   },
 
   /**
    * Add wealth to user
    */
-  async addWealth(userId: number, amount: number) {
-    return prisma.user.update({
-      where: { id: userId },
+  async addWealth(user_id: number, amount: number) {
+    return prisma.users.update({
+      where: { id: user_id },
       data: { wealth: { increment: amount } },
     })
   },
@@ -279,14 +279,14 @@ export const UserService = {
   /**
    * Remove wealth from user (with floor at 0)
    */
-  async removeWealth(userId: number, amount: number) {
-    const user = await this.findById(userId)
+  async removeWealth(user_id: number, amount: number) {
+    const user = await this.findById(user_id)
     if (!user) throw new Error('User not found')
 
     const newWealth = BigInt(Math.max(0, Number(user.wealth) - amount))
 
-    return prisma.user.update({
-      where: { id: userId },
+    return prisma.users.update({
+      where: { id: user_id },
       data: { wealth: newWealth },
     })
   },
@@ -294,23 +294,23 @@ export const UserService = {
   /**
    * Add XP to user and handle level ups
    */
-  async addXp(userId: number, amount: number): Promise<{ levelUp: boolean; newLevel?: number; tierPromotion: boolean; newTier?: string }> {
-    const user = await this.findById(userId)
+  async addXp(user_id: number, amount: number): Promise<{ levelUp: boolean; newLevel?: number; tierPromotion: boolean; newTier?: string }> {
+    const user = await this.findById(user_id)
     if (!user) throw new Error('User not found')
 
-    const newXp = user.xp + BigInt(amount)
+    const newXp = (user.xp ?? BigInt(0)) + BigInt(amount)
     const newLevel = levelFromXp(Number(newXp))
     const newTier = getTierFromLevel(newLevel)
 
-    const levelUp = newLevel > user.level
-    const tierPromotion = newTier !== user.statusTier
+    const levelUp = newLevel > (user.level ?? 1)
+    const tierPromotion = newTier !== user.status_tier
 
-    await prisma.user.update({
-      where: { id: userId },
+    await prisma.users.update({
+      where: { id: user_id },
       data: {
         xp: newXp,
         level: newLevel,
-        statusTier: newTier,
+        status_tier: newTier,
       },
     })
 
@@ -325,25 +325,25 @@ export const UserService = {
   /**
    * Process daily check-in
    */
-  async processCheckin(userId: number): Promise<CheckinResult> {
-    const user = await this.findById(userId)
+  async processCheckin(user_id: number): Promise<CheckinResult> {
+    const user = await this.findById(user_id)
     if (!user) throw new Error('User not found')
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
     // Check if already checked in today
-    if (user.lastCheckinDate) {
-      const lastCheckin = new Date(user.lastCheckinDate)
+    if (user.last_checkin_date) {
+      const lastCheckin = new Date(user.last_checkin_date)
       lastCheckin.setHours(0, 0, 0, 0)
 
       if (lastCheckin.getTime() === today.getTime()) {
         return {
           success: false,
           alreadyCheckedIn: true,
-          streak: user.checkinStreak,
-          wealthEarned: 0,
-          xpEarned: 0,
+          streak: user.checkin_streak ?? 0,
+          wealth_earned: 0,
+          xp_earned: 0,
           levelUp: false,
           tierPromotion: false,
           milestoneReward: null,
@@ -355,7 +355,7 @@ export const UserService = {
       yesterday.setDate(yesterday.getDate() - 1)
 
       const streakContinues = lastCheckin.getTime() === yesterday.getTime()
-      var newStreak = streakContinues ? user.checkinStreak + 1 : 1
+      var newStreak = streakContinues ? (user.checkin_streak ?? 0) + 1 : 1
     } else {
       var newStreak = 1
     }
@@ -365,69 +365,69 @@ export const UserService = {
     const milestoneReward = getStreakMilestoneReward(newStreak)
 
     // Update user
-    await prisma.user.update({
-      where: { id: userId },
+    await prisma.users.update({
+      where: { id: user_id },
       data: {
-        checkinStreak: newStreak,
-        lastCheckinDate: today,
+        checkin_streak: newStreak,
+        last_checkin_date: today,
         wealth: { increment: rewards.wealth },
       },
     })
 
     // Add XP separately to handle level up
-    const xpResult = await this.addXp(userId, rewards.xp)
+    const xpResult = await this.addXp(user_id, rewards.xp)
 
     // Award milestone crate if applicable (using CrateService for proper escrow handling)
     if (milestoneReward) {
-      await CrateService.awardCrate(userId, milestoneReward as CrateTier, CRATE_SOURCES.CHECKIN_MILESTONE)
+      await CrateService.awardCrate(user_id, milestoneReward as CrateTier, CRATE_SOURCES.CHECKIN_MILESTONE)
     }
 
     // Record check-in event
-    await prisma.gameEvent.create({
+    await prisma.game_events.create({
       data: {
-        userId,
-        eventType: 'checkin',
-        wealthChange: rewards.wealth,
-        xpChange: rewards.xp,
+        user_id,
+        event_type: 'checkin',
+        wealth_change: rewards.wealth,
+        xp_change: rewards.xp,
         tier: `streak_${newStreak}`,
-        eventDescription: `Daily check-in (streak: ${newStreak})`,
+        event_description: `Daily check-in (streak: ${newStreak})`,
       },
     })
 
     // Update leaderboard snapshots
-    await LeaderboardService.updateSnapshot(userId, {
+    await LeaderboardService.updateSnapshot(user_id, {
       checkins: 1,
-      wealthEarned: rewards.wealth,
-      xpEarned: rewards.xp,
+      wealth_earned: rewards.wealth,
+      xp_earned: rewards.xp,
     })
 
     // Check for longest streak record
-    await LeaderboardService.checkAndUpdateRecord('longest_streak', userId, newStreak)
+    await LeaderboardService.checkAndUpdateRecord('longest_streak', user_id, newStreak)
 
     // Update mission progress
-    await MissionService.updateProgress(userId, MISSION_OBJECTIVE_TYPES.CHECKIN_TODAY, 1)
-    await MissionService.setProgress(userId, MISSION_OBJECTIVE_TYPES.CHECKIN_STREAK, newStreak)
-    await MissionService.updateProgress(userId, MISSION_OBJECTIVE_TYPES.CHECKIN_WEEK, 1)
-    await MissionService.updateProgress(userId, MISSION_OBJECTIVE_TYPES.WEALTH_EARNED, rewards.wealth)
+    await MissionService.updateProgress(user_id, MISSION_OBJECTIVE_TYPES.CHECKIN_TODAY, 1)
+    await MissionService.setProgress(user_id, MISSION_OBJECTIVE_TYPES.CHECKIN_STREAK, newStreak)
+    await MissionService.updateProgress(user_id, MISSION_OBJECTIVE_TYPES.CHECKIN_WEEK, 1)
+    await MissionService.updateProgress(user_id, MISSION_OBJECTIVE_TYPES.WEALTH_EARNED, rewards.wealth)
 
     // Update achievement progress
-    await AchievementService.setProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.CHECKIN_STREAK, newStreak)
-    await AchievementService.incrementProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.TOTAL_WEALTH_EARNED, rewards.wealth)
+    await AchievementService.setProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.CHECKIN_STREAK, newStreak)
+    await AchievementService.incrementProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.TOTAL_WEALTH_EARNED, rewards.wealth)
 
     // Check level achievements
     if (xpResult.levelUp && xpResult.newLevel) {
-      await AchievementService.setProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.LEVEL, xpResult.newLevel)
+      await AchievementService.setProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.LEVEL, xpResult.newLevel)
     }
 
     // Add territory score for faction (15 points per check-in)
-    await FactionService.addTerritoryScore(userId, 'checkin')
+    await FactionService.addTerritoryScore(user_id, 'checkin')
 
     return {
       success: true,
       alreadyCheckedIn: false,
       streak: newStreak,
-      wealthEarned: rewards.wealth,
-      xpEarned: rewards.xp,
+      wealth_earned: rewards.wealth,
+      xp_earned: rewards.xp,
       levelUp: xpResult.levelUp,
       newLevel: xpResult.newLevel,
       tierPromotion: xpResult.tierPromotion,
@@ -439,7 +439,7 @@ export const UserService = {
   /**
    * Update user's Kingpin name (custom display name)
    */
-  async setKingpinName(userId: number, name: string) {
+  async setKingpinName(user_id: number, name: string) {
     // Validate name
     if (name.length < 3 || name.length > 20) {
       throw new Error('Name must be between 3 and 20 characters')
@@ -450,10 +450,10 @@ export const UserService = {
     }
 
     // Check if name is taken
-    const existing = await prisma.user.findFirst({
+    const existing = await prisma.users.findFirst({
       where: {
-        kingpinName: { equals: name, mode: 'insensitive' },
-        id: { not: userId },
+        kingpin_name: { equals: name, mode: 'insensitive' },
+        id: { not: user_id },
       },
     })
 
@@ -461,52 +461,52 @@ export const UserService = {
       throw new Error('This name is already taken')
     }
 
-    return prisma.user.update({
-      where: { id: userId },
-      data: { kingpinName: name },
+    return prisma.users.update({
+      where: { id: user_id },
+      data: { kingpin_name: name },
     })
   },
 
   /**
    * Get user stats for display
    */
-  async getStats(userId: number) {
-    const user = await this.findById(userId)
+  async getStats(user_id: number) {
+    const user = await this.findById(user_id)
     if (!user) return null
 
-    const xpProgress = xpProgressInLevel(Number(user.xp))
+    const xpProgress = xpProgressInLevel(Number(user.xp ?? BigInt(0)))
 
     return {
       wealth: user.wealth,
-      formattedWealth: formatWealth(user.wealth),
+      formattedWealth: formatWealth(user.wealth ?? BigInt(0)),
       xp: user.xp,
       level: user.level,
-      tier: user.statusTier,
+      tier: user.status_tier,
       xpProgress,
-      checkinStreak: user.checkinStreak,
-      totalPlays: user.totalPlayCount,
+      checkin_streak: user.checkin_streak,
+      totalPlays: user.total_play_count,
       wins: user.wins,
       losses: user.losses,
-      winRate: user.totalPlayCount > 0 ? (user.wins / user.totalPlayCount) * 100 : 0,
+      winRate: (user.total_play_count ?? 0) > 0 ? ((user.wins ?? 0) / (user.total_play_count ?? 1)) * 100 : 0,
     }
   },
 
   /**
    * Increment play count
    */
-  async incrementPlayCount(userId: number) {
-    return prisma.user.update({
-      where: { id: userId },
-      data: { totalPlayCount: { increment: 1 } },
+  async incrementPlayCount(user_id: number) {
+    return prisma.users.update({
+      where: { id: user_id },
+      data: { total_play_count: { increment: 1 } },
     })
   },
 
   /**
    * Record win
    */
-  async recordWin(userId: number) {
-    return prisma.user.update({
-      where: { id: userId },
+  async recordWin(user_id: number) {
+    return prisma.users.update({
+      where: { id: user_id },
       data: { wins: { increment: 1 } },
     })
   },
@@ -514,9 +514,9 @@ export const UserService = {
   /**
    * Record loss
    */
-  async recordLoss(userId: number) {
-    return prisma.user.update({
-      where: { id: userId },
+  async recordLoss(user_id: number) {
+    return prisma.users.update({
+      where: { id: user_id },
       data: { losses: { increment: 1 } },
     })
   },
@@ -529,11 +529,11 @@ export const UserService = {
 function getPlatformField(platform: Platform): string | null {
   switch (platform) {
     case 'kick':
-      return 'kickUserId'
+      return 'kick_user_id'
     case 'twitch':
-      return 'twitchUserId'
+      return 'twitch_user_id'
     case 'discord':
-      return 'discordUserId'
+      return 'discord_user_id'
     default:
       return null
   }

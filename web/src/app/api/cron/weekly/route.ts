@@ -44,15 +44,15 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     // Notify all rewarded users
     for (const reward of rewardResults) {
       // Get user's faction name
-      const user = await prisma.user.findUnique({
-        where: { id: reward.userId },
-        include: { faction: { select: { factionName: true } } },
+      const user = await prisma.users.findUnique({
+        where: { id: reward.user_id },
+        include: { factions: { select: { name: true } } },
       })
 
-      if (user?.faction) {
+      if (user?.factions) {
         await NotificationService.notifyFactionReward(
-          reward.userId,
-          user.faction.factionName,
+          reward.user_id,
+          user.factions.name,
           reward.wealth,
           reward.xp
         )
@@ -89,7 +89,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
 
       await DiscordService.postWeeklyFactionWinner(
         winner.name,
-        winner.territoriesControlled,
+        winner.territories_controlled,
         winner.weeklyScore
       )
 
@@ -98,7 +98,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         weeklyWinnerPost: {
           success: true,
           winner: winner.name,
-          territories: winner.territoriesControlled,
+          territories: winner.territories_controlled,
           score: winner.weeklyScore,
         },
       }

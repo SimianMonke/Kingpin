@@ -4,25 +4,25 @@ import { useEffect, useState } from 'react'
 
 interface InventoryItem {
   id: number
-  itemId: number
+  item_id: number
   itemName: string
-  itemType: string
+  type: string
   tier: string
   durability: number
   maxDurability: number
-  isEquipped: boolean
+  is_equipped: boolean
   slot: string | null
-  isEscrowed: boolean
-  escrowExpiresAt: string | null
-  acquiredAt: string
-  robBonus: number | null
-  defenseBonus: number | null
-  revenueMin: number | null
-  revenueMax: number | null
-  insurancePercent: number | null
-  sellPrice: number | null
+  is_escrowed: boolean
+  escrow_expires_at: string | null
+  acquired_at: string
+  rob_bonus: number | null
+  defense_bonus: number | null
+  revenue_min: number | null
+  revenue_max: number | null
+  insurance_percent: number | null
+  sell_price: number | null
   description: string | null
-  flavorText: string | null
+  flavor_text: string | null
 }
 
 interface EquippedItems {
@@ -214,7 +214,7 @@ export default function InventoryPage() {
     )
   }
 
-  const unequippedItems = data.inventory.filter(item => !item.isEquipped)
+  const unequippedItems = data.inventory.filter(item => !item.is_equipped)
 
   return (
     <div className="space-y-8">
@@ -256,10 +256,10 @@ export default function InventoryPage() {
                   >
                     <p className="font-medium truncate">{item.itemName}</p>
                     <div className="flex items-center gap-2 mt-2 text-sm">
-                      {item.robBonus && <span className="text-red-400">+{item.robBonus}% Rob</span>}
-                      {item.defenseBonus && <span className="text-blue-400">+{item.defenseBonus}% Def</span>}
-                      {item.insurancePercent && <span className="text-green-400">{item.insurancePercent}% Ins</span>}
-                      {item.revenueMin && <span className="text-yellow-400">${item.revenueMin}-{item.revenueMax}</span>}
+                      {item.rob_bonus && <span className="text-red-400">+{item.rob_bonus}% Rob</span>}
+                      {item.defense_bonus && <span className="text-blue-400">+{item.defense_bonus}% Def</span>}
+                      {item.insurance_percent && <span className="text-green-400">{item.insurance_percent}% Ins</span>}
+                      {item.revenue_min && <span className="text-yellow-400">${item.revenue_min}-{item.revenue_max}</span>}
                     </div>
                     <div className="mt-2">
                       <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
@@ -307,7 +307,7 @@ export default function InventoryPage() {
               >
                 <p className="text-xs uppercase opacity-70">{item.tier}</p>
                 <p className="font-medium truncate mt-1">{item.itemName}</p>
-                <p className="text-xs text-gray-400 mt-1 capitalize">{item.itemType}</p>
+                <p className="text-xs text-gray-400 mt-1 capitalize">{item.type}</p>
                 <div className="mt-2">
                   <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
                     <div
@@ -335,9 +335,9 @@ export default function InventoryPage() {
               >
                 <p className="text-xs uppercase opacity-70">{item.tier}</p>
                 <p className="font-medium truncate mt-1">{item.itemName}</p>
-                {item.escrowExpiresAt && (
+                {item.escrow_expires_at && (
                   <p className="text-xs text-orange-400 mt-2">
-                    Expires: {new Date(item.escrowExpiresAt).toLocaleString()}
+                    Expires: {new Date(item.escrow_expires_at).toLocaleString()}
                   </p>
                 )}
                 <button
@@ -366,7 +366,7 @@ export default function InventoryPage() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className={`text-xs uppercase ${TIER_COLORS[selectedItem.tier].split(' ')[0]}`}>
-                  {selectedItem.tier} {selectedItem.itemType}
+                  {selectedItem.tier} {selectedItem.type}
                 </p>
                 <h3 className="text-xl font-bold mt-1">{selectedItem.itemName}</h3>
               </div>
@@ -378,49 +378,49 @@ export default function InventoryPage() {
             {selectedItem.description && (
               <p className="text-gray-300 text-sm mb-2">{selectedItem.description}</p>
             )}
-            {selectedItem.flavorText && (
-              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavorText}"</p>
+            {selectedItem.flavor_text && (
+              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavor_text}"</p>
             )}
 
             <div className="space-y-2 text-sm mb-4">
-              {selectedItem.robBonus && (
+              {selectedItem.rob_bonus && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Rob Bonus</span>
-                  <span className="text-red-400">+{selectedItem.robBonus}%</span>
+                  <span className="text-red-400">+{selectedItem.rob_bonus}%</span>
                 </div>
               )}
-              {selectedItem.defenseBonus && (
+              {selectedItem.defense_bonus && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Defense Bonus</span>
-                  <span className="text-blue-400">+{selectedItem.defenseBonus}%</span>
+                  <span className="text-blue-400">+{selectedItem.defense_bonus}%</span>
                 </div>
               )}
-              {selectedItem.insurancePercent && (
+              {selectedItem.insurance_percent && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Insurance</span>
-                  <span className="text-green-400">{selectedItem.insurancePercent}%</span>
+                  <span className="text-green-400">{selectedItem.insurance_percent}%</span>
                 </div>
               )}
-              {selectedItem.revenueMin && (
+              {selectedItem.revenue_min && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Revenue</span>
-                  <span className="text-yellow-400">${selectedItem.revenueMin}-{selectedItem.revenueMax}</span>
+                  <span className="text-yellow-400">${selectedItem.revenue_min}-{selectedItem.revenue_max}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-400">Durability</span>
                 <span>{selectedItem.durability}/{selectedItem.maxDurability}</span>
               </div>
-              {selectedItem.sellPrice && (
+              {selectedItem.sell_price && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Sell Price</span>
-                  <span className="text-green-400">${selectedItem.sellPrice.toLocaleString()}</span>
+                  <span className="text-green-400">${selectedItem.sell_price.toLocaleString()}</span>
                 </div>
               )}
             </div>
 
             <div className="flex gap-2">
-              {!selectedItem.isEquipped && (
+              {!selectedItem.is_equipped && (
                 <>
                   <button
                     onClick={() => handleEquip(selectedItem.id)}
@@ -434,7 +434,7 @@ export default function InventoryPage() {
                     disabled={actionLoading === `sell-${selectedItem.id}`}
                     className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-semibold transition-colors disabled:opacity-50"
                   >
-                    {actionLoading === `sell-${selectedItem.id}` ? 'Selling...' : `Sell ($${selectedItem.sellPrice?.toLocaleString() ?? 0})`}
+                    {actionLoading === `sell-${selectedItem.id}` ? 'Selling...' : `Sell ($${selectedItem.sell_price?.toLocaleString() ?? 0})`}
                   </button>
                 </>
               )}

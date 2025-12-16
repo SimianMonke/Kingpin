@@ -22,13 +22,13 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
   const { searchParams } = new URL(request.url)
 
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '25', 10), 50)
   const includeRead = searchParams.get('includeRead') === 'true'
 
-  const result = await NotificationService.getNotifications(userId, limit, includeRead)
+  const result = await NotificationService.getNotifications(user_id, limit, includeRead)
 
   return successResponse(result)
 })
@@ -47,7 +47,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
   const body = await request.json()
   const { action, notificationIds } = body
 
@@ -63,7 +63,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       }
     }
 
-    const count = await NotificationService.markAsSeen(userId, notificationIds)
+    const count = await NotificationService.markAsSeen(user_id, notificationIds)
     return successResponse({ marked: count })
   }
 
@@ -77,7 +77,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       return errorResponse('Invalid notification ID', 400)
     }
 
-    const success = await NotificationService.dismiss(userId, notificationId)
+    const success = await NotificationService.dismiss(user_id, notificationId)
     if (!success) {
       return errorResponse('Notification not found', 404)
     }

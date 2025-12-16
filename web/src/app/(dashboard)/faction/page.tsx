@@ -16,8 +16,8 @@ interface FactionBuff {
 interface FactionTerritory {
   id: number
   name: string
-  buffType: string | null
-  buffValue: number | null
+  buff_type: string | null
+  buff_value: number | null
   isStarting: boolean
 }
 
@@ -26,9 +26,9 @@ interface FactionDetails {
   name: string
   description: string | null
   motto: string | null
-  colorHex: string | null
+  color_hex: string | null
   memberCount: number
-  territoriesControlled: number
+  territories_controlled: number
   territories: FactionTerritory[]
   buffs: FactionBuff[]
 }
@@ -38,17 +38,17 @@ interface FactionSummary {
   name: string
   description: string | null
   motto: string | null
-  colorHex: string | null
+  color_hex: string | null
   memberCount: number
-  territoriesControlled: number
+  territories_controlled: number
   weeklyScore?: number
   rank?: number
 }
 
 interface TerritoryScore {
-  factionId: number
-  factionName: string
-  colorHex: string | null
+  faction_id: number
+  faction_name: string
+  color_hex: string | null
   score: number
 }
 
@@ -56,13 +56,13 @@ interface TerritoryStatus {
   id: number
   name: string
   description: string | null
-  buffType: string | null
-  buffValue: number | null
-  isContested: boolean
-  controllingFaction: {
+  buff_type: string | null
+  buff_value: number | null
+  is_contested: boolean
+  factions: {
     id: number
     name: string
-    colorHex: string | null
+    color_hex: string | null
   } | null
   startingFaction: {
     id: number
@@ -84,7 +84,7 @@ interface UserFactionData {
   assignedTerritory: TerritoryStatus | null
   rank: {
     rank: number
-    totalMembers: number
+    total_members: number
     weeklyScore: number
   } | null
 }
@@ -168,21 +168,21 @@ export default function FactionPage() {
     fetchData()
   }, [])
 
-  const handleJoin = async (factionName: string) => {
-    setJoining(factionName)
+  const handleJoin = async (faction_name: string) => {
+    setJoining(faction_name)
     setMessage(null)
 
     try {
       const res = await fetch('/api/factions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ factionName }),
+        body: JSON.stringify({ faction_name }),
       })
 
       const data = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: `Welcome to ${data.data.faction.name}!` })
+        setMessage({ type: 'success', text: `Welcome to ${data.data.factions.name}!` })
         await fetchData()
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to join faction' })
@@ -302,7 +302,7 @@ export default function FactionPage() {
         </div>
         <div className="divide-y divide-gray-700">
           {allFactions
-            .sort((a, b) => (b.territoriesControlled - a.territoriesControlled))
+            .sort((a, b) => (b.territories_controlled - a.territories_controlled))
             .map((faction, index) => (
               <FactionStandingRow key={faction.id} faction={faction} rank={index + 1} />
             ))}
@@ -362,7 +362,7 @@ function CurrentFactionCard({
   onLeave: () => void
   leaving: boolean
 }) {
-  const colorClass = FACTION_COLORS[faction.colorHex ?? ''] || 'border-gray-500 bg-gray-500/10'
+  const colorClass = FACTION_COLORS[faction.color_hex ?? ''] || 'border-gray-500 bg-gray-500/10'
 
   return (
     <div className={`border rounded-xl overflow-hidden ${colorClass}`}>
@@ -394,7 +394,7 @@ function CurrentFactionCard({
             <div className="text-xs text-gray-400">Members</div>
           </div>
           <div className="bg-black/20 rounded-lg p-3">
-            <div className="text-2xl font-bold">{faction.territoriesControlled}</div>
+            <div className="text-2xl font-bold">{faction.territories_controlled}</div>
             <div className="text-xs text-gray-400">Territories</div>
           </div>
           <div className="bg-black/20 rounded-lg p-3">
@@ -484,7 +484,7 @@ function FactionSelector({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
         {factions.map((faction) => {
-          const colorClass = FACTION_COLORS[faction.colorHex ?? ''] || 'border-gray-600'
+          const colorClass = FACTION_COLORS[faction.color_hex ?? ''] || 'border-gray-600'
           return (
             <div
               key={faction.id}
@@ -501,7 +501,7 @@ function FactionSelector({
               )}
               <div className="flex items-center gap-4 text-sm mb-4">
                 <span>👥 {faction.memberCount}</span>
-                <span>🏴 {faction.territoriesControlled}</span>
+                <span>🏴 {faction.territories_controlled}</span>
               </div>
               <button
                 onClick={() => canJoin && onJoin(faction.name)}
@@ -523,8 +523,8 @@ function FactionSelector({
 }
 
 function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
-  const controllingColor = territory.controllingFaction?.colorHex
-    ? FACTION_COLORS[territory.controllingFaction.colorHex]
+  const controllingColor = territory.factions?.color_hex
+    ? FACTION_COLORS[territory.factions.color_hex]
     : 'border-gray-600 bg-gray-600/10'
 
   // Get leading faction from scores
@@ -537,16 +537,16 @@ function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
       <div className="flex items-start justify-between mb-2">
         <div>
           <h3 className="font-semibold">{territory.name}</h3>
-          {territory.isContested && (
+          {territory.is_contested && (
             <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded">
               CONTESTED
             </span>
           )}
         </div>
-        {territory.buffType && (
+        {territory.buff_type && (
           <div className="flex items-center gap-1 text-sm">
-            <span>{BUFF_ICONS[territory.buffType] ?? '✨'}</span>
-            <span>+{territory.buffValue}%</span>
+            <span>{BUFF_ICONS[territory.buff_type] ?? '✨'}</span>
+            <span>+{territory.buff_value}%</span>
           </div>
         )}
       </div>
@@ -557,7 +557,7 @@ function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
       <div className="text-sm mb-3">
         <span className="text-gray-500">Controlled by: </span>
         <span className="font-semibold">
-          {territory.controllingFaction?.name ?? 'Neutral'}
+          {territory.factions?.name ?? 'Neutral'}
         </span>
       </div>
 
@@ -566,12 +566,12 @@ function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
         <div className="space-y-1">
           {sortedScores.slice(0, 3).map((score) => {
             const percent = Math.round((score.score / totalScore) * 100)
-            const barColor = score.colorHex === '#DC143C' ? 'bg-red-500'
-              : score.colorHex === '#00CED1' ? 'bg-cyan-500'
+            const barColor = score.color_hex === '#DC143C' ? 'bg-red-500'
+              : score.color_hex === '#00CED1' ? 'bg-cyan-500'
               : 'bg-yellow-600'
             return (
-              <div key={score.factionId} className="flex items-center gap-2 text-xs">
-                <div className="w-16 truncate text-gray-400">{score.factionName.split(' ')[1] || score.factionName}</div>
+              <div key={score.faction_id} className="flex items-center gap-2 text-xs">
+                <div className="w-16 truncate text-gray-400">{score.faction_name.split(' ')[1] || score.faction_name}</div>
                 <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${barColor}`}
@@ -589,7 +589,7 @@ function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
 }
 
 function FactionStandingRow({ faction, rank }: { faction: FactionSummary; rank: number }) {
-  const colorClass = FACTION_COLORS[faction.colorHex ?? ''] || ''
+  const colorClass = FACTION_COLORS[faction.color_hex ?? ''] || ''
   const rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`
 
   return (
@@ -604,7 +604,7 @@ function FactionStandingRow({ faction, rank }: { faction: FactionSummary; rank: 
         </div>
       </div>
       <div className="text-right">
-        <div className="text-lg font-bold">{faction.territoriesControlled}</div>
+        <div className="text-lg font-bold">{faction.territories_controlled}</div>
         <div className="text-xs text-gray-400">territories</div>
       </div>
     </div>

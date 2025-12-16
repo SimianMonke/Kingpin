@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { action, platform, title, sessionId } = body
+    const { action, platform, title, session_id } = body
 
     if (!action) {
       return NextResponse.json(
@@ -67,15 +67,15 @@ export async function POST(request: NextRequest) {
             id: session.id,
             title: session.title,
             platform: session.platform,
-            isActive: session.isActive,
-            startedAt: session.startedAt,
+            is_active: session.is_active,
+            started_at: session.started_at,
           },
         })
       }
 
       case 'end': {
         // End session
-        let targetSessionId = sessionId
+        let targetSessionId = session_id
 
         // If no session ID provided, end the active session
         if (!targetSessionId) {
@@ -98,10 +98,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           action: 'end',
-          sessionId: targetSessionId,
-          winner: result.winnerId
+          session_id: targetSessionId,
+          winner: result.winner_id
             ? {
-                userId: result.winnerId,
+                user_id: result.winner_id,
                 username: result.winnerUsername,
                 totalContributedUsd: result.totalContributedUsd,
                 rewards: result.rewards,

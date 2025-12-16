@@ -10,8 +10,8 @@ export function successResponse<T>(data: T, status = 200) {
   return NextResponse.json({ success: true, data }, { status })
 }
 
-export function errorResponse(message: string, status = 400) {
-  return NextResponse.json({ success: false, error: message }, { status })
+export function errorResponse(message: string, status = 400, code?: string) {
+  return NextResponse.json({ success: false, error: message, ...(code && { code }) }, { status })
 }
 
 export function unauthorizedResponse(message = 'Unauthorized') {
@@ -56,13 +56,13 @@ export async function requireAuthUserId(): Promise<number> {
     throw new AuthError('Not authenticated')
   }
   // NextAuth stores user.id as string, convert to number for Prisma
-  const userId = typeof session.user.id === 'string'
+  const user_id = typeof session.user.id === 'string'
     ? parseInt(session.user.id, 10)
     : session.user.id
-  if (isNaN(userId)) {
+  if (isNaN(user_id)) {
     throw new AuthError('Invalid user ID')
   }
-  return userId
+  return user_id
 }
 
 export class AuthError extends Error {
@@ -170,7 +170,7 @@ export interface RateLimitResult {
 
 /**
  * Check rate limit for an identifier
- * @param identifier - Unique identifier (userId, IP, etc.)
+ * @param identifier - Unique identifier (user_id, IP, etc.)
  * @param maxRequests - Max requests per window
  * @param windowMs - Time window in milliseconds
  * @returns RateLimitResult with allowed status and remaining count
@@ -238,7 +238,7 @@ export function rateLimitedResponse(result: RateLimitResult) {
  * Returns null if allowed, Response if rate limited
  *
  * Usage:
- * const rateLimitError = applyRateLimit(`user:${userId}`, RATE_LIMITS.GAMBLING)
+ * const rateLimitError = applyRateLimit(`user:${user_id}`, RATE_LIMITS.GAMBLING)
  * if (rateLimitError) return rateLimitError
  */
 export function applyRateLimit(

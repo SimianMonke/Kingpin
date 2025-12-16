@@ -20,36 +20,36 @@ import type { Platform } from '@/types'
 export interface RewardCalculation {
   wealth: number
   xp: number
-  usdValue: number
+  usd_value: number
 }
 
 export interface MonetizationResult {
   success: boolean
   eventId: number
-  userId: number
+  user_id: number
   wealth: number
   xp: number
-  usdValue: number
+  usd_value: number
   levelUp: boolean
   newLevel?: number
   tierPromotion: boolean
   newTier?: string
   addedToSession: boolean
-  sessionId?: number
+  session_id?: number
 }
 
 export interface ProcessEventInput {
   platform: MonetizationPlatform
-  eventType: MonetizationEventType
+  event_type: MonetizationEventType
   platformUserId: string
   username: string
   quantity: number
   tier?: string
-  amountUsd?: number
-  externalEventId: string
-  rawEventData?: Record<string, unknown>
+  amount_usd?: number
+  external_event_id: string
+  raw_event_data?: Record<string, unknown>
   recipientPlatformUserId?: string
-  recipientUsername?: string
+  recipient_username?: string
 }
 
 // =============================================================================
@@ -60,9 +60,9 @@ export const MonetizationService = {
   /**
    * Check if an event has already been processed (deduplication)
    */
-  async isEventProcessed(externalEventId: string): Promise<boolean> {
-    const existing = await prisma.monetizationEvent.findUnique({
-      where: { externalEventId },
+  async isEventProcessed(external_event_id: string): Promise<boolean> {
+    const existing = await prisma.monetization_events.findUnique({
+      where: { external_event_id },
     })
     return !!existing
   },
@@ -72,7 +72,7 @@ export const MonetizationService = {
    */
   calculateRewards(
     platform: MonetizationPlatform,
-    eventType: MonetizationEventType,
+    event_type: MonetizationEventType,
     quantity: number,
     tier?: string
   ): RewardCalculation {
@@ -81,7 +81,7 @@ export const MonetizationService = {
     let baseUsd = 0
 
     if (platform === MONETIZATION_PLATFORMS.KICK) {
-      switch (eventType) {
+      switch (event_type) {
         case MONETIZATION_EVENT_TYPES.SUBSCRIPTION:
           if (tier === '3') {
             baseWealth = MONETIZATION_REWARDS.KICK_SUB_T3.wealth
@@ -109,7 +109,7 @@ export const MonetizationService = {
           break
       }
     } else if (platform === MONETIZATION_PLATFORMS.TWITCH) {
-      switch (eventType) {
+      switch (event_type) {
         case MONETIZATION_EVENT_TYPES.SUBSCRIPTION:
           if (tier === '3' || tier === '3000') {
             baseWealth = MONETIZATION_REWARDS.TWITCH_SUB_T3.wealth
@@ -151,19 +151,19 @@ export const MonetizationService = {
 
     // Calculate totals based on quantity
     // For bits, quantity is actual bits, so we need to scale
-    if (platform === MONETIZATION_PLATFORMS.TWITCH && eventType === MONETIZATION_EVENT_TYPES.BITS) {
+    if (platform === MONETIZATION_PLATFORMS.TWITCH && event_type === MONETIZATION_EVENT_TYPES.BITS) {
       const hundreds = quantity / 100
       return {
         wealth: Math.floor(baseWealth * hundreds),
         xp: Math.floor(baseXp * hundreds),
-        usdValue: quantity * CONTRIBUTION_USD_VALUES.TWITCH_BITS,
+        usd_value: quantity * CONTRIBUTION_USD_VALUES.TWITCH_BITS,
       }
     }
 
     return {
       wealth: baseWealth * quantity,
       xp: baseXp * quantity,
-      usdValue: baseUsd * quantity,
+      usd_value: baseUsd * quantity,
     }
   },
 
@@ -172,7 +172,7 @@ export const MonetizationService = {
    */
   async processEvent(input: ProcessEventInput): Promise<MonetizationResult> {
     // Check for duplicate
-    if (await this.isEventProcessed(input.externalEventId)) {
+    if (await this.isEventProcessed(input.external_event_id)) {
       throw new Error('Event already processed')
     }
 
@@ -187,43 +187,43 @@ export const MonetizationService = {
     // Calculate rewards
     const rewards = this.calculateRewards(
       input.platform,
-      input.eventType,
+      input.event_type,
       input.quantity,
       input.tier
     )
 
     // For donations, use the actual USD amount
-    if (input.platform === MONETIZATION_PLATFORMS.STRIPE && input.amountUsd) {
-      rewards.wealth = Math.floor(MONETIZATION_REWARDS.DONATION_PER_DOLLAR.wealth * input.amountUsd)
-      rewards.usdValue = input.amountUsd
+    if (input.platform === MONETIZATION_PLATFORMS.STRIPE && input.amount_usd) {
+      rewards.wealth = Math.floor(MONETIZATION_REWARDS.DONATION_PER_DOLLAR.wealth * input.amount_usd)
+      rewards.usd_value = input.amount_usd
     }
 
     // Handle recipient for gift subs
-    let recipientUserId: number | null = null
-    if (input.recipientPlatformUserId && input.recipientUsername) {
+    let recipient_user_id: number | null = null
+    if (input.recipientPlatformUserId && input.recipient_username) {
       const recipient = await UserService.getOrCreate(
         platformKey as Platform,
         input.recipientPlatformUserId,
-        input.recipientUsername
+        input.recipient_username
       )
-      recipientUserId = recipient.id
+      recipient_user_id = recipient.id
     }
 
     // Create monetization event record
-    const event = await prisma.monetizationEvent.create({
+    const event = await prisma.monetization_events.create({
       data: {
-        userId: user.id,
+        user_id: user.id,
         platform: input.platform,
-        eventType: input.eventType,
+        event_type: input.event_type,
         quantity: input.quantity,
-        amountUsd: rewards.usdValue,
+        amount_usd: rewards.usd_value,
         tier: input.tier,
-        recipientUserId,
-        recipientUsername: input.recipientUsername,
-        wealthRewarded: rewards.wealth,
-        xpRewarded: rewards.xp,
-        rawEventData: input.rawEventData as object,
-        externalEventId: input.externalEventId,
+        recipient_user_id,
+        recipient_username: input.recipient_username,
+        wealth_rewarded: rewards.wealth,
+        xp_rewarded: rewards.xp,
+        raw_event_data: input.raw_event_data as object,
+        external_event_id: input.external_event_id,
         processed: true,
       },
     })
@@ -234,26 +234,26 @@ export const MonetizationService = {
 
     // Update leaderboard snapshots
     const leaderboardUpdate: Record<string, number> = {
-      wealthEarned: rewards.wealth,
-      xpEarned: rewards.xp,
-      totalContributedUsd: rewards.usdValue,
+      wealth_earned: rewards.wealth,
+      xp_earned: rewards.xp,
+      totalContributedUsd: rewards.usd_value,
     }
 
     // Track specific monetization metrics
-    if (input.eventType === MONETIZATION_EVENT_TYPES.SUBSCRIPTION) {
+    if (input.event_type === MONETIZATION_EVENT_TYPES.SUBSCRIPTION) {
       leaderboardUpdate.subsCount = input.quantity
     }
-    if (input.eventType === MONETIZATION_EVENT_TYPES.GIFT_SUB) {
+    if (input.event_type === MONETIZATION_EVENT_TYPES.GIFT_SUB) {
       leaderboardUpdate.giftSubsGiven = input.quantity
     }
-    if (input.eventType === MONETIZATION_EVENT_TYPES.BITS) {
+    if (input.event_type === MONETIZATION_EVENT_TYPES.BITS) {
       leaderboardUpdate.bitsDonated = input.quantity
     }
-    if (input.eventType === MONETIZATION_EVENT_TYPES.KICK) {
+    if (input.event_type === MONETIZATION_EVENT_TYPES.KICK) {
       leaderboardUpdate.kicksSent = input.quantity
     }
-    if (input.eventType === MONETIZATION_EVENT_TYPES.DONATION) {
-      leaderboardUpdate.donationsUsd = rewards.usdValue
+    if (input.event_type === MONETIZATION_EVENT_TYPES.DONATION) {
+      leaderboardUpdate.donationsUsd = rewards.usd_value
     }
 
     await LeaderboardService.updateSnapshot(user.id, leaderboardUpdate)
@@ -262,7 +262,7 @@ export const MonetizationService = {
     await AchievementService.incrementProgress(
       user.id,
       ACHIEVEMENT_REQUIREMENT_TYPES.JUICERNAUT_CONTRIBUTION,
-      Math.floor(rewards.usdValue * 100) // Track in cents for precision
+      Math.floor(rewards.usd_value * 100) // Track in cents for precision
     )
     await AchievementService.incrementProgress(
       user.id,
@@ -272,10 +272,10 @@ export const MonetizationService = {
 
     // Add to active Juicernaut session if one exists
     let addedToSession = false
-    let sessionId: number | undefined
+    let session_id: number | undefined
 
-    const activeSession = await prisma.streamingSession.findFirst({
-      where: { isActive: true },
+    const activeSession = await prisma.streaming_sessions.findFirst({
+      where: { is_active: true },
     })
 
     if (activeSession) {
@@ -284,38 +284,38 @@ export const MonetizationService = {
       await JuicernautService.processContribution(
         user.id,
         input.platform,
-        input.eventType,
+        input.event_type,
         input.quantity,
-        rewards.usdValue,
+        rewards.usd_value,
         event.id
       )
       addedToSession = true
-      sessionId = activeSession.id
+      session_id = activeSession.id
     }
 
     return {
       success: true,
       eventId: event.id,
-      userId: user.id,
+      user_id: user.id,
       wealth: rewards.wealth,
       xp: rewards.xp,
-      usdValue: rewards.usdValue,
+      usd_value: rewards.usd_value,
       levelUp: xpResult.levelUp,
       newLevel: xpResult.newLevel,
       tierPromotion: xpResult.tierPromotion,
       newTier: xpResult.newTier,
       addedToSession,
-      sessionId,
+      session_id,
     }
   },
 
   /**
    * Get monetization history for a user
    */
-  async getUserHistory(userId: number, limit = 20) {
-    return prisma.monetizationEvent.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+  async getUserHistory(user_id: number, limit = 20) {
+    return prisma.monetization_events.findMany({
+      where: { user_id },
+      orderBy: { created_at: 'desc' },
       take: limit,
     })
   },
@@ -323,36 +323,36 @@ export const MonetizationService = {
   /**
    * Get total monetization stats for a user
    */
-  async getUserStats(userId: number) {
-    const aggregations = await prisma.monetizationEvent.aggregate({
-      where: { userId },
+  async getUserStats(user_id: number) {
+    const aggregations = await prisma.monetization_events.aggregate({
+      where: { user_id },
       _sum: {
-        wealthRewarded: true,
-        xpRewarded: true,
-        amountUsd: true,
+        wealth_rewarded: true,
+        xp_rewarded: true,
+        amount_usd: true,
         quantity: true,
       },
       _count: true,
     })
 
-    const byPlatform = await prisma.monetizationEvent.groupBy({
+    const byPlatform = await prisma.monetization_events.groupBy({
       by: ['platform'],
-      where: { userId },
+      where: { user_id },
       _sum: {
-        amountUsd: true,
+        amount_usd: true,
       },
       _count: true,
     })
 
     return {
       totalEvents: aggregations._count,
-      totalWealthEarned: aggregations._sum.wealthRewarded || BigInt(0),
-      totalXpEarned: aggregations._sum.xpRewarded || 0,
-      totalContributedUsd: aggregations._sum.amountUsd || 0,
+      totalWealthEarned: aggregations._sum.wealth_rewarded || BigInt(0),
+      totalXpEarned: aggregations._sum.xp_rewarded || 0,
+      totalContributedUsd: aggregations._sum.amount_usd || 0,
       byPlatform: byPlatform.map(p => ({
         platform: p.platform,
         events: p._count,
-        totalUsd: p._sum.amountUsd || 0,
+        totalUsd: p._sum.amount_usd || 0,
       })),
     }
   },
@@ -364,18 +364,18 @@ export const MonetizationService = {
     subscriberUserId: string,
     subscriberUsername: string,
     tier: string,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.KICK,
-      eventType: MONETIZATION_EVENT_TYPES.SUBSCRIPTION,
+      event_type: MONETIZATION_EVENT_TYPES.SUBSCRIPTION,
       platformUserId: subscriberUserId,
       username: subscriberUsername,
       quantity: 1,
       tier,
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -386,17 +386,17 @@ export const MonetizationService = {
     gifterUserId: string,
     gifterUsername: string,
     giftCount: number,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.KICK,
-      eventType: MONETIZATION_EVENT_TYPES.GIFT_SUB,
+      event_type: MONETIZATION_EVENT_TYPES.GIFT_SUB,
       platformUserId: gifterUserId,
       username: gifterUsername,
       quantity: giftCount,
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -407,17 +407,17 @@ export const MonetizationService = {
     senderUserId: string,
     senderUsername: string,
     kickCount: number,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.KICK,
-      eventType: MONETIZATION_EVENT_TYPES.KICK,
+      event_type: MONETIZATION_EVENT_TYPES.KICK,
       platformUserId: senderUserId,
       username: senderUsername,
       quantity: kickCount,
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -428,18 +428,18 @@ export const MonetizationService = {
     subscriberUserId: string,
     subscriberUsername: string,
     tier: string,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.TWITCH,
-      eventType: MONETIZATION_EVENT_TYPES.SUBSCRIPTION,
+      event_type: MONETIZATION_EVENT_TYPES.SUBSCRIPTION,
       platformUserId: subscriberUserId,
       username: subscriberUsername,
       quantity: 1,
       tier,
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -451,18 +451,18 @@ export const MonetizationService = {
     gifterUsername: string,
     giftCount: number,
     tier: string,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.TWITCH,
-      eventType: MONETIZATION_EVENT_TYPES.GIFT_SUB,
+      event_type: MONETIZATION_EVENT_TYPES.GIFT_SUB,
       platformUserId: gifterUserId,
       username: gifterUsername,
       quantity: giftCount,
       tier,
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -473,17 +473,17 @@ export const MonetizationService = {
     cheererUserId: string,
     cheererUsername: string,
     bits: number,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.TWITCH,
-      eventType: MONETIZATION_EVENT_TYPES.BITS,
+      event_type: MONETIZATION_EVENT_TYPES.BITS,
       platformUserId: cheererUserId,
       username: cheererUsername,
       quantity: bits,
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -494,17 +494,17 @@ export const MonetizationService = {
     raiderUserId: string,
     raiderUsername: string,
     viewerCount: number,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.TWITCH,
-      eventType: MONETIZATION_EVENT_TYPES.RAID,
+      event_type: MONETIZATION_EVENT_TYPES.RAID,
       platformUserId: raiderUserId,
       username: raiderUsername,
       quantity: Math.max(1, viewerCount), // Minimum 1 viewer
-      externalEventId,
-      rawEventData,
+      external_event_id,
+      raw_event_data,
     })
   },
 
@@ -514,19 +514,19 @@ export const MonetizationService = {
   async processStripeDonation(
     platformUserId: string,
     username: string,
-    amountUsd: number,
-    externalEventId: string,
-    rawEventData?: Record<string, unknown>
+    amount_usd: number,
+    external_event_id: string,
+    raw_event_data?: Record<string, unknown>
   ) {
     return this.processEvent({
       platform: MONETIZATION_PLATFORMS.STRIPE,
-      eventType: MONETIZATION_EVENT_TYPES.DONATION,
+      event_type: MONETIZATION_EVENT_TYPES.DONATION,
       platformUserId,
       username,
       quantity: 1,
-      amountUsd,
-      externalEventId,
-      rawEventData,
+      amount_usd,
+      external_event_id,
+      raw_event_data,
     })
   },
 }

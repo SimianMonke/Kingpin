@@ -41,11 +41,11 @@ export interface PlayResult {
 
   // Event details
   eventName?: string
-  eventDescription?: string
+  event_description?: string
 
   // Rewards
-  wealthEarned: number
-  xpEarned: number
+  wealth_earned: number
+  xp_earned: number
 
   // Level/tier changes
   levelUp: boolean
@@ -55,7 +55,7 @@ export interface PlayResult {
 
   // Crate drop
   crateDropped: boolean
-  crateTier?: CrateTier
+  crate_tier?: CrateTier
   crateToEscrow?: boolean
   crateLost?: boolean
 
@@ -86,9 +86,9 @@ export const PlayService = {
   /**
    * Check if user can perform play action
    */
-  async canPlay(userId: number): Promise<PlayPreCheck> {
+  async canPlay(user_id: number): Promise<PlayPreCheck> {
     // Check jail status
-    const jailStatus = await JailService.getJailStatus(userId)
+    const jailStatus = await JailService.getJailStatus(user_id)
 
     if (jailStatus.isJailed) {
       return {
@@ -108,16 +108,16 @@ export const PlayService = {
   /**
    * Execute play action
    */
-  async executePlay(userId: number): Promise<PlayResult> {
+  async executePlay(user_id: number): Promise<PlayResult> {
     // Pre-check
-    const preCheck = await this.canPlay(userId)
+    const preCheck = await this.canPlay(user_id)
     if (!preCheck.canPlay) {
       return {
         success: false,
         busted: false,
         jailed: preCheck.isJailed,
-        wealthEarned: 0,
-        xpEarned: 0,
+        wealth_earned: 0,
+        xp_earned: 0,
         levelUp: false,
         tierPromotion: false,
         crateDropped: false,
@@ -125,16 +125,16 @@ export const PlayService = {
     }
 
     // Get user data
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       select: {
         id: true,
         username: true,
         wealth: true,
         xp: true,
         level: true,
-        statusTier: true,
-        totalPlayCount: true,
+        status_tier: true,
+        total_play_count: true,
       },
     })
 
@@ -142,24 +142,24 @@ export const PlayService = {
       throw new Error('User not found')
     }
 
-    const playerTier = user.statusTier as Tier
+    const playerTier = user.status_tier as Tier
 
     // Check for Juicernaut buffs
-    const juicernautBuffs = await this.getJuicernautBuffs(userId)
+    const juicernautBuffs = await this.getJuicernautBuffs(user_id)
 
     // Roll for bust (5% chance)
     const busted = Math.random() < JAIL_CONFIG.BUST_CHANCE
 
     if (busted) {
-      return await this.handleBust(userId, playerTier)
+      return await this.handleBust(user_id, playerTier)
     }
 
     // Select random event for player's tier
     const event = this.selectEvent(playerTier)
 
     // Calculate rewards
-    let wealthEarned = randomInt(event.wealth.min, event.wealth.max)
-    let xpEarned = randomInt(event.xp.min, event.xp.max)
+    let wealth_earned = randomInt(event.wealth.min, event.wealth.max)
+    let xp_earned = randomInt(event.xp.min, event.xp.max)
 
     // Apply Juicernaut buffs
     let juicernautBonuses: { wealthBonus: number; xpBonus: number } | undefined
@@ -169,14 +169,14 @@ export const PlayService = {
 
       // Apply wealth buff (1.25x)
       if (juicernautBuffs.hasWealthBuff) {
-        wealthBonus = Math.floor(wealthEarned * (JUICERNAUT_BUFFS.WEALTH_MULTIPLIER - 1))
-        wealthEarned += wealthBonus
+        wealthBonus = Math.floor(wealth_earned * (JUICERNAUT_BUFFS.WEALTH_MULTIPLIER - 1))
+        wealth_earned += wealthBonus
       }
 
       // Apply XP buff (2x)
       if (juicernautBuffs.hasXpBuff) {
-        xpBonus = Math.floor(xpEarned * (JUICERNAUT_BUFFS.XP_MULTIPLIER - 1))
-        xpEarned += xpBonus
+        xpBonus = Math.floor(xp_earned * (JUICERNAUT_BUFFS.XP_MULTIPLIER - 1))
+        xp_earned += xpBonus
       }
 
       if (wealthBonus > 0 || xpBonus > 0) {
@@ -186,7 +186,7 @@ export const PlayService = {
 
     // Apply faction territory buffs
     let factionBonuses: { wealthBonus: number; xpBonus: number; buffsApplied: string[] } | undefined
-    const factionBuffs = await FactionService.getAggregatedBuffs(userId)
+    const factionBuffs = await FactionService.getAggregatedBuffs(user_id)
     if (Object.keys(factionBuffs).length > 0) {
       let factionWealthBonus = 0
       let factionXpBonus = 0
@@ -194,24 +194,24 @@ export const PlayService = {
 
       // Apply XP buff (from xp territories like Chrome Heights, Midtown, Ashfall)
       if (factionBuffs['xp']) {
-        factionXpBonus = Math.floor(xpEarned * (factionBuffs['xp'] / 100))
-        xpEarned += factionXpBonus
+        factionXpBonus = Math.floor(xp_earned * (factionBuffs['xp'] / 100))
+        xp_earned += factionXpBonus
         buffsApplied.push(`+${factionBuffs['xp']}% XP`)
       }
 
       // Apply wealth buff (from Memorial District)
       if (factionBuffs['wealth']) {
-        factionWealthBonus = Math.floor(wealthEarned * (factionBuffs['wealth'] / 100))
-        wealthEarned += factionWealthBonus
+        factionWealthBonus = Math.floor(wealth_earned * (factionBuffs['wealth'] / 100))
+        wealth_earned += factionWealthBonus
         buffsApplied.push(`+${factionBuffs['wealth']}% Wealth`)
       }
 
       // Apply all_rewards buff (from Freeport - applies to both)
       if (factionBuffs['all_rewards']) {
-        const allWealthBonus = Math.floor(wealthEarned * (factionBuffs['all_rewards'] / 100))
-        const allXpBonus = Math.floor(xpEarned * (factionBuffs['all_rewards'] / 100))
-        wealthEarned += allWealthBonus
-        xpEarned += allXpBonus
+        const allWealthBonus = Math.floor(wealth_earned * (factionBuffs['all_rewards'] / 100))
+        const allXpBonus = Math.floor(xp_earned * (factionBuffs['all_rewards'] / 100))
+        wealth_earned += allWealthBonus
+        xp_earned += allXpBonus
         factionWealthBonus += allWealthBonus
         factionXpBonus += allXpBonus
         buffsApplied.push(`+${factionBuffs['all_rewards']}% All`)
@@ -236,60 +236,60 @@ export const PlayService = {
       crateDropChance *= (1 + factionBuffs['crate_drop'] / 100)
     }
     const crateDropped = Math.random() < crateDropChance
-    let crateTier: CrateTier | undefined
+    let crate_tier: CrateTier | undefined
     let crateToEscrow = false
     let crateLost = false
 
     if (crateDropped) {
-      crateTier = this.rollCrateTier(playerTier)
+      crate_tier = this.rollCrateTier(playerTier)
     }
 
     // CRIT-07 fix: Ensure negative events don't take wealth below 0
     // Cap loss to current wealth (can't lose more than you have)
     const currentWealth = Number(user.wealth)
-    if (wealthEarned < 0 && Math.abs(wealthEarned) > currentWealth) {
-      wealthEarned = -currentWealth // At most, lose everything
+    if (wealth_earned < 0 && Math.abs(wealth_earned) > currentWealth) {
+      wealth_earned = -currentWealth // At most, lose everything
     }
 
     // Process rewards in transaction (including crate award for atomicity)
     const result = await prisma.$transaction(async (tx) => {
       // Update user stats
-      const newXp = user.xp + BigInt(xpEarned)
+      const newXp = (user.xp ?? BigInt(0)) + BigInt(xp_earned)
       const newLevel = levelFromXp(Number(newXp))
       const newTier = getTierFromLevel(newLevel)
-      const levelUp = newLevel > user.level
-      const tierPromotion = newTier !== user.statusTier
+      const levelUp = newLevel > (user.level ?? 1)
+      const tierPromotion = newTier !== user.status_tier
 
-      await tx.user.update({
-        where: { id: userId },
+      await tx.users.update({
+        where: { id: user_id },
         data: {
-          wealth: { increment: wealthEarned },
+          wealth: { increment: wealth_earned },
           xp: newXp,
           level: newLevel,
-          statusTier: newTier,
-          totalPlayCount: { increment: 1 },
-          lastSeen: new Date(),
+          status_tier: newTier,
+          total_play_count: { increment: 1 },
+          last_seen: new Date(),
         },
       })
 
       // Record game event
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId,
-          eventType: 'play',
-          wealthChange: wealthEarned,
-          xpChange: xpEarned,
+          user_id,
+          event_type: 'play',
+          wealth_change: wealth_earned,
+          xp_change: xp_earned,
           tier: playerTier,
-          eventDescription: `${event.name}: ${event.description}`,
+          event_description: `${event.name}: ${event.description}`,
           success: true,
-          wasBusted: false,
+          was_busted: false,
         },
       })
 
       // Award crate if dropped (INSIDE transaction for atomicity - CRIT-01 fix)
       let crateResult = null
-      if (crateDropped && crateTier) {
-        crateResult = await CrateService.awardCrate(userId, crateTier, CRATE_SOURCES.PLAY, tx)
+      if (crateDropped && crate_tier) {
+        crateResult = await CrateService.awardCrate(user_id, crate_tier, CRATE_SOURCES.PLAY, tx)
       }
 
       return { newLevel, newTier, levelUp, tierPromotion, crateResult }
@@ -304,44 +304,44 @@ export const PlayService = {
     // MED-01 fix: Wrap non-critical external calls to prevent failures from crashing play
     // Update leaderboard snapshots
     await safeVoid(
-      () => LeaderboardService.updateSnapshot(userId, {
-        playCount: 1,
-        wealthEarned,
-        xpEarned,
-        cratesOpened: crateDropped ? 1 : 0,
+      () => LeaderboardService.updateSnapshot(user_id, {
+        play_count: 1,
+        wealth_earned,
+        xp_earned,
+        crates_opened: crateDropped ? 1 : 0,
       }),
       'play.service:leaderboard'
     )
 
     // Update mission progress
     await safeVoid(
-      () => MissionService.updateProgress(userId, MISSION_OBJECTIVE_TYPES.PLAY_COUNT, 1),
-      'play.service:mission:playCount'
+      () => MissionService.updateProgress(user_id, MISSION_OBJECTIVE_TYPES.PLAY_COUNT, 1),
+      'play.service:mission:play_count'
     )
     await safeVoid(
-      () => MissionService.updateProgress(userId, MISSION_OBJECTIVE_TYPES.WEALTH_EARNED, wealthEarned),
-      'play.service:mission:wealthEarned'
+      () => MissionService.updateProgress(user_id, MISSION_OBJECTIVE_TYPES.WEALTH_EARNED, wealth_earned),
+      'play.service:mission:wealth_earned'
     )
 
     // Update achievement progress
     await safeVoid(
-      () => AchievementService.incrementProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.PLAY_COUNT, 1),
-      'play.service:achievement:playCount'
+      () => AchievementService.incrementProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.PLAY_COUNT, 1),
+      'play.service:achievement:play_count'
     )
     await safeVoid(
-      () => AchievementService.incrementProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.TOTAL_WEALTH_EARNED, wealthEarned),
-      'play.service:achievement:wealthEarned'
+      () => AchievementService.incrementProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.TOTAL_WEALTH_EARNED, wealth_earned),
+      'play.service:achievement:wealth_earned'
     )
 
     // Check level achievements
     if (result.levelUp) {
       await safeVoid(
-        () => AchievementService.setProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.LEVEL, result.newLevel),
+        () => AchievementService.setProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.LEVEL, result.newLevel),
         'play.service:achievement:level'
       )
       // Notify level up
       await safeVoid(
-        () => NotificationService.notifyLevelUp(userId, result.newLevel),
+        () => NotificationService.notifyLevelUp(user_id, result.newLevel),
         'play.service:notification:levelUp'
       )
     }
@@ -349,7 +349,7 @@ export const PlayService = {
     // Notify tier promotion (also post to Discord for Captain+)
     if (result.tierPromotion && result.newTier) {
       await safeVoid(
-        () => NotificationService.notifyTierPromotion(userId, result.newTier),
+        () => NotificationService.notifyTierPromotion(user_id, result.newTier),
         'play.service:notification:tierPromotion'
       )
       await safeVoid(
@@ -360,7 +360,7 @@ export const PlayService = {
 
     // Add territory score for faction (10 points per play)
     await safeVoid(
-      () => FactionService.addTerritoryScore(userId, 'play'),
+      () => FactionService.addTerritoryScore(user_id, 'play'),
       'play.service:faction:territoryScore'
     )
 
@@ -369,15 +369,15 @@ export const PlayService = {
       busted: false,
       jailed: false,
       eventName: event.name,
-      eventDescription: event.description,
-      wealthEarned,
-      xpEarned,
+      event_description: event.description,
+      wealth_earned,
+      xp_earned,
       levelUp: result.levelUp,
       newLevel: result.levelUp ? result.newLevel : undefined,
       tierPromotion: result.tierPromotion,
       newTier: result.tierPromotion ? result.newTier : undefined,
       crateDropped,
-      crateTier,
+      crate_tier,
       crateToEscrow,
       crateLost,
       juicernautBonuses,
@@ -388,33 +388,33 @@ export const PlayService = {
   /**
    * Handle bust scenario
    */
-  async handleBust(userId: number, playerTier: Tier): Promise<PlayResult> {
+  async handleBust(user_id: number, playerTier: Tier): Promise<PlayResult> {
     // Select the event that would have happened (for flavor text)
     const event = this.selectEvent(playerTier)
 
     // Jail the user
-    const jailExpiresAt = await JailService.jailUser(userId)
+    const jailExpiresAt = await JailService.jailUser(user_id)
 
     // Record the bust event
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
+      await tx.users.update({
+        where: { id: user_id },
         data: {
-          totalPlayCount: { increment: 1 },
-          lastSeen: new Date(),
+          total_play_count: { increment: 1 },
+          last_seen: new Date(),
         },
       })
 
-      await tx.gameEvent.create({
+      await tx.game_events.create({
         data: {
-          userId,
-          eventType: 'play',
-          wealthChange: 0,
-          xpChange: 0,
+          user_id,
+          event_type: 'play',
+          wealth_change: 0,
+          xp_change: 0,
           tier: playerTier,
-          eventDescription: `BUSTED during ${event.name}! Jailed for 1 hour.`,
+          event_description: `BUSTED during ${event.name}! Jailed for 1 hour.`,
           success: false,
-          wasBusted: true,
+          was_busted: true,
         },
       })
     })
@@ -422,23 +422,23 @@ export const PlayService = {
     // MED-06 fix: Wrap non-critical tracking calls with safeVoid
     // Still counts as a play attempt for leaderboards
     await safeVoid(
-      () => LeaderboardService.updateSnapshot(userId, { playCount: 1 }),
+      () => LeaderboardService.updateSnapshot(user_id, { play_count: 1 }),
       'play.service:leaderboard:bust'
     )
 
     // Update mission progress (play still counts)
     await safeVoid(
-      () => MissionService.updateProgress(userId, MISSION_OBJECTIVE_TYPES.PLAY_COUNT, 1),
+      () => MissionService.updateProgress(user_id, MISSION_OBJECTIVE_TYPES.PLAY_COUNT, 1),
       'play.service:mission:bust'
     )
 
     // Update achievement progress
     await safeVoid(
-      () => AchievementService.incrementProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.PLAY_COUNT, 1),
-      'play.service:achievement:playCount:bust'
+      () => AchievementService.incrementProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.PLAY_COUNT, 1),
+      'play.service:achievement:play_count:bust'
     )
     await safeVoid(
-      () => AchievementService.incrementProgress(userId, ACHIEVEMENT_REQUIREMENT_TYPES.BUST_COUNT, 1),
+      () => AchievementService.incrementProgress(user_id, ACHIEVEMENT_REQUIREMENT_TYPES.BUST_COUNT, 1),
       'play.service:achievement:bustCount'
     )
 
@@ -448,9 +448,9 @@ export const PlayService = {
       jailed: true,
       jailExpiresAt,
       eventName: event.name,
-      eventDescription: `BUSTED! The heat came down during your ${event.name}.`,
-      wealthEarned: 0,
-      xpEarned: 0,
+      event_description: `BUSTED! The heat came down during your ${event.name}.`,
+      wealth_earned: 0,
+      xp_earned: 0,
       levelUp: false,
       tierPromotion: false,
       crateDropped: false,
@@ -496,27 +496,27 @@ export const PlayService = {
   /**
    * Check for active Juicernaut buffs
    */
-  async getJuicernautBuffs(userId: number): Promise<{
+  async getJuicernautBuffs(user_id: number): Promise<{
     isJuicernaut: boolean
     hasLootBuff: boolean
     hasWealthBuff: boolean
     hasXpBuff: boolean
   }> {
-    const buffs = await prisma.activeBuff.findMany({
+    const buffs = await prisma.active_buffs.findMany({
       where: {
-        userId,
-        isActive: true,
-        buffType: { startsWith: 'juicernaut_' },
+        user_id,
+        is_active: true,
+        buff_type: { startsWith: 'juicernaut_' },
         OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
+          { expires_at: null },
+          { expires_at: { gt: new Date() } },
         ],
       },
     })
 
-    const hasWealthBuff = buffs.some(b => b.buffType === JUICERNAUT_BUFF_TYPES.WEALTH)
-    const hasXpBuff = buffs.some(b => b.buffType === JUICERNAUT_BUFF_TYPES.XP)
-    const hasLootBuff = buffs.some(b => b.buffType === JUICERNAUT_BUFF_TYPES.LOOT)
+    const hasWealthBuff = buffs.some(b => b.buff_type === JUICERNAUT_BUFF_TYPES.WEALTH)
+    const hasXpBuff = buffs.some(b => b.buff_type === JUICERNAUT_BUFF_TYPES.XP)
+    const hasLootBuff = buffs.some(b => b.buff_type === JUICERNAUT_BUFF_TYPES.LOOT)
 
     // User is Juicernaut if they have any active Juicernaut buff
     const isJuicernaut = hasWealthBuff || hasXpBuff || hasLootBuff
@@ -532,36 +532,36 @@ export const PlayService = {
   /**
    * Get play statistics for a user
    */
-  async getPlayStats(userId: number) {
+  async getPlayStats(user_id: number) {
     const [totalPlays, busts, recentEvents] = await Promise.all([
-      prisma.gameEvent.count({
-        where: { userId, eventType: 'play' },
+      prisma.game_events.count({
+        where: { user_id, event_type: 'play' },
       }),
-      prisma.gameEvent.count({
-        where: { userId, eventType: 'play', wasBusted: true },
+      prisma.game_events.count({
+        where: { user_id, event_type: 'play', was_busted: true },
       }),
-      prisma.gameEvent.findMany({
-        where: { userId, eventType: 'play' },
-        orderBy: { createdAt: 'desc' },
+      prisma.game_events.findMany({
+        where: { user_id, event_type: 'play' },
+        orderBy: { created_at: 'desc' },
         take: 10,
         select: {
-          wealthChange: true,
-          xpChange: true,
-          wasBusted: true,
-          eventDescription: true,
-          createdAt: true,
+          wealth_change: true,
+          xp_change: true,
+          was_busted: true,
+          event_description: true,
+          created_at: true,
         },
       }),
     ])
 
-    const totalWealth = await prisma.gameEvent.aggregate({
-      where: { userId, eventType: 'play', wasBusted: false },
-      _sum: { wealthChange: true },
+    const totalWealth = await prisma.game_events.aggregate({
+      where: { user_id, event_type: 'play', was_busted: false },
+      _sum: { wealth_change: true },
     })
 
-    const totalXp = await prisma.gameEvent.aggregate({
-      where: { userId, eventType: 'play', wasBusted: false },
-      _sum: { xpChange: true },
+    const totalXp = await prisma.game_events.aggregate({
+      where: { user_id, event_type: 'play', was_busted: false },
+      _sum: { xp_change: true },
     })
 
     return {
@@ -569,14 +569,14 @@ export const PlayService = {
       successfulPlays: totalPlays - busts,
       busts,
       bustRate: totalPlays > 0 ? (busts / totalPlays) * 100 : 0,
-      totalWealthEarned: totalWealth._sum.wealthChange ?? BigInt(0),
-      totalXpEarned: totalXp._sum.xpChange ?? 0,
+      totalWealthEarned: totalWealth._sum.wealth_change ?? BigInt(0),
+      totalXpEarned: totalXp._sum.xp_change ?? 0,
       recentEvents: recentEvents.map(e => ({
-        wealthChange: Number(e.wealthChange),
-        xpChange: e.xpChange,
-        wasBusted: e.wasBusted,
-        eventDescription: e.eventDescription,
-        createdAt: e.createdAt,
+        wealth_change: Number(e.wealth_change),
+        xp_change: e.xp_change,
+        was_busted: e.was_busted,
+        event_description: e.event_description,
+        created_at: e.created_at,
       })),
     }
   },

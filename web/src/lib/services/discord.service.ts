@@ -144,12 +144,12 @@ export const DiscordService = {
   async postLegendaryDrop(
     username: string,
     itemName: string,
-    itemType: string,
+    type: string,
     source: string
   ): Promise<boolean> {
     return this.postToFeed({
       title: '🌟 Legendary Drop!',
-      description: `**${username}** found a **${itemName}** (Legendary ${itemType})!`,
+      description: `**${username}** found a **${itemName}** (Legendary ${type})!`,
       color: DISCORD_FEED_CONFIG.COLORS.GOLD,
       fields: [
         { name: 'Source', value: source, inline: true },
@@ -162,7 +162,7 @@ export const DiscordService = {
    */
   async postAchievement(
     username: string,
-    achievementName: string,
+    name: string,
     tier: AchievementTier
   ): Promise<boolean> {
     // Only post Platinum and above
@@ -182,7 +182,7 @@ export const DiscordService = {
 
     return this.postToFeed({
       title: `${getAchievementEmoji(tier)} Achievement Unlocked!`,
-      description: `**${username}** unlocked **${achievementName}** (${tier})!`,
+      description: `**${username}** unlocked **${name}** (${tier})!`,
       color: tier === ACHIEVEMENT_TIERS.LEGENDARY
         ? DISCORD_FEED_CONFIG.COLORS.GOLD
         : DISCORD_FEED_CONFIG.COLORS.PURPLE,
@@ -193,13 +193,13 @@ export const DiscordService = {
    * Post territory capture to feed
    */
   async postTerritoryCapture(
-    factionName: string,
+    faction_name: string,
     territoryName: string,
     previousController?: string
   ): Promise<boolean> {
     const description = previousController
-      ? `**${factionName}** captured **${territoryName}** from ${previousController}!`
-      : `**${factionName}** captured **${territoryName}**!`
+      ? `**${faction_name}** captured **${territoryName}** from ${previousController}!`
+      : `**${faction_name}** captured **${territoryName}**!`
 
     return this.postToFeed({
       title: '🏴 Territory Captured!',
@@ -212,16 +212,16 @@ export const DiscordService = {
    * Post weekly faction winner to feed
    */
   async postWeeklyFactionWinner(
-    factionName: string,
-    territoriesControlled: number,
+    faction_name: string,
+    territories_controlled: number,
     totalScore: number
   ): Promise<boolean> {
     return this.postToFeed({
       title: '🏆 Weekly Faction Winner!',
-      description: `**${factionName}** dominated this week!`,
+      description: `**${faction_name}** dominated this week!`,
       color: DISCORD_FEED_CONFIG.COLORS.GOLD,
       fields: [
-        { name: 'Territories', value: territoriesControlled.toString(), inline: true },
+        { name: 'Territories', value: territories_controlled.toString(), inline: true },
         { name: 'Total Score', value: totalScore.toLocaleString(), inline: true },
       ],
     })
@@ -234,11 +234,11 @@ export const DiscordService = {
     attackerName: string,
     defenderName: string,
     itemName: string,
-    itemTier: string
+    item_tier: string
   ): Promise<boolean> {
     return this.postToFeed({
       title: '🔥 Item Stolen!',
-      description: `**${attackerName}** stole **${itemName}** (${itemTier}) from **${defenderName}**!`,
+      description: `**${attackerName}** stole **${itemName}** (${item_tier}) from **${defenderName}**!`,
       color: DISCORD_FEED_CONFIG.COLORS.ORANGE,
     })
   },
@@ -248,12 +248,12 @@ export const DiscordService = {
    */
   async postCrateDrop(
     username: string,
-    crateTier: CrateTier,
+    crate_tier: CrateTier,
     source: string
   ): Promise<boolean> {
     // Only post Rare and above
     const tierOrder = [CRATE_TIERS.COMMON, CRATE_TIERS.UNCOMMON, CRATE_TIERS.RARE, CRATE_TIERS.LEGENDARY]
-    const tierIndex = tierOrder.indexOf(crateTier)
+    const tierIndex = tierOrder.indexOf(crate_tier)
     const minTierIndex = tierOrder.indexOf(DISCORD_FEED_CONFIG.CRATE_DROP_MIN_TIER as CrateTier)
 
     if (tierIndex < minTierIndex) {
@@ -261,9 +261,9 @@ export const DiscordService = {
     }
 
     return this.postToFeed({
-      title: `${getCrateEmoji(crateTier)} ${crateTier} Crate Found!`,
-      description: `**${username}** found a **${crateTier}** crate from ${source}!`,
-      color: crateTier === CRATE_TIERS.LEGENDARY
+      title: `${getCrateEmoji(crate_tier)} ${crate_tier} Crate Found!`,
+      description: `**${username}** found a **${crate_tier}** crate from ${source}!`,
+      color: crate_tier === CRATE_TIERS.LEGENDARY
         ? DISCORD_FEED_CONFIG.COLORS.GOLD
         : DISCORD_FEED_CONFIG.COLORS.PURPLE,
     })
@@ -274,24 +274,24 @@ export const DiscordService = {
    */
   async postHeistWinner(
     username: string,
-    eventType: string,
+    event_type: string,
     difficulty: string,
-    crateTier: string,
-    responseTimeMs: number
+    crate_tier: string,
+    response_time_ms: number
   ): Promise<boolean> {
     // Only post hard difficulty wins
     if (difficulty !== 'hard') {
       return false
     }
 
-    const responseTimeSec = (responseTimeMs / 1000).toFixed(2)
+    const responseTimeSec = (response_time_ms / 1000).toFixed(2)
 
     return this.postToFeed({
       title: '🚨 Heist Completed!',
-      description: `**${username}** cracked the ${eventType} heist in **${responseTimeSec}s**!`,
+      description: `**${username}** cracked the ${event_type} heist in **${responseTimeSec}s**!`,
       color: DISCORD_FEED_CONFIG.COLORS.ORANGE,
       fields: [
-        { name: 'Reward', value: `${crateTier} Crate`, inline: true },
+        { name: 'Reward', value: `${crate_tier} Crate`, inline: true },
       ],
     })
   },
@@ -306,19 +306,19 @@ export const DiscordService = {
   async postMonetization(
     username: string,
     platform: string,
-    eventType: string,
+    event_type: string,
     quantity: number,
-    amountUsd: number,
+    amount_usd: number,
     rewards: { wealth: number; xp: number }
   ): Promise<boolean> {
     return this.postAdminAlert({
-      title: `${getPlatformEmoji(platform)} New ${eventType}!`,
-      description: `**${username}** ${formatEventType(eventType)}`,
+      title: `${getPlatformEmoji(platform)} New ${event_type}!`,
+      description: `**${username}** ${formatEventType(event_type)}`,
       color: DISCORD_FEED_CONFIG.COLORS.PURPLE,
       fields: [
         { name: 'Platform', value: platform, inline: true },
         { name: 'Amount', value: quantity > 1 ? `${quantity}x` : 'x1', inline: true },
-        { name: 'USD Value', value: `$${amountUsd.toFixed(2)}`, inline: true },
+        { name: 'USD Value', value: `$${amount_usd.toFixed(2)}`, inline: true },
         { name: 'Rewards', value: `$${rewards.wealth.toLocaleString()} + ${rewards.xp} XP`, inline: true },
       ],
     })
@@ -350,7 +350,7 @@ export const DiscordService = {
    * Post session start to admin
    */
   async postSessionStart(
-    sessionId: number,
+    session_id: number,
     platform: string,
     title?: string
   ): Promise<boolean> {
@@ -359,7 +359,7 @@ export const DiscordService = {
       description: title ?? 'New streaming session has begun!',
       color: DISCORD_FEED_CONFIG.COLORS.GREEN,
       fields: [
-        { name: 'Session ID', value: sessionId.toString(), inline: true },
+        { name: 'Session ID', value: session_id.toString(), inline: true },
         { name: 'Platform', value: platform, inline: true },
       ],
     })
@@ -369,9 +369,9 @@ export const DiscordService = {
    * Post session end summary to admin
    */
   async postSessionSummary(
-    sessionId: number,
+    session_id: number,
     stats: {
-      totalContributionsUsd: number
+      total_contributions_usd: number
       totalContributors: number
       winnerName?: string
       winnerContributionUsd?: number
@@ -380,9 +380,9 @@ export const DiscordService = {
     }
   ): Promise<boolean> {
     const fields = [
-      { name: 'Session ID', value: sessionId.toString(), inline: true },
+      { name: 'Session ID', value: session_id.toString(), inline: true },
       { name: 'Duration', value: `${stats.durationMinutes} min`, inline: true },
-      { name: 'Total Contributions', value: `$${stats.totalContributionsUsd.toFixed(2)}`, inline: true },
+      { name: 'Total Contributions', value: `$${stats.total_contributions_usd.toFixed(2)}`, inline: true },
       { name: 'Contributors', value: stats.totalContributors.toString(), inline: true },
       { name: 'Heists', value: stats.totalHeists.toString(), inline: true },
     ]
@@ -478,7 +478,7 @@ function getPlatformEmoji(platform: string): string {
   return emojis[platform.toLowerCase()] ?? '💰'
 }
 
-function formatEventType(eventType: string): string {
+function formatEventType(event_type: string): string {
   const formats: Record<string, string> = {
     subscription: 'subscribed!',
     gift_sub: 'gifted subs!',
@@ -487,7 +487,7 @@ function formatEventType(eventType: string): string {
     raid: 'raided the stream!',
     donation: 'donated!',
   }
-  return formats[eventType] ?? eventType
+  return formats[event_type] ?? event_type
 }
 
 export default DiscordService

@@ -126,10 +126,10 @@ export async function POST(request: NextRequest) {
     const eventId = event.id
 
     // Check for duplicate event
-    const externalEventId = `stripe_${eventId}`
-    const isDuplicate = await MonetizationService.isEventProcessed(externalEventId)
+    const external_event_id = `stripe_${eventId}`
+    const isDuplicate = await MonetizationService.isEventProcessed(external_event_id)
     if (isDuplicate) {
-      console.log(`Stripe webhook event ${externalEventId} already processed`)
+      console.log(`Stripe webhook event ${external_event_id} already processed`)
       return NextResponse.json({ success: true, message: 'Already processed' })
     }
 
@@ -147,9 +147,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Get amount in dollars
-        const amountUsd = (session.amount_total || 0) / 100
+        const amount_usd = (session.amount_total || 0) / 100
 
-        if (amountUsd <= 0) {
+        if (amount_usd <= 0) {
           return NextResponse.json({
             success: true,
             message: 'Zero amount payment',
@@ -175,8 +175,8 @@ export async function POST(request: NextRequest) {
         const result = await MonetizationService.processStripeDonation(
           userInfo.platformUserId,
           userInfo.username,
-          amountUsd,
-          externalEventId,
+          amount_usd,
+          external_event_id,
           {
             stripeSessionId: session.id,
             customerEmail: session.customer_email,
@@ -186,14 +186,14 @@ export async function POST(request: NextRequest) {
         )
 
         console.log(
-          `Stripe donation processed: ${userInfo.username} donated $${amountUsd} - $${result.wealth} wealth`
+          `Stripe donation processed: ${userInfo.username} donated $${amount_usd} - $${result.wealth} wealth`
         )
 
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
-          amountUsd,
+          user_id: result.user_id,
+          amount_usd,
           rewards: {
             wealth: result.wealth,
             xp: result.xp,
@@ -228,10 +228,10 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        const amountUsd = paymentIntent.amount / 100
+        const amount_usd = paymentIntent.amount / 100
         const userInfo = extractUserFromMetadata(metadata)
 
-        if (!userInfo || amountUsd <= 0) {
+        if (!userInfo || amount_usd <= 0) {
           return NextResponse.json({
             success: true,
             message: 'Invalid payment or no user info',
@@ -241,8 +241,8 @@ export async function POST(request: NextRequest) {
         const result = await MonetizationService.processStripeDonation(
           userInfo.platformUserId,
           userInfo.username,
-          amountUsd,
-          externalEventId,
+          amount_usd,
+          external_event_id,
           {
             stripePaymentIntentId: paymentIntent.id,
             platform: userInfo.platform,
@@ -251,14 +251,14 @@ export async function POST(request: NextRequest) {
         )
 
         console.log(
-          `Stripe payment processed: ${userInfo.username} paid $${amountUsd} - $${result.wealth} wealth`
+          `Stripe payment processed: ${userInfo.username} paid $${amount_usd} - $${result.wealth} wealth`
         )
 
         return NextResponse.json({
           success: true,
           eventId: result.eventId,
-          userId: result.userId,
-          amountUsd,
+          user_id: result.user_id,
+          amount_usd,
           rewards: {
             wealth: result.wealth,
             xp: result.xp,

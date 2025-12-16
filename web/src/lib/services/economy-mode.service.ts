@@ -27,8 +27,8 @@ export const EconomyModeService = {
    * Returns false if a streaming session is currently active
    */
   async canExecuteFree(): Promise<boolean> {
-    const activeSession = await prisma.streamingSession.findFirst({
-      where: { isActive: true },
+    const activeSession = await prisma.streaming_sessions.findFirst({
+      where: { is_active: true },
       select: { id: true },
     })
 
@@ -39,8 +39,8 @@ export const EconomyModeService = {
    * Get full economy mode status with session details
    */
   async getStatus(): Promise<EconomyModeStatus> {
-    const activeSession = await prisma.streamingSession.findFirst({
-      where: { isActive: true },
+    const activeSession = await prisma.streaming_sessions.findFirst({
+      where: { is_active: true },
       select: { id: true, platform: true },
     })
 

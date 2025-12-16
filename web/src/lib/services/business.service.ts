@@ -6,7 +6,7 @@ import { BUSINESS_REVENUE_CONFIG } from '../game'
 // =============================================================================
 
 export interface BusinessRevenueResult {
-  userId: number
+  user_id: number
   businessName: string
   baseRevenue: number
   variance: number
@@ -44,7 +44,7 @@ export const BusinessService = {
   /**
    * Get all users with equipped businesses
    */
-  async getUsersWithBusinesses(): Promise<{ userId: number; businessId: number; dailyRevenue: number; operatingCost: number; businessName: string }[]> {
+  async getUsersWithBusinesses(): Promise<{ user_id: number; businessId: number; dailyRevenue: number; operatingCost: number; businessName: string }[]> {
     const equipped = await prisma.user_inventory.findMany({
       where: {
         is_equipped: true,
@@ -63,7 +63,7 @@ export const BusinessService = {
     return equipped
       .filter(inv => inv.items.daily_revenue_potential !== null)
       .map(inv => ({
-        userId: inv.user_id,
+        user_id: inv.user_id,
         businessId: inv.items.id,
         dailyRevenue: inv.items.daily_revenue_potential!,
         operatingCost: inv.items.operating_cost || 0,
@@ -74,11 +74,11 @@ export const BusinessService = {
   /**
    * Collect revenue for a specific user's business
    */
-  async collectRevenue(userId: number): Promise<BusinessRevenueResult | null> {
+  async collectRevenue(user_id: number): Promise<BusinessRevenueResult | null> {
     // Find user's equipped business
     const equippedBusiness = await prisma.user_inventory.findFirst({
       where: {
-        user_id: userId,
+        user_id: user_id,
         is_equipped: true,
         slot: 'business',
         items: {
@@ -104,14 +104,14 @@ export const BusinessService = {
     // Add wealth to user and record P&L history
     await prisma.$transaction([
       prisma.users.update({
-        where: { id: userId },
+        where: { id: user_id },
         data: {
           wealth: { increment: netRevenue },
         },
       }),
       prisma.business_revenue_history.create({
         data: {
-          user_id: userId,
+          user_id: user_id,
           item_id: equippedBusiness.items.id,
           business_name: equippedBusiness.items.name,
           gross_revenue: total,
@@ -123,7 +123,7 @@ export const BusinessService = {
     ])
 
     return {
-      userId,
+      user_id,
       businessName: equippedBusiness.items.name,
       baseRevenue: base,
       variance,
@@ -150,14 +150,14 @@ export const BusinessService = {
 
       for (const business of usersWithBusinesses) {
         try {
-          const result = await this.collectRevenue(business.userId)
+          const result = await this.collectRevenue(business.user_id)
           if (result) {
             summary.usersProcessed++
             summary.businessesProcessed++
             summary.totalRevenueDistributed += result.netRevenue
           }
         } catch (error) {
-          summary.errors.push(`User ${business.userId}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          summary.errors.push(`User ${business.user_id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
       }
     } catch (error) {
@@ -170,10 +170,10 @@ export const BusinessService = {
   /**
    * Get business count for a user (for ownership limits)
    */
-  async getBusinessCount(userId: number): Promise<number> {
+  async getBusinessCount(user_id: number): Promise<number> {
     return prisma.user_inventory.count({
       where: {
-        user_id: userId,
+        user_id: user_id,
         items: {
           type: 'business',
         },
@@ -184,8 +184,8 @@ export const BusinessService = {
   /**
    * Check if user can purchase another business
    */
-  async canPurchaseBusiness(userId: number, maxBusinesses: number = 3): Promise<{ canPurchase: boolean; currentCount: number; error?: string }> {
-    const count = await this.getBusinessCount(userId)
+  async canPurchaseBusiness(user_id: number, maxBusinesses: number = 3): Promise<{ canPurchase: boolean; currentCount: number; error?: string }> {
+    const count = await this.getBusinessCount(user_id)
 
     if (count >= maxBusinesses) {
       return {
@@ -204,7 +204,7 @@ export const BusinessService = {
   /**
    * Get user's business revenue stats
    */
-  async getBusinessStats(userId: number): Promise<{
+  async getBusinessStats(user_id: number): Promise<{
     hasEquippedBusiness: boolean
     businessName: string | null
     dailyRevenuePotential: number | null
@@ -214,7 +214,7 @@ export const BusinessService = {
   }> {
     const equippedBusiness = await prisma.user_inventory.findFirst({
       where: {
-        user_id: userId,
+        user_id: user_id,
         is_equipped: true,
         slot: 'business',
       },
@@ -253,7 +253,7 @@ export const BusinessService = {
   /**
    * Get P&L summary for a user's businesses
    */
-  async getProfitLossSummary(userId: number, days: number = 7): Promise<{
+  async getProfitLossSummary(user_id: number, days: number = 7): Promise<{
     totalGrossRevenue: number
     totalOperatingCosts: number
     totalNetRevenue: number
@@ -266,7 +266,7 @@ export const BusinessService = {
 
     const history = await prisma.business_revenue_history.findMany({
       where: {
-        user_id: userId,
+        user_id: user_id,
         collected_at: { gte: startDate },
       },
       orderBy: { collected_at: 'desc' },
@@ -306,16 +306,16 @@ export const BusinessService = {
   /**
    * Get recent P&L history entries
    */
-  async getRevenueHistory(userId: number, limit: number = 20): Promise<{
+  async getRevenueHistory(user_id: number, limit: number = 20): Promise<{
     id: number
     businessName: string
     grossRevenue: number
     operatingCost: number
     netRevenue: number
-    collectedAt: Date
+    collectedAt: Date | null
   }[]> {
     const history = await prisma.business_revenue_history.findMany({
-      where: { user_id: userId },
+      where: { user_id: user_id },
       orderBy: { collected_at: 'desc' },
       take: limit,
     })

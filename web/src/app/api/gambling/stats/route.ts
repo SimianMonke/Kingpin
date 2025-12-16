@@ -11,15 +11,15 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const includeHistory = searchParams.get('history') === 'true'
   const includeLeaderboard = searchParams.get('leaderboard') === 'true'
 
-  const userId = typeof session.user.id === 'string'
+  const user_id = typeof session.user.id === 'string'
     ? parseInt(session.user.id, 10)
     : session.user.id
-  const stats = await GamblingService.getGamblingStats(userId)
+  const stats = await GamblingService.getGamblingStats(user_id)
 
   const response: Record<string, unknown> = { stats }
 
   if (includeHistory) {
-    response.history = await GamblingService.getGamblingHistory(userId, 20)
+    response.history = await GamblingService.getGamblingHistory(user_id, 20)
   }
 
   if (includeLeaderboard) {

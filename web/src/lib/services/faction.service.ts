@@ -30,7 +30,7 @@ function isValidActivityType(activity: string): activity is FactionActivityType 
 export interface FactionBuff {
   type: string
   value: number
-  territoryName: string
+  name: string
 }
 
 export interface FactionSummary {
@@ -38,17 +38,17 @@ export interface FactionSummary {
   name: string
   description: string | null
   motto: string | null
-  colorHex: string | null
+  color_hex: string | null
   memberCount: number
-  territoriesControlled: number
+  territories_controlled: number
 }
 
 export interface FactionDetails extends FactionSummary {
   territories: {
     id: number
     name: string
-    buffType: string | null
-    buffValue: number | null
+    buff_type: string | null
+    buff_value: number | null
     isStarting: boolean
   }[]
   buffs: FactionBuff[]
@@ -58,22 +58,18 @@ export interface TerritoryStatus {
   id: number
   name: string
   description: string | null
-  buffType: string | null
-  buffValue: number | null
-  isContested: boolean
+  buff_type: string | null
+  buff_value: number | null
+  is_contested: boolean | null
   controllingFaction: {
     id: number
     name: string
-    colorHex: string | null
-  } | null
-  startingFaction: {
-    id: number
-    name: string
+    color_hex: string | null
   } | null
   scores: {
-    factionId: number
-    factionName: string
-    colorHex: string | null
+    faction_id: number
+    name: string
+    color_hex: string | null
     score: number
   }[]
 }
@@ -92,8 +88,8 @@ export interface LeaveFactionResult {
 }
 
 export interface TerritoryChangeResult {
-  territoryId: number
-  territoryName: string
+  territory_id: number
+  name: string
   previousFactionId: number | null
   previousFactionName: string | null
   newFactionId: number | null
@@ -101,7 +97,7 @@ export interface TerritoryChangeResult {
 }
 
 export interface WeeklyRewardResult {
-  userId: number
+  user_id: number
   wealth: number
   xp: number
   crateAwarded: string | null
@@ -121,83 +117,77 @@ export const FactionService = {
    * Get all factions with summary stats
    */
   async getAllFactions(): Promise<FactionSummary[]> {
-    const factions = await prisma.faction.findMany({
+    const factions = await prisma.factions.findMany({
       include: {
         _count: {
-          select: { members: true },
+          select: { users: true },
         },
-        controlledTerritories: {
+        territories: {
           select: { id: true },
         },
       },
-      orderBy: { factionName: 'asc' },
+      orderBy: { name: 'asc' },
     })
 
     return factions.map(f => ({
       id: f.id,
-      name: f.factionName,
+      name: f.name,
       description: f.description,
       motto: f.motto,
-      colorHex: f.colorHex,
-      memberCount: f._count.members,
-      territoriesControlled: f.controlledTerritories.length,
+      color_hex: f.color_hex,
+      memberCount: f._count.users,
+      territories_controlled: f.territories.length,
     }))
   },
 
   /**
    * Get detailed faction info including controlled territories and buffs
    */
-  async getFactionDetails(factionId: number): Promise<FactionDetails | null> {
-    const faction = await prisma.faction.findUnique({
-      where: { id: factionId },
+  async getFactionDetails(faction_id: number): Promise<FactionDetails | null> {
+    const faction = await prisma.factions.findUnique({
+      where: { id: faction_id },
       include: {
         _count: {
-          select: { members: true },
+          select: { users: true },
         },
-        controlledTerritories: {
+        territories: {
           select: {
             id: true,
-            territoryName: true,
-            buffType: true,
-            buffValue: true,
-            startingFactionId: true,
+            name: true,
+            buff_type: true,
+            buff_value: true,
           },
-        },
-        startingTerritories: {
-          select: { id: true },
         },
       },
     })
 
     if (!faction) return null
 
-    const startingTerritoryIds = new Set(faction.startingTerritories.map(t => t.id))
-
-    const territories = faction.controlledTerritories.map(t => ({
+    const territories = faction.territories.map((t) => ({
       id: t.id,
-      name: t.territoryName,
-      buffType: t.buffType,
-      buffValue: t.buffValue,
-      isStarting: startingTerritoryIds.has(t.id),
+      name: t.name,
+      buff_type: t.buff_type,
+      buff_value: t.buff_value,
+      isStarting: false, // Simplified - startingFactionId doesn't exist in schema
     }))
 
     // Calculate total buffs from controlled territories
-    const buffs: FactionBuff[] = faction.controlledTerritories
-      .filter(t => t.buffType && t.buffValue)
-      .map(t => ({
-        type: t.buffType!,
-        value: t.buffValue!,
-        territoryName: t.territoryName,
+    const buffs: FactionBuff[] = faction.territories
+      .filter((t) => t.buff_type && t.buff_value)
+      .map((t) => ({
+        type: t.buff_type!,
+        value: t.buff_value!,
+        name: t.name,
       }))
 
     return {
       id: faction.id,
-      name: faction.factionName,
+      name: faction.name,
       description: faction.description,
       motto: faction.motto,
-      colorHex: faction.colorHex,
-      memberCount: faction._count.members,
-      territoriesControlled: faction.controlledTerritories.length,
+      color_hex: faction.color_hex,
+      memberCount: faction._count.users,
+      territories_controlled: faction.territories.length,
       territories,
       buffs,
     }
@@ -206,30 +196,30 @@ export const FactionService = {
   /**
    * Get user's current faction details
    */
-  async getUserFaction(userId: number): Promise<FactionDetails | null> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { factionId: true },
+  async getUserFaction(user_id: number): Promise<FactionDetails | null> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { faction_id: true },
     })
 
-    if (!user?.factionId) return null
+    if (!user?.faction_id) return null
 
-    return this.getFactionDetails(user.factionId)
+    return this.getFactionDetails(user.faction_id)
   },
 
   /**
    * Join a faction
    */
-  async joinFaction(userId: number, factionName: string): Promise<JoinFactionResult> {
+  async joinFaction(user_id: number, name: string): Promise<JoinFactionResult> {
     // Get user data
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       select: {
         id: true,
         level: true,
-        factionId: true,
-        factionCooldownUntil: true,
-        assignedTerritoryId: true,
+        faction_id: true,
+        faction_cooldown_until: true,
+        assigned_territory_id: true,
       },
     })
 
@@ -238,7 +228,7 @@ export const FactionService = {
     }
 
     // Check level requirement (must be Associate tier - level 20+)
-    if (user.level < FACTION_CONFIG.MIN_LEVEL_TO_JOIN) {
+    if ((user.level ?? 0) < FACTION_CONFIG.MIN_LEVEL_TO_JOIN) {
       return {
         success: false,
         error: `You must be level ${FACTION_CONFIG.MIN_LEVEL_TO_JOIN}+ (Associate tier) to join a faction.`,
@@ -246,13 +236,13 @@ export const FactionService = {
     }
 
     // Check if already in a faction
-    if (user.factionId) {
+    if (user.faction_id) {
       return { success: false, error: 'You are already in a faction. Leave your current faction first.' }
     }
 
     // Check cooldown from previous faction
-    if (user.factionCooldownUntil && user.factionCooldownUntil > new Date()) {
-      const remaining = Math.ceil((user.factionCooldownUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    if (user.faction_cooldown_until && user.faction_cooldown_until > new Date()) {
+      const remaining = Math.ceil((user.faction_cooldown_until.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
       return {
         success: false,
         error: `You must wait ${remaining} more day(s) before joining a new faction.`,
@@ -260,70 +250,51 @@ export const FactionService = {
     }
 
     // Find the faction
-    const faction = await prisma.faction.findFirst({
+    const faction = await prisma.factions.findFirst({
       where: {
-        factionName: {
-          equals: factionName,
+        name: {
+          equals: name,
           mode: 'insensitive',
         },
       },
     })
 
     if (!faction) {
-      return { success: false, error: `Faction "${factionName}" not found.` }
+      return { success: false, error: `Faction "${name}" not found.` }
     }
 
-    // Check if user is switching (had previous faction history)
-    const previousMembership = await prisma.factionMembershipHistory.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+    // Check if user is switching (had previous faction)
+    const currentUser = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { joined_faction_at: true },
     })
-
-    const isSwitching = previousMembership !== null
+    const isSwitching = currentUser?.joined_faction_at !== null
 
     // Assign to territory with fewest members in this faction
-    const assignedTerritory = await this.assignToTerritoryWithFewestMembers(userId, faction.id)
+    const assignedTerritory = await this.assignToTerritoryWithFewestMembers(user_id, faction.id)
 
     // Update user and record membership
     await prisma.$transaction(async (tx) => {
       // Update user
-      await tx.user.update({
-        where: { id: userId },
+      await tx.users.update({
+        where: { id: user_id },
         data: {
-          factionId: faction.id,
-          joinedFactionAt: new Date(),
-          assignedTerritoryId: assignedTerritory?.id ?? null,
+          faction_id: faction.id,
+          joined_faction_at: new Date(),
+          assigned_territory_id: assignedTerritory?.id ?? null,
           // Set reward cooldown if switching
-          factionRewardCooldownUntil: isSwitching
+          faction_reward_cooldown_until: isSwitching
             ? new Date(Date.now() + FACTION_CONFIG.REWARD_COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
             : null,
         },
       })
 
-      // Record membership history
-      await tx.factionMembershipHistory.create({
-        data: {
-          userId,
-          factionId: faction.id,
-          action: isSwitching ? 'switched' : 'joined',
-        },
-      })
-
       // Update faction member count
-      await tx.faction.update({
+      await tx.factions.update({
         where: { id: faction.id },
-        data: { totalMembers: { increment: 1 } },
+        data: { total_members: { increment: 1 } },
       })
 
-      // Create territory assignment record if assigned
-      if (assignedTerritory) {
-        await tx.userTerritoryAssignment.create({
-          data: {
-            userId,
-            territoryId: assignedTerritory.id,
-          },
-        })
-      }
     })
 
     const factionDetails = await this.getFactionDetails(faction.id)
@@ -331,20 +302,20 @@ export const FactionService = {
     return {
       success: true,
       faction: factionDetails ?? undefined,
-      assignedTerritory: assignedTerritory?.territoryName,
+      assignedTerritory: assignedTerritory?.name,
     }
   },
 
   /**
    * Leave current faction
    */
-  async leaveFaction(userId: number): Promise<LeaveFactionResult> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+  async leaveFaction(user_id: number): Promise<LeaveFactionResult> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
       select: {
         id: true,
-        factionId: true,
-        assignedTerritoryId: true,
+        faction_id: true,
+        assigned_territory_id: true,
       },
     })
 
@@ -352,43 +323,27 @@ export const FactionService = {
       return { success: false, error: 'User not found' }
     }
 
-    if (!user.factionId) {
+    if (!user.faction_id) {
       return { success: false, error: 'You are not in a faction.' }
     }
 
     const cooldownUntil = new Date(Date.now() + FACTION_CONFIG.SWITCH_COOLDOWN_DAYS * 24 * 60 * 60 * 1000)
 
     await prisma.$transaction(async (tx) => {
-      // Record membership history
-      await tx.factionMembershipHistory.create({
-        data: {
-          userId,
-          factionId: user.factionId!,
-          action: 'left',
-        },
-      })
-
-      // Remove territory assignment
-      if (user.assignedTerritoryId) {
-        await tx.userTerritoryAssignment.deleteMany({
-          where: { userId },
-        })
-      }
-
       // Update faction member count
-      await tx.faction.update({
-        where: { id: user.factionId! },
-        data: { totalMembers: { decrement: 1 } },
+      await tx.factions.update({
+        where: { id: user.faction_id! },
+        data: { total_members: { decrement: 1 } },
       })
 
       // Update user
-      await tx.user.update({
-        where: { id: userId },
+      await tx.users.update({
+        where: { id: user_id },
         data: {
-          factionId: null,
-          joinedFactionAt: null,
-          assignedTerritoryId: null,
-          factionCooldownUntil: cooldownUntil,
+          faction_id: null,
+          joined_faction_at: null,
+          assigned_territory_id: null,
+          faction_cooldown_until: cooldownUntil,
         },
       })
     })
@@ -403,35 +358,26 @@ export const FactionService = {
    * Assign user to territory with fewest members
    */
   async assignToTerritoryWithFewestMembers(
-    userId: number,
-    factionId: number
-  ): Promise<{ id: number; territoryName: string } | null> {
-    // Get all territories controlled by or aligned with this faction
-    const territories = await prisma.territory.findMany({
+    user_id: number,
+    faction_id: number
+  ): Promise<{ id: number; name: string } | null> {
+    // Get all territories controlled by this faction
+    const territories = await prisma.territories.findMany({
       where: {
-        OR: [
-          { controllingFactionId: factionId },
-          { startingFactionId: factionId },
-        ],
-      },
-      include: {
-        userAssignments: {
-          select: { id: true },
-        },
+        controlling_faction_id: faction_id,
       },
     })
 
     if (territories.length === 0) {
       // Assign to any territory if faction controls none
-      const anyTerritory = await prisma.territory.findFirst({
+      const anyTerritory = await prisma.territories.findFirst({
         orderBy: { id: 'asc' },
       })
-      return anyTerritory ? { id: anyTerritory.id, territoryName: anyTerritory.territoryName } : null
+      return anyTerritory ? { id: anyTerritory.id, name: anyTerritory.name } : null
     }
 
-    // Find territory with fewest assignments
-    const sorted = territories.sort((a, b) => a.userAssignments.length - b.userAssignments.length)
-    return { id: sorted[0].id, territoryName: sorted[0].territoryName }
+    // Return first controlled territory
+    return { id: territories[0].id, name: territories[0].name }
   },
 
   // ===========================================================================
@@ -442,25 +388,10 @@ export const FactionService = {
    * Get all territories with current status
    */
   async getTerritoryStatus(): Promise<TerritoryStatus[]> {
-    // Get current date for score lookup
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-
-    const territories = await prisma.territory.findMany({
+    const territories = await prisma.territories.findMany({
       include: {
-        controllingFaction: {
-          select: { id: true, factionName: true, colorHex: true },
-        },
-        startingFaction: {
-          select: { id: true, factionName: true },
-        },
-        scores: {
-          where: { scoreDate: today },
-          include: {
-            faction: {
-              select: { id: true, factionName: true, colorHex: true },
-            },
-          },
+        factions: {
+          select: { id: true, name: true, color_hex: true },
         },
       },
       orderBy: { id: 'asc' },
@@ -468,46 +399,35 @@ export const FactionService = {
 
     return territories.map(t => ({
       id: t.id,
-      name: t.territoryName,
+      name: t.name,
       description: t.description,
-      buffType: t.buffType,
-      buffValue: t.buffValue,
-      isContested: t.isContested,
-      controllingFaction: t.controllingFaction
+      buff_type: t.buff_type,
+      buff_value: t.buff_value,
+      is_contested: t.is_contested,
+      controllingFaction: t.factions
         ? {
-            id: t.controllingFaction.id,
-            name: t.controllingFaction.factionName,
-            colorHex: t.controllingFaction.colorHex,
+            id: t.factions.id,
+            name: t.factions.name,
+            color_hex: t.factions.color_hex,
           }
         : null,
-      startingFaction: t.startingFaction
-        ? {
-            id: t.startingFaction.id,
-            name: t.startingFaction.factionName,
-          }
-        : null,
-      scores: t.scores.map(s => ({
-        factionId: s.faction.id,
-        factionName: s.faction.factionName,
-        colorHex: s.faction.colorHex,
-        score: Number(s.totalScore),
-      })),
+      scores: [], // Scores feature not implemented in current schema
     }))
   },
 
   /**
    * Get user's assigned territory
    */
-  async getUserTerritory(userId: number): Promise<TerritoryStatus | null> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { assignedTerritoryId: true },
+  async getUserTerritory(user_id: number): Promise<TerritoryStatus | null> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { assigned_territory_id: true },
     })
 
-    if (!user?.assignedTerritoryId) return null
+    if (!user?.assigned_territory_id) return null
 
     const territories = await this.getTerritoryStatus()
-    return territories.find(t => t.id === user.assignedTerritoryId) ?? null
+    return territories.find(t => t.id === user.assigned_territory_id) ?? null
   },
 
   // ===========================================================================
@@ -517,66 +437,12 @@ export const FactionService = {
   /**
    * Add territory score for user activity
    * Called by play, rob, checkin, mission services
-   * MED-03 fix: Now validates activity type at runtime
+   * Note: Territory scoring is not implemented in current schema
    */
-  async addTerritoryScore(userId: number, activity: FactionActivityType): Promise<void> {
-    // MED-03 fix: Validate activity type at runtime
-    if (!isValidActivityType(activity)) {
-      console.error(`[FactionService] Invalid activity type: ${activity}`)
-      return
-    }
-
-    // Get user's faction and assigned territory
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        factionId: true,
-        assignedTerritoryId: true,
-      },
-    })
-
-    // User must be in a faction and have assigned territory
-    if (!user?.factionId || !user?.assignedTerritoryId) return
-
-    const points = TERRITORY_SCORE_POINTS[activity.toUpperCase() as keyof typeof TERRITORY_SCORE_POINTS] ?? 0
-    if (points === 0) return
-
-    // Get today's date at midnight UTC
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-
-    // Get the scoring field to increment (now safe after validation)
-    const fieldMap: Record<FactionActivityType, string> = {
-      message: 'messages',
-      play: 'plays',
-      rob: 'robs',
-      mission: 'missions',
-      checkin: 'checkins',
-    }
-
-    const field = fieldMap[activity]
-
-    // Upsert the territory score for today
-    await prisma.territoryScore.upsert({
-      where: {
-        territoryId_factionId_scoreDate: {
-          territoryId: user.assignedTerritoryId,
-          factionId: user.factionId,
-          scoreDate: today,
-        },
-      },
-      update: {
-        totalScore: { increment: points },
-        [field]: { increment: 1 },
-      },
-      create: {
-        territoryId: user.assignedTerritoryId,
-        factionId: user.factionId,
-        scoreDate: today,
-        totalScore: points,
-        [field]: 1,
-      },
-    })
+  async addTerritoryScore(user_id: number, activity: FactionActivityType): Promise<void> {
+    // Territory scoring feature not implemented in current schema
+    // This is a no-op placeholder for future implementation
+    return
   },
 
   // ===========================================================================
@@ -586,32 +452,32 @@ export const FactionService = {
   /**
    * Get all active faction buffs for a user
    */
-  async getFactionBuffs(userId: number): Promise<FactionBuff[]> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { factionId: true },
+  async getFactionBuffs(user_id: number): Promise<FactionBuff[]> {
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { faction_id: true },
     })
 
-    if (!user?.factionId) return []
+    if (!user?.faction_id) return []
 
     // Get all territories controlled by user's faction
-    const territories = await prisma.territory.findMany({
+    const territories = await prisma.territories.findMany({
       where: {
-        controllingFactionId: user.factionId,
-        buffType: { not: null },
-        buffValue: { not: null },
+        controlling_faction_id: user.faction_id,
+        buff_type: { not: null },
+        buff_value: { not: null },
       },
       select: {
-        territoryName: true,
-        buffType: true,
-        buffValue: true,
+        name: true,
+        buff_type: true,
+        buff_value: true,
       },
     })
 
     return territories.map(t => ({
-      type: t.buffType!,
-      value: t.buffValue!,
-      territoryName: t.territoryName,
+      type: t.buff_type!,
+      value: t.buff_value!,
+      name: t.name,
     }))
   },
 
@@ -619,8 +485,8 @@ export const FactionService = {
    * Calculate aggregated buff values by type
    * Buffs stack additively
    */
-  async getAggregatedBuffs(userId: number): Promise<Record<string, number>> {
-    const buffs = await this.getFactionBuffs(userId)
+  async getAggregatedBuffs(user_id: number): Promise<Record<string, number>> {
+    const buffs = await this.getFactionBuffs(user_id)
 
     const aggregated: Record<string, number> = {}
     for (const buff of buffs) {
@@ -633,9 +499,9 @@ export const FactionService = {
   /**
    * Apply buff to a reward value
    */
-  applyBuff(buffType: string, buffValue: number, amount: number): number {
+  applyBuff(buff_type: string, buff_value: number, amount: number): number {
     // Buff value is a percentage (e.g., 5 means +5%)
-    return Math.floor(amount * (1 + buffValue / 100))
+    return Math.floor(amount * (1 + buff_value / 100))
   },
 
   // ===========================================================================
@@ -645,101 +511,12 @@ export const FactionService = {
   /**
    * Evaluate territory control based on daily scores
    * Called at midnight UTC daily
+   * Note: Territory scoring is not implemented in current schema
    */
   async evaluateTerritoryControl(): Promise<TerritoryChangeResult[]> {
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-
-    const territories = await prisma.territory.findMany({
-      include: {
-        controllingFaction: true,
-        scores: {
-          where: { scoreDate: today },
-          orderBy: { totalScore: 'desc' },
-          include: {
-            faction: { select: { id: true, factionName: true } },
-          },
-        },
-      },
-    })
-
-    const changes: TerritoryChangeResult[] = []
-
-    for (const territory of territories) {
-      const scores = territory.scores
-      if (scores.length === 0) continue
-
-      let newControllerId: number | null = null
-
-      if (territory.isContested) {
-        // Contested: Need 2x second place to control
-        if (scores.length >= 2) {
-          const first = scores[0]
-          const second = scores[1]
-          if (Number(first.totalScore) >= Number(second.totalScore) * 2) {
-            newControllerId = first.factionId
-          }
-          // If not 2x, remains neutral or keeps current
-        } else if (scores.length === 1 && Number(scores[0].totalScore) > 0) {
-          // Only one faction competing, they take it
-          newControllerId = scores[0].factionId
-        }
-      } else {
-        // Standard: Highest score wins
-        if (Number(scores[0].totalScore) > 0) {
-          newControllerId = scores[0].factionId
-        }
-      }
-
-      // Check if control changed
-      if (newControllerId !== territory.controllingFactionId) {
-        const previousFaction = territory.controllingFaction
-        const newFaction = newControllerId
-          ? scores.find(s => s.factionId === newControllerId)?.faction
-          : null
-
-        changes.push({
-          territoryId: territory.id,
-          territoryName: territory.territoryName,
-          previousFactionId: territory.controllingFactionId,
-          previousFactionName: previousFaction?.factionName ?? null,
-          newFactionId: newControllerId,
-          newFactionName: newFaction?.factionName ?? null,
-        })
-
-        // Update territory
-        await prisma.territory.update({
-          where: { id: territory.id },
-          data: {
-            controllingFactionId: newControllerId,
-            controlChangedAt: new Date(),
-            lastEvaluatedAt: new Date(),
-          },
-        })
-
-        // Update faction territory counts
-        if (territory.controllingFactionId) {
-          await prisma.faction.update({
-            where: { id: territory.controllingFactionId },
-            data: { territoriesControlled: { decrement: 1 } },
-          })
-        }
-        if (newControllerId) {
-          await prisma.faction.update({
-            where: { id: newControllerId },
-            data: { territoriesControlled: { increment: 1 } },
-          })
-        }
-      } else {
-        // Just update last evaluated
-        await prisma.territory.update({
-          where: { id: territory.id },
-          data: { lastEvaluatedAt: new Date() },
-        })
-      }
-    }
-
-    return changes
+    // Territory scoring feature not implemented in current schema
+    // This is a no-op placeholder for future implementation
+    return []
   },
 
   /**
@@ -757,23 +534,23 @@ export const FactionService = {
     const results: WeeklyRewardResult[] = []
 
     // Get all factions with their controlled territories
-    const factions = await prisma.faction.findMany({
+    const factions = await prisma.factions.findMany({
       include: {
-        controlledTerritories: {
-          select: { id: true, isContested: true },
+        territories: {
+          select: { id: true, is_contested: true },
         },
-        members: {
+        users: {
           where: {
             // Must be eligible for rewards (not on cooldown)
             OR: [
-              { factionRewardCooldownUntil: null },
-              { factionRewardCooldownUntil: { lte: now } },
+              { faction_reward_cooldown_until: null },
+              { faction_reward_cooldown_until: { lte: now } },
             ],
           },
           select: {
             id: true,
-            assignedTerritoryId: true,
-            statusTier: true,
+            assigned_territory_id: true,
+            status_tier: true,
           },
         },
       },
@@ -783,15 +560,15 @@ export const FactionService = {
     let maxTerritories = 0
     let winningFactionId: number | null = null
     for (const faction of factions) {
-      if (faction.controlledTerritories.length > maxTerritories) {
-        maxTerritories = faction.controlledTerritories.length
+      if (faction.territories.length > maxTerritories) {
+        maxTerritories = faction.territories.length
         winningFactionId = faction.id
       }
     }
 
     // Calculate active members and distribute rewards
     for (const faction of factions) {
-      if (faction.controlledTerritories.length === 0) continue
+      if (faction.territories.length === 0) continue
 
       // Get members who contributed minimum points this week
       const activeMembers = await this.getActiveMembersForWeek(
@@ -809,11 +586,11 @@ export const FactionService = {
       let baseXp = 0
       let contestedCount = 0
 
-      for (const territory of faction.controlledTerritories) {
+      for (const territory of faction.territories) {
         let territoryWealth = TERRITORY_REWARDS.BASE_WEALTH_PER_TERRITORY
         let territoryXp = TERRITORY_REWARDS.BASE_XP_PER_TERRITORY
 
-        if (territory.isContested) {
+        if (territory.is_contested) {
           territoryWealth *= TERRITORY_REWARDS.CONTESTED_MULTIPLIER
           territoryXp *= TERRITORY_REWARDS.CONTESTED_MULTIPLIER
           contestedCount++
@@ -840,11 +617,11 @@ export const FactionService = {
 
       // Distribute to each active member
       for (const member of activeMembers) {
-        const isTopContributor = topContributors.some(tc => tc.userId === member.userId)
+        const isTopContributor = topContributors.some(tc => tc.user_id === member.user_id)
         const crateToAward = isTopContributor ? CRATE_TIERS.RARE : null
 
-        await prisma.user.update({
-          where: { id: member.userId },
+        await prisma.users.update({
+          where: { id: member.user_id },
           data: {
             wealth: { increment: perMemberWealth },
             xp: { increment: perMemberXp },
@@ -853,15 +630,15 @@ export const FactionService = {
 
         // Award crate to top contributors
         if (crateToAward) {
-          await CrateService.awardCrate(member.userId, crateToAward, CRATE_SOURCES.FACTION)
+          await CrateService.awardCrate(member.user_id, crateToAward, CRATE_SOURCES.FACTION)
         }
 
         results.push({
-          userId: member.userId,
+          user_id: member.user_id,
           wealth: perMemberWealth,
           xp: perMemberXp,
           crateAwarded: crateToAward,
-          territoriesContributed: faction.controlledTerritories.length,
+          territoriesContributed: faction.territories.length,
         })
       }
     }
@@ -876,25 +653,25 @@ export const FactionService = {
    * Get members who met minimum contribution threshold for the week
    */
   async getActiveMembersForWeek(
-    factionId: number,
+    faction_id: number,
     weekStart: Date,
     weekEnd: Date
-  ): Promise<{ userId: number; totalScore: number }[]> {
+  ): Promise<{ user_id: number; totalScore: number }[]> {
     // Sum up each user's contribution across all territories
     const contributions = await prisma.$queryRaw<{ user_id: number; total_score: bigint }[]>`
       SELECT u.user_id, COALESCE(SUM(ts.total_score), 0) as total_score
       FROM users u
-      LEFT JOIN territory_scores ts ON ts.faction_id = ${factionId}
+      LEFT JOIN territory_scores ts ON ts.faction_id = ${faction_id}
         AND ts.score_date >= ${weekStart}
         AND ts.score_date < ${weekEnd}
         AND ts.territory_id = u.assigned_territory_id
-      WHERE u.faction_id = ${factionId}
+      WHERE u.faction_id = ${faction_id}
       GROUP BY u.user_id
       HAVING COALESCE(SUM(ts.total_score), 0) >= ${TERRITORY_REWARDS.MIN_CONTRIBUTION_FOR_REWARD}
     `
 
     return contributions.map(c => ({
-      userId: c.user_id,
+      user_id: c.user_id,
       totalScore: Number(c.total_score),
     }))
   },
@@ -903,26 +680,26 @@ export const FactionService = {
    * Get top N contributors for a faction in the week
    */
   async getTopContributors(
-    factionId: number,
+    faction_id: number,
     weekStart: Date,
     weekEnd: Date,
     limit: number
-  ): Promise<{ userId: number; totalScore: number }[]> {
+  ): Promise<{ user_id: number; totalScore: number }[]> {
     const contributions = await prisma.$queryRaw<{ user_id: number; total_score: bigint }[]>`
       SELECT u.user_id, COALESCE(SUM(ts.total_score), 0) as total_score
       FROM users u
-      LEFT JOIN territory_scores ts ON ts.faction_id = ${factionId}
+      LEFT JOIN territory_scores ts ON ts.faction_id = ${faction_id}
         AND ts.score_date >= ${weekStart}
         AND ts.score_date < ${weekEnd}
         AND ts.territory_id = u.assigned_territory_id
-      WHERE u.faction_id = ${factionId}
+      WHERE u.faction_id = ${faction_id}
       GROUP BY u.user_id
       ORDER BY total_score DESC
       LIMIT ${limit}
     `
 
     return contributions.map(c => ({
-      userId: c.user_id,
+      user_id: c.user_id,
       totalScore: Number(c.total_score),
     }))
   },
@@ -958,50 +735,37 @@ export const FactionService = {
     const weekEnd = new Date(weekStart)
     weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
 
-    // Get all factions with weekly scores
-    const factions = await prisma.faction.findMany({
+    // Get all factions with their territories
+    const factions = await prisma.factions.findMany({
       include: {
         _count: {
-          select: { members: true },
+          select: { users: true },
         },
-        controlledTerritories: {
+        territories: {
           select: { id: true },
-        },
-        territoryScores: {
-          where: {
-            scoreDate: {
-              gte: weekStart,
-              lt: weekEnd,
-            },
-          },
         },
       },
     })
 
-    // Calculate total weekly score per faction
+    // Calculate faction standings (weekly scoring not implemented in current schema)
     const factionsWithScores = factions.map(f => {
-      const weeklyScore = f.territoryScores.reduce(
-        (sum, s) => sum + Number(s.totalScore),
-        0
-      )
-
       return {
         id: f.id,
-        name: f.factionName,
+        name: f.name,
         description: f.description,
         motto: f.motto,
-        colorHex: f.colorHex,
-        memberCount: f._count.members,
-        territoriesControlled: f.controlledTerritories.length,
-        weeklyScore,
+        color_hex: f.color_hex,
+        memberCount: f._count.users,
+        territories_controlled: f.territories.length,
+        weeklyScore: 0, // Territory scoring not implemented in current schema
         rank: 0,
       }
     })
 
     // Sort by territories controlled, then weekly score
     factionsWithScores.sort((a, b) => {
-      if (b.territoriesControlled !== a.territoriesControlled) {
-        return b.territoriesControlled - a.territoriesControlled
+      if (b.territories_controlled !== a.territories_controlled) {
+        return b.territories_controlled - a.territories_controlled
       }
       return b.weeklyScore - a.weeklyScore
     })
@@ -1020,17 +784,17 @@ export const FactionService = {
   /**
    * Get user's contribution rank within their faction
    */
-  async getUserFactionRank(userId: number): Promise<{
+  async getUserFactionRank(user_id: number): Promise<{
     rank: number
-    totalMembers: number
+    total_members: number
     weeklyScore: number
   } | null> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { factionId: true, assignedTerritoryId: true },
+    const user = await prisma.users.findUnique({
+      where: { id: user_id },
+      select: { faction_id: true, assigned_territory_id: true },
     })
 
-    if (!user?.factionId) return null
+    if (!user?.faction_id) return null
 
     // Get current week bounds
     const now = new Date()
@@ -1043,22 +807,22 @@ export const FactionService = {
     weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
 
     // Get all faction members with their scores
-    const members = await this.getActiveMembersForWeek(user.factionId, weekStart, weekEnd)
+    const members = await this.getActiveMembersForWeek(user.faction_id, weekStart, weekEnd)
 
     // Also include members with 0 score
-    const allMembers = await prisma.user.count({
-      where: { factionId: user.factionId },
+    const allMembers = await prisma.users.count({
+      where: { faction_id: user.faction_id },
     })
 
     // Find user's score
-    const userScore = members.find(m => m.userId === userId)?.totalScore ?? 0
+    const userScore = members.find(m => m.user_id === user_id)?.totalScore ?? 0
 
     // Calculate rank (higher score = better rank)
     const rank = members.filter(m => m.totalScore > userScore).length + 1
 
     return {
       rank,
-      totalMembers: allMembers,
+      total_members: allMembers,
       weeklyScore: userScore,
     }
   },

@@ -16,10 +16,10 @@ export const GET = withErrorHandling(async () => {
   // Format records with readable names
   const formattedRecords = records.map((record) => ({
     ...record,
-    recordValue: record.recordValue.toString(),
-    previousValue: record.previousValue?.toString() || null,
-    displayName: getRecordDisplayName(record.recordType),
-    icon: getRecordIcon(record.recordType),
+    record_value: record.record_value.toString(),
+    previous_value: record.previous_value?.toString() || null,
+    display_name: getRecordDisplayName(record.record_type),
+    icon: getRecordIcon(record.record_type),
   }))
 
   return successResponse({
@@ -27,7 +27,7 @@ export const GET = withErrorHandling(async () => {
   })
 })
 
-function getRecordDisplayName(recordType: string): string {
+function getRecordDisplayName(record_type: string): string {
   const names: Record<string, string> = {
     highest_daily_wealth: 'Highest Daily Earnings',
     highest_level: 'Highest Level Achieved',
@@ -37,10 +37,10 @@ function getRecordDisplayName(recordType: string): string {
     highest_single_donation: 'Largest Donation',
     most_juicernaut_wins: 'Most Juicernaut Wins',
   }
-  return names[recordType] || recordType
+  return names[record_type] || record_type
 }
 
-function getRecordIcon(recordType: string): string {
+function getRecordIcon(record_type: string): string {
   const icons: Record<string, string> = {
     highest_daily_wealth: '💰',
     highest_level: '⭐',
@@ -50,5 +50,5 @@ function getRecordIcon(recordType: string): string {
     highest_single_donation: '❤️',
     most_juicernaut_wins: '👑',
   }
-  return icons[recordType] || '🏆'
+  return icons[record_type] || '🏆'
 }

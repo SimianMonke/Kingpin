@@ -13,10 +13,10 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   if (myTickets) {
     const session = await getAuthSession()
     if (session?.user?.id) {
-      const userId = typeof session.user.id === 'string'
+      const user_id = typeof session.user.id === 'string'
         ? parseInt(session.user.id, 10)
         : session.user.id
-      const tickets = await GamblingService.getUserLotteryTickets(userId)
+      const tickets = await GamblingService.getUserLotteryTickets(user_id)
       return successResponse({ lottery, tickets })
     }
   }
@@ -35,19 +35,19 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
 
   const apiKey = request.headers.get('x-api-key')
-  let userId: number
+  let user_id: number
 
   if (apiKey && apiKey === process.env.BOT_API_KEY) {
-    // Bot request - validate userId type
-    if (!body.userId || typeof body.userId !== 'number') {
-      return errorResponse('userId required and must be a number', 400)
+    // Bot request - validate user_id type
+    if (!body.user_id || typeof body.user_id !== 'number') {
+      return errorResponse('user_id required and must be a number', 400)
     }
-    userId = body.userId
+    user_id = body.user_id
   } else {
     // Session request
     const session = await getAuthSession()
     if (!session?.user?.id) return unauthorizedResponse()
-    userId = typeof session.user.id === 'string'
+    user_id = typeof session.user.id === 'string'
       ? parseInt(session.user.id, 10)
       : session.user.id
   }
@@ -78,6 +78,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return errorResponse('Numbers must be unique', 400)
   }
 
-  const result = await GamblingService.buyLotteryTicket(userId, numbers as number[])
+  const result = await GamblingService.buyLotteryTicket(user_id, numbers as number[])
   return successResponse(result)
 })

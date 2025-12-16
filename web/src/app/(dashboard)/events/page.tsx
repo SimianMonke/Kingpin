@@ -4,44 +4,44 @@ import { useEffect, useState, useCallback } from 'react'
 
 interface HeistEventInfo {
   id: number
-  sessionId: number
-  eventType: string
+  session_id: number
+  event_type: string
   difficulty: string
   prompt: string
-  correctAnswer?: string
-  startedAt: string
-  timeLimitSeconds: number
-  endedAt: string | null
-  isActive: boolean
+  correct_answer?: string
+  started_at: string
+  time_limit_seconds: number
+  ended_at: string | null
+  is_active: boolean
   timeRemainingMs: number
   winner?: {
     id: number
     username: string
     platform: string
-    responseTimeMs: number
-    crateTier: string
+    response_time_ms: number
+    crate_tier: string
   }
 }
 
 interface HeistHistory {
   id: number
-  eventType: string
+  event_type: string
   difficulty: string
   prompt: string
-  correctAnswer: string
-  startedAt: string
-  endedAt: string | null
+  correct_answer: string
+  started_at: string
+  ended_at: string | null
   winner?: {
     id: number
     username: string
     platform: string
-    responseTimeMs: number
+    response_time_ms: number
   }
-  crateTier: string | null
+  crate_tier: string | null
 }
 
 interface HeistLeaderboardEntry {
-  userId: number
+  user_id: number
   username: string
   wins: number
   avgResponseTimeMs: number
@@ -57,7 +57,7 @@ interface UserHeistStats {
 interface HeistData {
   active: boolean
   heist: HeistEventInfo | null
-  schedule: { nextHeistAt: string; timeUntilMs: number } | null
+  schedule: { next_heist_at: string; timeUntilMs: number } | null
 }
 
 interface HistoryData {
@@ -106,7 +106,7 @@ export default function EventsPage() {
       if (res.ok) {
         const json = await res.json()
         setHeistData(json.data)
-        if (json.data.heist?.isActive) {
+        if (json.data.heist?.is_active) {
           setTimeRemaining(Math.ceil(json.data.heist.timeRemainingMs / 1000))
         }
       }
@@ -179,7 +179,7 @@ export default function EventsPage() {
         if (json.data.winner) {
           setResult({
             type: 'success',
-            message: `Correct! You won a ${json.data.crateTier} crate! (${json.data.responseTimeMs}ms)`,
+            message: `Correct! You won a ${json.data.tier} crate! (${json.data.response_time_ms}ms)`,
           })
           fetchHistory()
         } else if (json.data.alreadyWon) {
@@ -239,7 +239,7 @@ export default function EventsPage() {
     )
   }
 
-  const activeHeist = heistData?.heist?.isActive ? heistData.heist : null
+  const activeHeist = heistData?.heist?.is_active ? heistData.heist : null
 
   return (
     <div className="space-y-8">
@@ -266,7 +266,7 @@ export default function EventsPage() {
                 {activeHeist.difficulty.toUpperCase()}
               </span>
               <span className="text-gray-400 text-sm">
-                {EVENT_TYPE_NAMES[activeHeist.eventType] || activeHeist.eventType}
+                {EVENT_TYPE_NAMES[activeHeist.event_type] || activeHeist.event_type}
               </span>
             </div>
             <div className="text-2xl font-mono font-bold text-yellow-400">
@@ -375,7 +375,7 @@ export default function EventsPage() {
           <div className="space-y-2">
             {historyData.leaderboard.map((entry, index) => (
               <div
-                key={entry.userId}
+                key={entry.user_id}
                 className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg"
               >
                 <div className="flex items-center gap-3">
@@ -426,7 +426,7 @@ export default function EventsPage() {
                 {historyData.history.map((heist) => (
                   <tr key={heist.id} className="border-b border-gray-800">
                     <td className="py-3">
-                      {EVENT_TYPE_NAMES[heist.eventType] || heist.eventType}
+                      {EVENT_TYPE_NAMES[heist.event_type] || heist.event_type}
                     </td>
                     <td className="py-3">
                       <span
@@ -445,9 +445,9 @@ export default function EventsPage() {
                       )}
                     </td>
                     <td className="py-3">
-                      {heist.crateTier ? (
-                        <span className={TIER_COLORS[heist.crateTier]}>
-                          {heist.crateTier} crate
+                      {heist.crate_tier ? (
+                        <span className={TIER_COLORS[heist.crate_tier]}>
+                          {heist.crate_tier} crate
                         </span>
                       ) : (
                         <span className="text-gray-500">-</span>
@@ -455,10 +455,10 @@ export default function EventsPage() {
                     </td>
                     <td className="py-3 text-gray-400">
                       {heist.winner
-                        ? formatResponseTime(heist.winner.responseTimeMs)
+                        ? formatResponseTime(heist.winner.response_time_ms)
                         : 'Expired'}
                     </td>
-                    <td className="py-3 text-gray-400">{formatDate(heist.startedAt)}</td>
+                    <td className="py-3 text-gray-400">{formatDate(heist.started_at)}</td>
                   </tr>
                 ))}
               </tbody>

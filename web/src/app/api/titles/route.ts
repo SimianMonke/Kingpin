@@ -19,11 +19,11 @@ export const GET = withErrorHandling(async () => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
 
   const [titles, equipped] = await Promise.all([
-    TitleService.getTitles(userId),
-    TitleService.getEquippedTitle(userId),
+    TitleService.getTitles(user_id),
+    TitleService.getEquippedTitle(user_id),
   ])
 
   return successResponse({
@@ -45,14 +45,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return unauthorizedResponse()
   }
 
-  const userId = session.user.id
+  const user_id = session.user.id
   const body = await request.json()
 
   const { title } = body
 
   // Unequip if null
   if (title === null || title === undefined) {
-    const result = await TitleService.unequipTitle(userId)
+    const result = await TitleService.unequipTitle(user_id)
     return successResponse(result)
   }
 
@@ -60,7 +60,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     return errorResponse('Invalid title', 400)
   }
 
-  const result = await TitleService.equipTitle(userId, title.trim())
+  const result = await TitleService.equipTitle(user_id, title.trim())
 
   if (!result.success) {
     return errorResponse(result.error ?? 'Unable to equip title', 400)

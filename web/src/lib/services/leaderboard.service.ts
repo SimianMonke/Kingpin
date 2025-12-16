@@ -7,21 +7,21 @@ import { prisma } from '../db'
 export type LeaderboardPeriod = 'daily' | 'weekly' | 'monthly' | 'annual' | 'lifetime'
 
 export type LeaderboardMetric =
-  | 'wealthEarned'
-  | 'xpEarned'
-  | 'playCount'
-  | 'robCount'
-  | 'robSuccessCount'
+  | 'wealth_earned'
+  | 'xp_earned'
+  | 'play_count'
+  | 'rob_count'
+  | 'rob_success_count'
   | 'checkins'
   | 'totalContributedUsd'
 
 export interface LeaderboardEntry {
   rank: number
-  userId: number
+  user_id: number
   username: string
-  kingpinName: string | null
+  kingpin_name: string | null
   level: number
-  statusTier: string
+  status_tier: string
   value: number | bigint
 }
 
@@ -37,35 +37,35 @@ export interface PeriodBounds {
 }
 
 export interface HallOfFameEntry {
-  recordType: string
-  userId: number
+  record_type: string
+  user_id: number
   username: string
-  kingpinName: string | null
-  recordValue: bigint
-  achievedAt: Date
+  kingpin_name: string | null
+  record_value: bigint
+  achieved_at: Date | null
   previousHolderUsername: string | null
-  previousValue: bigint | null
+  previous_value: bigint | null
 }
 
 export interface SnapshotUpdate {
-  wealthEarned?: number
-  xpEarned?: number
-  playCount?: number
-  robCount?: number
-  robSuccessCount?: number
+  wealth_earned?: number
+  xp_earned?: number
+  play_count?: number
+  rob_count?: number
+  rob_success_count?: number
   checkins?: number
-  cratesOpened?: number
-  messagesSent?: number
+  crates_opened?: number
+  messages_sent?: number
 }
 
 // =============================================================================
 // PERIOD CALCULATION
 // =============================================================================
 
-function getPeriodBounds(periodType: LeaderboardPeriod): PeriodBounds {
+function getPeriodBounds(period_type: LeaderboardPeriod): PeriodBounds {
   const now = new Date()
 
-  switch (periodType) {
+  switch (period_type) {
     case 'daily': {
       const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
       const end = new Date(start.getTime() + 86400000 - 1)
@@ -103,11 +103,11 @@ function getPeriodBounds(periodType: LeaderboardPeriod): PeriodBounds {
 
 // Map metric names to Prisma field names for ordering
 const METRIC_TO_FIELD: Record<LeaderboardMetric, string> = {
-  wealthEarned: 'wealthEarned',
-  xpEarned: 'xpEarned',
-  playCount: 'playCount',
-  robCount: 'robCount',
-  robSuccessCount: 'robSuccessCount',
+  wealth_earned: 'wealth_earned',
+  xp_earned: 'xp_earned',
+  play_count: 'play_count',
+  rob_count: 'rob_count',
+  rob_success_count: 'rob_success_count',
   checkins: 'checkins',
   totalContributedUsd: 'totalContributedUsd',
 }
@@ -134,19 +134,19 @@ export const LeaderboardService = {
     const { start } = getPeriodBounds(period)
     const field = METRIC_TO_FIELD[metric]
 
-    const snapshots = await prisma.leaderboardSnapshot.findMany({
+    const snapshots = await prisma.leaderboard_snapshots.findMany({
       where: {
-        periodType: period,
-        periodStart: start,
+        period_type: period,
+        period_start: start,
       },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
             username: true,
-            kingpinName: true,
+            kingpin_name: true,
             level: true,
-            statusTier: true,
+            status_tier: true,
           },
         },
       },
@@ -159,11 +159,11 @@ export const LeaderboardService = {
 
     return snapshots.map((snapshot, index) => ({
       rank: offset + index + 1,
-      userId: snapshot.user.id,
-      username: snapshot.user.username,
-      kingpinName: snapshot.user.kingpinName,
-      level: snapshot.user.level,
-      statusTier: snapshot.user.statusTier,
+      user_id: snapshot.users.id,
+      username: snapshot.users.username,
+      kingpin_name: snapshot.users.kingpin_name,
+      level: snapshot.users.level ?? 1,
+      status_tier: snapshot.users.status_tier ?? 'Punk',
       value: snapshot[field as keyof typeof snapshot] as number | bigint,
     }))
   },
@@ -172,7 +172,7 @@ export const LeaderboardService = {
    * Get a user's rank for a specific metric and period
    */
   async getUserRank(
-    userId: number,
+    user_id: number,
     metric: LeaderboardMetric,
     period: LeaderboardPeriod
   ): Promise<UserRank | null> {
@@ -180,12 +180,12 @@ export const LeaderboardService = {
     const field = METRIC_TO_FIELD[metric]
 
     // Get user's snapshot
-    const userSnapshot = await prisma.leaderboardSnapshot.findUnique({
+    const userSnapshot = await prisma.leaderboard_snapshots.findUnique({
       where: {
-        userId_periodType_periodStart: {
-          userId,
-          periodType: period,
-          periodStart: start,
+        user_id_period_type_period_start: {
+          user_id,
+          period_type: period,
+          period_start: start,
         },
       },
     })
@@ -197,19 +197,19 @@ export const LeaderboardService = {
     const userValue = userSnapshot[field as keyof typeof userSnapshot] as number | bigint
 
     // Count how many users have a higher value
-    const higherCount = await prisma.leaderboardSnapshot.count({
+    const higherCount = await prisma.leaderboard_snapshots.count({
       where: {
-        periodType: period,
-        periodStart: start,
+        period_type: period,
+        period_start: start,
         [field]: { gt: userValue },
       },
     })
 
     // Count total entries
-    const totalEntries = await prisma.leaderboardSnapshot.count({
+    const totalEntries = await prisma.leaderboard_snapshots.count({
       where: {
-        periodType: period,
-        periodStart: start,
+        period_type: period,
+        period_start: start,
       },
     })
 
@@ -224,8 +224,8 @@ export const LeaderboardService = {
    * Get all of a user's ranks across periods
    */
   async getUserRanks(
-    userId: number,
-    metric: LeaderboardMetric = 'wealthEarned'
+    user_id: number,
+    metric: LeaderboardMetric = 'wealth_earned'
   ): Promise<Record<LeaderboardPeriod, UserRank | null>> {
     const periods: LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'lifetime']
     const results: Record<LeaderboardPeriod, UserRank | null> = {
@@ -238,7 +238,7 @@ export const LeaderboardService = {
 
     await Promise.all(
       periods.map(async (period) => {
-        results[period] = await this.getUserRank(userId, metric, period)
+        results[period] = await this.getUserRank(user_id, metric, period)
       })
     )
 
@@ -249,60 +249,60 @@ export const LeaderboardService = {
    * Update or create a leaderboard snapshot for a user
    * Called after game actions (play, rob, checkin, etc.)
    */
-  async updateSnapshot(userId: number, updates: SnapshotUpdate): Promise<void> {
+  async updateSnapshot(user_id: number, updates: SnapshotUpdate): Promise<void> {
     const periods: LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'annual', 'lifetime']
 
     await Promise.all(
       periods.map(async (period) => {
         const { start, end } = getPeriodBounds(period)
 
-        await prisma.leaderboardSnapshot.upsert({
+        await prisma.leaderboard_snapshots.upsert({
           where: {
-            userId_periodType_periodStart: {
-              userId,
-              periodType: period,
-              periodStart: start,
+            user_id_period_type_period_start: {
+              user_id,
+              period_type: period,
+              period_start: start,
             },
           },
           update: {
-            wealthEarned: updates.wealthEarned
-              ? { increment: updates.wealthEarned }
+            wealth_earned: updates.wealth_earned
+              ? { increment: updates.wealth_earned }
               : undefined,
-            xpEarned: updates.xpEarned
-              ? { increment: updates.xpEarned }
+            xp_earned: updates.xp_earned
+              ? { increment: updates.xp_earned }
               : undefined,
-            playCount: updates.playCount
-              ? { increment: updates.playCount }
+            play_count: updates.play_count
+              ? { increment: updates.play_count }
               : undefined,
-            robCount: updates.robCount
-              ? { increment: updates.robCount }
+            rob_count: updates.rob_count
+              ? { increment: updates.rob_count }
               : undefined,
-            robSuccessCount: updates.robSuccessCount
-              ? { increment: updates.robSuccessCount }
+            rob_success_count: updates.rob_success_count
+              ? { increment: updates.rob_success_count }
               : undefined,
             checkins: updates.checkins
               ? { increment: updates.checkins }
               : undefined,
-            cratesOpened: updates.cratesOpened
-              ? { increment: updates.cratesOpened }
+            crates_opened: updates.crates_opened
+              ? { increment: updates.crates_opened }
               : undefined,
-            messagesSent: updates.messagesSent
-              ? { increment: updates.messagesSent }
+            messages_sent: updates.messages_sent
+              ? { increment: updates.messages_sent }
               : undefined,
           },
           create: {
-            userId,
-            periodType: period,
-            periodStart: start,
-            periodEnd: end,
-            wealthEarned: updates.wealthEarned || 0,
-            xpEarned: updates.xpEarned || 0,
-            playCount: updates.playCount || 0,
-            robCount: updates.robCount || 0,
-            robSuccessCount: updates.robSuccessCount || 0,
+            user_id,
+            period_type: period,
+            period_start: start,
+            period_end: end,
+            wealth_earned: updates.wealth_earned || 0,
+            xp_earned: updates.xp_earned || 0,
+            play_count: updates.play_count || 0,
+            rob_count: updates.rob_count || 0,
+            rob_success_count: updates.rob_success_count || 0,
             checkins: updates.checkins || 0,
-            cratesOpened: updates.cratesOpened || 0,
-            messagesSent: updates.messagesSent || 0,
+            crates_opened: updates.crates_opened || 0,
+            messages_sent: updates.messages_sent || 0,
           },
         })
       })
@@ -317,49 +317,49 @@ export const LeaderboardService = {
    * Get all Hall of Fame records
    */
   async getHallOfFameRecords(): Promise<HallOfFameEntry[]> {
-    const records = await prisma.hallOfFameRecord.findMany({
+    const records = await prisma.hall_of_fame_records.findMany({
       include: {
-        user: {
+        users_hall_of_fame_records_user_idTousers: {
           select: {
             username: true,
-            kingpinName: true,
+            kingpin_name: true,
           },
         },
-        previousHolder: {
+        users_hall_of_fame_records_previous_holder_idTousers: {
           select: {
             username: true,
           },
         },
       },
-      orderBy: { recordType: 'asc' },
+      orderBy: { record_type: 'asc' },
     })
 
     return records.map((record) => ({
-      recordType: record.recordType,
-      userId: record.userId,
-      username: record.user.username,
-      kingpinName: record.user.kingpinName,
-      recordValue: record.recordValue,
-      achievedAt: record.achievedAt,
-      previousHolderUsername: record.previousHolder?.username || null,
-      previousValue: record.previousValue,
+      record_type: record.record_type,
+      user_id: record.user_id ?? 0,
+      username: record.users_hall_of_fame_records_user_idTousers?.username || 'Unknown',
+      kingpin_name: record.users_hall_of_fame_records_user_idTousers?.kingpin_name || null,
+      record_value: record.record_value,
+      achieved_at: record.achieved_at,
+      previousHolderUsername: record.users_hall_of_fame_records_previous_holder_idTousers?.username || null,
+      previous_value: record.previous_value,
     }))
   },
 
   /**
    * Get a specific Hall of Fame record
    */
-  async getHallOfFameRecord(recordType: string): Promise<HallOfFameEntry | null> {
-    const record = await prisma.hallOfFameRecord.findUnique({
-      where: { recordType },
+  async getHallOfFameRecord(record_type: string): Promise<HallOfFameEntry | null> {
+    const record = await prisma.hall_of_fame_records.findUnique({
+      where: { record_type },
       include: {
-        user: {
+        users_hall_of_fame_records_user_idTousers: {
           select: {
             username: true,
-            kingpinName: true,
+            kingpin_name: true,
           },
         },
-        previousHolder: {
+        users_hall_of_fame_records_previous_holder_idTousers: {
           select: {
             username: true,
           },
@@ -370,14 +370,14 @@ export const LeaderboardService = {
     if (!record) return null
 
     return {
-      recordType: record.recordType,
-      userId: record.userId,
-      username: record.user.username,
-      kingpinName: record.user.kingpinName,
-      recordValue: record.recordValue,
-      achievedAt: record.achievedAt,
-      previousHolderUsername: record.previousHolder?.username || null,
-      previousValue: record.previousValue,
+      record_type: record.record_type,
+      user_id: record.user_id ?? 0,
+      username: record.users_hall_of_fame_records_user_idTousers?.username || 'Unknown',
+      kingpin_name: record.users_hall_of_fame_records_user_idTousers?.kingpin_name || null,
+      record_value: record.record_value,
+      achieved_at: record.achieved_at,
+      previousHolderUsername: record.users_hall_of_fame_records_previous_holder_idTousers?.username || null,
+      previous_value: record.previous_value,
     }
   },
 
@@ -386,16 +386,16 @@ export const LeaderboardService = {
    * Returns true if a new record was set
    */
   async checkAndUpdateRecord(
-    recordType: string,
-    userId: number,
+    record_type: string,
+    user_id: number,
     value: bigint | number
-  ): Promise<{ isNewRecord: boolean; previousHolder?: string; previousValue?: bigint }> {
+  ): Promise<{ isNewRecord: boolean; previousHolder?: string; previous_value?: bigint }> {
     const bigValue = typeof value === 'number' ? BigInt(value) : value
 
-    const currentRecord = await prisma.hallOfFameRecord.findUnique({
-      where: { recordType },
+    const currentRecord = await prisma.hall_of_fame_records.findUnique({
+      where: { record_type },
       include: {
-        user: {
+        users_hall_of_fame_records_user_idTousers: {
           select: { username: true },
         },
       },
@@ -403,33 +403,33 @@ export const LeaderboardService = {
 
     // No existing record, create new one
     if (!currentRecord) {
-      await prisma.hallOfFameRecord.create({
+      await prisma.hall_of_fame_records.create({
         data: {
-          recordType,
-          userId,
-          recordValue: bigValue,
+          record_type,
+          user_id,
+          record_value: bigValue,
         },
       })
       return { isNewRecord: true }
     }
 
     // Check if new value beats current record
-    if (bigValue > currentRecord.recordValue) {
-      await prisma.hallOfFameRecord.update({
-        where: { recordType },
+    if (bigValue > currentRecord.record_value) {
+      await prisma.hall_of_fame_records.update({
+        where: { record_type },
         data: {
-          previousHolderId: currentRecord.userId,
-          previousValue: currentRecord.recordValue,
-          userId,
-          recordValue: bigValue,
-          achievedAt: new Date(),
+          previous_holder_id: currentRecord.user_id,
+          previous_value: currentRecord.record_value,
+          user_id,
+          record_value: bigValue,
+          achieved_at: new Date(),
         },
       })
 
       return {
         isNewRecord: true,
-        previousHolder: currentRecord.user.username,
-        previousValue: currentRecord.recordValue,
+        previousHolder: currentRecord.users_hall_of_fame_records_user_idTousers?.username,
+        previous_value: currentRecord.record_value,
       }
     }
 
@@ -441,40 +441,40 @@ export const LeaderboardService = {
    * Useful after completing a period to check if any records were broken
    */
   async checkPeriodRecords(
-    userId: number,
+    user_id: number,
     period: LeaderboardPeriod
-  ): Promise<Array<{ recordType: string; isNewRecord: boolean }>> {
+  ): Promise<Array<{ record_type: string; isNewRecord: boolean }>> {
     const { start } = getPeriodBounds(period)
 
-    const snapshot = await prisma.leaderboardSnapshot.findUnique({
+    const snapshot = await prisma.leaderboard_snapshots.findUnique({
       where: {
-        userId_periodType_periodStart: {
-          userId,
-          periodType: period,
-          periodStart: start,
+        user_id_period_type_period_start: {
+          user_id,
+          period_type: period,
+          period_start: start,
         },
       },
     })
 
     if (!snapshot) return []
 
-    const results: Array<{ recordType: string; isNewRecord: boolean }> = []
+    const results: Array<{ record_type: string; isNewRecord: boolean }> = []
 
     // Check daily wealth record
     if (period === 'daily') {
       const wealthResult = await this.checkAndUpdateRecord(
         'highest_daily_wealth',
-        userId,
-        snapshot.wealthEarned
+        user_id,
+        snapshot.wealth_earned ?? BigInt(0)
       )
-      results.push({ recordType: 'highest_daily_wealth', isNewRecord: wealthResult.isNewRecord })
+      results.push({ record_type: 'highest_daily_wealth', isNewRecord: wealthResult.isNewRecord })
 
       const robResult = await this.checkAndUpdateRecord(
         'most_robs_daily',
-        userId,
-        BigInt(snapshot.robSuccessCount)
+        user_id,
+        BigInt(snapshot.rob_success_count ?? 0)
       )
-      results.push({ recordType: 'most_robs_daily', isNewRecord: robResult.isNewRecord })
+      results.push({ record_type: 'most_robs_daily', isNewRecord: robResult.isNewRecord })
     }
 
     return results
