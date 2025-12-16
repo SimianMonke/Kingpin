@@ -116,7 +116,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: true,
         remainingFormatted: '30m',
-        expiresAt: new Date(),
+        remainingSeconds: 1800,
+        expires_at: new Date(),
       })
 
       const result = await RobService.canRob(1, 'target')
@@ -129,7 +130,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
       mockFindFirst.mockResolvedValue(null)
 
@@ -143,7 +145,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
       mockFindFirst.mockResolvedValue({
         id: 1,
@@ -163,7 +166,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
       mockFindFirst.mockResolvedValue({
         id: 2,
@@ -183,7 +187,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
       mockFindFirst.mockResolvedValue({
         id: 2,
@@ -210,7 +215,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
       mockFindFirst.mockResolvedValue({
         id: 2,
@@ -236,7 +242,8 @@ describe('RobService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
       mockFindFirst.mockResolvedValue({
         id: 2,

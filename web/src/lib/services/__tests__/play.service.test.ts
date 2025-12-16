@@ -95,7 +95,8 @@ describe('PlayService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: true,
         remainingFormatted: '45m 30s',
-        expiresAt: new Date(Date.now() + 45 * 60 * 1000),
+        remainingSeconds: 2730,
+        expires_at: new Date(Date.now() + 45 * 60 * 1000),
       })
 
       const result = await PlayService.canPlay(1)
@@ -109,7 +110,8 @@ describe('PlayService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
 
       const result = await PlayService.canPlay(1)
@@ -191,7 +193,8 @@ describe('PlayService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: false,
         remainingFormatted: null,
-        expiresAt: null,
+        remainingSeconds: 0,
+        expires_at: null,
       })
 
       mockFindUnique.mockResolvedValue({
@@ -211,7 +214,8 @@ describe('PlayService', () => {
       vi.mocked(JailService.getJailStatus).mockResolvedValue({
         isJailed: true,
         remainingFormatted: '30m',
-        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        remainingSeconds: 1800,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000),
       })
 
       const result = await PlayService.executePlay(1)
