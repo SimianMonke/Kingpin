@@ -166,7 +166,20 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 
-  debug: process.env.NODE_ENV === 'development',
+  // Enable debug logging to diagnose OAuth issues
+  debug: true,
+
+  logger: {
+    error(code, metadata) {
+      console.error('NextAuth Error:', code, JSON.stringify(metadata, null, 2))
+    },
+    warn(code) {
+      console.warn('NextAuth Warning:', code)
+    },
+    debug(code, metadata) {
+      console.log('NextAuth Debug:', code, metadata)
+    },
+  },
 }
 
 function getPlatformField(provider: string): string | null {

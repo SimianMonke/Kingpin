@@ -36,3 +36,6 @@ nul
 
 # External tools (not part of Kingpin)
 pal-mcp-server/
+
+.vercel
+.env*.local

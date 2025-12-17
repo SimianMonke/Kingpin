@@ -39,7 +39,7 @@ function LoginPageContent() {
           setError('Error during callback. Please try again.')
           break
         default:
-          setError('An error occurred. Please try again.')
+          setError(`Auth error: ${errorParam}. Please try again.`)
       }
     }
   }, [errorParam])
