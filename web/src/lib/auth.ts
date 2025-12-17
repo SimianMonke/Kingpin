@@ -24,7 +24,10 @@ const KickProvider: OAuthConfig<KickApiResponse> = {
   type: 'oauth',
   authorization: {
     url: 'https://id.kick.com/oauth/authorize',
-    params: { scope: 'user:read' },
+    params: {
+      scope: 'user:read',
+      response_type: 'code',
+    },
   },
   token: 'https://id.kick.com/oauth/token',
   userinfo: 'https://api.kick.com/public/v1/users',
@@ -34,7 +37,8 @@ const KickProvider: OAuthConfig<KickApiResponse> = {
   client: {
     token_endpoint_auth_method: 'client_secret_post',
   },
-  checks: ['pkce', 'state'],
+  // Try without PKCE first to isolate the issue
+  checks: ['state'],
   profile(profile) {
     // Extract user from data array
     const user = profile.data?.[0]
