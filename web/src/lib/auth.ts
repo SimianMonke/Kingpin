@@ -37,18 +37,20 @@ const KickProvider: OAuthConfig<KickApiResponse> = {
   client: {
     token_endpoint_auth_method: 'client_secret_post',
   },
-  // Try without PKCE first to isolate the issue
-  checks: ['state'],
+  checks: ['pkce', 'state'],
   profile(profile) {
+    console.log('Kick profile response:', JSON.stringify(profile, null, 2))
     // Extract user from data array
     const user = profile.data?.[0]
     if (!user) {
+      console.error('No user data in Kick API response. Full response:', profile)
       throw new Error('No user data in Kick API response')
     }
+    console.log('Kick user extracted:', user)
     return {
       id: user.user_id.toString(),
       name: user.name,
-      email: user.email,
+      email: user.email || null,
       image: user.profile_picture,
     }
   },
@@ -74,7 +76,16 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (!account || !user) return false
+      console.log('SignIn callback triggered:', {
+        user: user ? { id: user.id, name: user.name } : null,
+        account: account ? { provider: account.provider, providerAccountId: account.providerAccountId } : null,
+        profile: profile ? 'present' : 'null'
+      })
+
+      if (!account || !user) {
+        console.error('SignIn rejected: missing account or user', { account: !!account, user: !!user })
+        return false
+      }
 
       try {
         // Find or create user based on platform
