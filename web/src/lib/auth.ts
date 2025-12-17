@@ -30,6 +30,10 @@ const KickProvider: OAuthConfig<KickApiResponse> = {
   userinfo: 'https://api.kick.com/public/v1/users',
   clientId: process.env.KICK_CLIENT_ID,
   clientSecret: process.env.KICK_CLIENT_SECRET,
+  // Kick requires client credentials in POST body (not Basic Auth header)
+  client: {
+    token_endpoint_auth_method: 'client_secret_post',
+  },
   checks: ['pkce', 'state'],
   profile(profile) {
     // Extract user from data array
