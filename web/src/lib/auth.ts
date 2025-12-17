@@ -4,17 +4,21 @@ import DiscordProvider from 'next-auth/providers/discord'
 import TwitchProvider from 'next-auth/providers/twitch'
 import { prisma } from './db'
 
-interface KickProfile {
-  id: number
-  username: string
-  email: string
-  profile_pic: string
+// Kick API response structure: { message: string, data: [{ user_id, name, email, profile_picture }] }
+interface KickApiResponse {
+  message: string
+  data: Array<{
+    user_id: number
+    name: string
+    email: string
+    profile_picture: string
+  }>
 }
 
 // Custom Kick provider (Kick uses OAuth 2.1 with PKCE)
 // OAuth server: https://id.kick.com
 // Docs: https://github.com/KickEngineering/KickDevDocs
-const KickProvider: OAuthConfig<KickProfile> = {
+const KickProvider: OAuthConfig<KickApiResponse> = {
   id: 'kick',
   name: 'Kick',
   type: 'oauth',
@@ -28,11 +32,16 @@ const KickProvider: OAuthConfig<KickProfile> = {
   clientSecret: process.env.KICK_CLIENT_SECRET,
   checks: ['pkce', 'state'],
   profile(profile) {
+    // Extract user from data array
+    const user = profile.data?.[0]
+    if (!user) {
+      throw new Error('No user data in Kick API response')
+    }
     return {
-      id: profile.id.toString(),
-      name: profile.username,
-      email: profile.email,
-      image: profile.profile_pic,
+      id: user.user_id.toString(),
+      name: user.name,
+      email: user.email,
+      image: user.profile_picture,
     }
   },
 }
