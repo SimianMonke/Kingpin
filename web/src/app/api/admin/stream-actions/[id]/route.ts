@@ -16,7 +16,7 @@ import { prisma } from '@/lib/db'
 
 export const GET = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   // Require admin API key authentication
   const apiKey = request.headers.get('x-api-key')
@@ -26,7 +26,7 @@ export const GET = withErrorHandling(async (
     return forbiddenResponse('Invalid admin API key')
   }
 
-  const { id } = await params
+  const { id } = await context!.params
 
   const action = await prisma.stream_action_types.findUnique({
     where: { id },
@@ -108,7 +108,7 @@ interface UpdateStreamActionRequest {
 
 export const PATCH = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   // Require admin API key authentication
   const apiKey = request.headers.get('x-api-key')
@@ -118,7 +118,7 @@ export const PATCH = withErrorHandling(async (
     return forbiddenResponse('Invalid admin API key')
   }
 
-  const { id } = await params
+  const { id } = await context!.params
 
   // Check if action exists
   const existing = await prisma.stream_action_types.findUnique({
@@ -193,7 +193,7 @@ export const PATCH = withErrorHandling(async (
 
 export const DELETE = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   // Require admin API key authentication
   const apiKey = request.headers.get('x-api-key')
@@ -203,7 +203,7 @@ export const DELETE = withErrorHandling(async (
     return forbiddenResponse('Invalid admin API key')
   }
 
-  const { id } = await params
+  const { id } = await context!.params
 
   // Check if action exists
   const existing = await prisma.stream_action_types.findUnique({

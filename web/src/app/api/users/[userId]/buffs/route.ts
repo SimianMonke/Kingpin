@@ -16,7 +16,7 @@ import { UserService } from '@/lib/services/user.service'
 
 export const GET = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   // Require bot API key authentication
   const apiKey = request.headers.get('x-api-key')
@@ -26,7 +26,7 @@ export const GET = withErrorHandling(async (
     return forbiddenResponse('Invalid API key')
   }
 
-  const { userId: userIdStr } = await params
+  const { userId: userIdStr } = await context!.params
   const userId = parseInt(userIdStr, 10)
 
   if (isNaN(userId)) {
