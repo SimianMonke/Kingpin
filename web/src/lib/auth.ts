@@ -1,22 +1,33 @@
 import { NextAuthOptions } from 'next-auth'
+import type { OAuthConfig } from 'next-auth/providers/oauth'
 import DiscordProvider from 'next-auth/providers/discord'
 import TwitchProvider from 'next-auth/providers/twitch'
 import { prisma } from './db'
 
-// Custom Kick provider (Kick uses OAuth 2.0)
-const KickProvider = {
+interface KickProfile {
+  id: number
+  username: string
+  email: string
+  profile_pic: string
+}
+
+// Custom Kick provider (Kick uses OAuth 2.1 with PKCE)
+// OAuth server: https://id.kick.com
+// Docs: https://github.com/KickEngineering/KickDevDocs
+const KickProvider: OAuthConfig<KickProfile> = {
   id: 'kick',
   name: 'Kick',
-  type: 'oauth' as const,
+  type: 'oauth',
   authorization: {
-    url: 'https://kick.com/oauth/authorize',
+    url: 'https://id.kick.com/oauth/authorize',
     params: { scope: 'user:read' },
   },
-  token: 'https://kick.com/oauth/token',
-  userinfo: 'https://kick.com/api/v1/user',
+  token: 'https://id.kick.com/oauth/token',
+  userinfo: 'https://api.kick.com/public/v1/users',
   clientId: process.env.KICK_CLIENT_ID,
   clientSecret: process.env.KICK_CLIENT_SECRET,
-  profile(profile: KickProfile) {
+  checks: ['pkce', 'state'],
+  profile(profile) {
     return {
       id: profile.id.toString(),
       name: profile.username,
@@ -24,13 +35,6 @@ const KickProvider = {
       image: profile.profile_pic,
     }
   },
-}
-
-interface KickProfile {
-  id: number
-  username: string
-  email: string
-  profile_pic: string
 }
 
 export const authOptions: NextAuthOptions = {
