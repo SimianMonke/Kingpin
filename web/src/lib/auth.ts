@@ -39,14 +39,10 @@ const KickProvider: OAuthConfig<KickApiResponse> = {
   },
   checks: ['pkce', 'state'],
   profile(profile) {
-    console.log('Kick profile response:', JSON.stringify(profile, null, 2))
-    // Extract user from data array
     const user = profile.data?.[0]
     if (!user) {
-      console.error('No user data in Kick API response. Full response:', profile)
       throw new Error('No user data in Kick API response')
     }
-    console.log('Kick user extracted:', user)
     return {
       id: user.user_id.toString(),
       name: user.name,
@@ -75,17 +71,8 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
-      console.log('SignIn callback triggered:', {
-        user: user ? { id: user.id, name: user.name } : null,
-        account: account ? { provider: account.provider, providerAccountId: account.providerAccountId } : null,
-        profile: profile ? 'present' : 'null'
-      })
-
-      if (!account || !user) {
-        console.error('SignIn rejected: missing account or user', { account: !!account, user: !!user })
-        return false
-      }
+    async signIn({ user, account }) {
+      if (!account || !user) return false
 
       try {
         // Find or create user based on platform
@@ -185,20 +172,7 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 
-  // Enable debug logging to diagnose OAuth issues
-  debug: true,
-
-  logger: {
-    error(code, metadata) {
-      console.error('NextAuth Error:', code, JSON.stringify(metadata, null, 2))
-    },
-    warn(code) {
-      console.warn('NextAuth Warning:', code)
-    },
-    debug(code, metadata) {
-      console.log('NextAuth Debug:', code, metadata)
-    },
-  },
+  debug: process.env.NODE_ENV === 'development',
 }
 
 function getPlatformField(provider: string): string | null {
