@@ -2,6 +2,8 @@
 // KINGPIN SERVICES - Main Export
 // =============================================================================
 
+export * from './buff.service'
+export * from './consumable.service'
 export * from './user.service'
 export * from './jail.service'
 export * from './inventory.service'
@@ -26,3 +28,5 @@ export * from './oauth-link.service'
 export * from './economy-mode.service'
 export * from './business.service'
 export * from './housing.service'
+export * from './stream-action.service'
+export * from './tts-sanitizer'

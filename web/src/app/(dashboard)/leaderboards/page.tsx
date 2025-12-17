@@ -1,7 +1,16 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { KineticNumber } from '@/components/ui/kinetic-number'
+import { PageLoader } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface LeaderboardEntry {
   rank: number
@@ -36,19 +45,36 @@ interface HallOfFameRecord {
 type Period = 'daily' | 'weekly' | 'monthly' | 'lifetime'
 type Metric = 'wealth_earned' | 'xp_earned' | 'play_count' | 'rob_success_count'
 
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
 const PERIODS: { value: Period; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'lifetime', label: 'All-Time' },
+  { value: 'daily', label: 'DAILY' },
+  { value: 'weekly', label: 'WEEKLY' },
+  { value: 'monthly', label: 'MONTHLY' },
+  { value: 'lifetime', label: 'ALL-TIME' },
 ]
 
 const METRICS: { value: Metric; label: string; icon: string }[] = [
-  { value: 'wealth_earned', label: 'Wealth', icon: '💰' },
+  { value: 'wealth_earned', label: 'WEALTH', icon: '💰' },
   { value: 'xp_earned', label: 'XP', icon: '⭐' },
-  { value: 'play_count', label: 'Grinders', icon: '🎮' },
-  { value: 'rob_success_count', label: 'Rob Masters', icon: '🔫' },
+  { value: 'play_count', label: 'GRINDERS', icon: '🎮' },
+  { value: 'rob_success_count', label: 'ROB MASTERS', icon: '🔫' },
 ]
+
+const TIER_COLORS: Record<string, string> = {
+  Rookie: 'var(--tier-common)',
+  Associate: 'var(--tier-uncommon)',
+  Soldier: 'var(--tier-uncommon)',
+  Captain: 'var(--tier-rare)',
+  Underboss: 'var(--tier-rare)',
+  Kingpin: 'var(--tier-legendary)',
+}
+
+// =============================================================================
+// LEADERBOARDS PAGE
+// =============================================================================
 
 export default function LeaderboardsPage() {
   const { data: session } = useSession()
@@ -59,26 +85,25 @@ export default function LeaderboardsPage() {
   const [records, setRecords] = useState<HallOfFameRecord[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Fetch leaderboard when period or metric changes
-  useEffect(() => {
-    async function fetchLeaderboard() {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/leaderboards?metric=${metric}&period=${period}&limit=25`)
-        if (res.ok) {
-          const data = await res.json()
-          setLeaderboard(data.data.entries)
-        }
-      } catch (error) {
-        console.error('Failed to fetch leaderboard:', error)
-      } finally {
-        setLoading(false)
+  const fetchLeaderboard = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/leaderboards?metric=${metric}&period=${period}&limit=25`)
+      if (res.ok) {
+        const data = await res.json()
+        setLeaderboard(data.data.entries)
       }
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error)
+    } finally {
+      setLoading(false)
     }
-    fetchLeaderboard()
-  }, [period, metric])
+  }, [metric, period])
 
-  // Fetch user ranks and hall of fame on mount
+  useEffect(() => {
+    fetchLeaderboard()
+  }, [fetchLeaderboard])
+
   useEffect(() => {
     async function fetchUserData() {
       try {
@@ -111,58 +136,70 @@ export default function LeaderboardsPage() {
     return num.toLocaleString()
   }
 
-  const getRankMedal = (rank: number): string => {
-    if (rank === 1) return '🥇'
-    if (rank === 2) return '🥈'
-    if (rank === 3) return '🥉'
-    return `#${rank}`
+  const getRankDisplay = (rank: number): { text: string; class: string } => {
+    if (rank === 1) return { text: '1ST', class: 'text-[var(--tier-legendary)] text-2xl' }
+    if (rank === 2) return { text: '2ND', class: 'text-[var(--color-muted)] text-xl' }
+    if (rank === 3) return { text: '3RD', class: 'text-[#CD7F32] text-xl' }
+    return { text: `#${rank}`, class: 'text-[var(--color-muted)]' }
   }
 
-  const getTierColor = (tier: string): string => {
-    const colors: Record<string, string> = {
-      Rookie: 'text-gray-400',
-      Associate: 'text-green-400',
-      Soldier: 'text-blue-400',
-      Captain: 'text-purple-400',
-      Underboss: 'text-orange-400',
-      Kingpin: 'text-yellow-400',
-    }
-    return colors[tier] || 'text-gray-400'
+  if (loading && leaderboard.length === 0) {
+    return <PageLoader message="LOADING LEADERBOARD DATA" />
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">
-          <span className="text-gradient">Leaderboards</span>
+        <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+          <span className="text-[var(--color-primary)]">LEADERBOARDS</span>
         </h1>
-        <p className="text-gray-400 mt-1">See who's running the streets</p>
+        <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+          {'// RANKING THE STREETS'}
+        </p>
       </div>
 
       {/* Your Rank Summary */}
       {userRanks && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Your Rankings</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {PERIODS.map((p) => {
-              const rank = userRanks[p.value]
-              return (
-                <div key={p.value} className="text-center">
-                  <p className="text-gray-400 text-sm mb-1">{p.label}</p>
-                  {rank ? (
-                    <>
-                      <p className="text-2xl font-bold text-purple-400">#{rank.rank}</p>
-                      <p className="text-xs text-gray-500">{formatValue(rank.value, metric)}</p>
-                    </>
-                  ) : (
-                    <p className="text-gray-500">-</p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        <Card variant="default" glow="primary" className="p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle>YOUR RANKINGS</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {PERIODS.map((p) => {
+                const rank = userRanks[p.value]
+                return (
+                  <div
+                    key={p.value}
+                    className={cn(
+                      'text-center p-4 border-2 transition-all',
+                      period === p.value
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                        : 'border-[var(--color-muted)]/20'
+                    )}
+                  >
+                    <p className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] mb-2">
+                      {p.label}
+                    </p>
+                    {rank ? (
+                      <>
+                        <p className="font-mono text-2xl font-bold text-[var(--color-secondary)]">
+                          #<KineticNumber value={rank.rank} />
+                        </p>
+                        <p className="font-mono text-xs text-[var(--color-muted)] mt-1">
+                          {formatValue(rank.value, metric)}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-mono text-[var(--color-muted)]">—</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Filters */}
@@ -170,18 +207,15 @@ export default function LeaderboardsPage() {
         {/* Metric Tabs */}
         <div className="flex flex-wrap gap-2">
           {METRICS.map((m) => (
-            <button
+            <Button
               key={m.value}
               onClick={() => setMetric(m.value)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                metric === m.value
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
+              variant={metric === m.value ? 'default' : 'ghost'}
+              size="sm"
             >
-              <span>{m.icon}</span>
-              <span>{m.label}</span>
-            </button>
+              <span className="mr-2">{m.icon}</span>
+              {m.label}
+            </Button>
           ))}
         </div>
 
@@ -191,11 +225,12 @@ export default function LeaderboardsPage() {
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={cn(
+                'px-3 py-2 font-display text-xs uppercase tracking-wider transition-colors',
                 period === p.value
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:text-white'
-              }`}
+                  ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+                  : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)]'
+              )}
             >
               {p.label}
             </button>
@@ -204,108 +239,133 @@ export default function LeaderboardsPage() {
       </div>
 
       {/* Leaderboard Table */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold">
-            {METRICS.find((m) => m.value === metric)?.icon}{' '}
+      <Card variant="solid" className="overflow-hidden">
+        <CardHeader className="p-4 border-b border-[var(--color-primary)]/20">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <span>{METRICS.find((m) => m.value === metric)?.icon}</span>
             {PERIODS.find((p) => p.value === period)?.label}{' '}
-            {METRICS.find((m) => m.value === metric)?.label} Leaders
-          </h2>
-        </div>
+            {METRICS.find((m) => m.value === metric)?.label} LEADERS
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="font-mono text-[var(--color-muted)]">{'> NO ENTRIES FOR THIS PERIOD'}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--color-primary)]/10">
+              {leaderboard.map((entry) => {
+                const isCurrentUser = session?.user?.id === entry.user_id
+                const rankDisplay = getRankDisplay(entry.rank)
+                const tierColor = TIER_COLORS[entry.status_tier] || 'var(--tier-common)'
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-          </div>
-        ) : leaderboard.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            No entries yet for this period
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-700">
-            {leaderboard.map((entry) => {
-              const isCurrentUser = session?.user?.id === entry.user_id
-              return (
-                <div
-                  key={entry.user_id}
-                  className={`flex items-center gap-4 p-4 ${
-                    isCurrentUser ? 'bg-purple-500/10' : 'hover:bg-gray-800/50'
-                  }`}
-                >
-                  {/* Rank */}
-                  <div className="w-12 text-center">
-                    <span className={`text-lg font-bold ${entry.rank <= 3 ? 'text-2xl' : 'text-gray-400'}`}>
-                      {getRankMedal(entry.rank)}
-                    </span>
-                  </div>
-
-                  {/* Player Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">
-                      {entry.kingpin_name || entry.username}
-                      {isCurrentUser && (
-                        <span className="ml-2 text-xs text-purple-400">(You)</span>
-                      )}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className={getTierColor(entry.status_tier)}>
-                        {entry.status_tier}
+                return (
+                  <div
+                    key={entry.user_id}
+                    className={cn(
+                      'flex items-center gap-4 p-4 transition-colors',
+                      isCurrentUser
+                        ? 'bg-[var(--color-secondary)]/10 border-l-4 border-[var(--color-secondary)]'
+                        : 'hover:bg-[var(--color-surface)]'
+                    )}
+                  >
+                    {/* Rank */}
+                    <div className="w-16 text-center">
+                      <span className={cn('font-display font-bold', rankDisplay.class)}>
+                        {rankDisplay.text}
                       </span>
-                      <span className="text-gray-500">•</span>
-                      <span className="text-gray-400">Lv.{entry.level}</span>
+                    </div>
+
+                    {/* Player Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display uppercase tracking-wider truncate">
+                        {entry.kingpin_name || entry.username}
+                        {isCurrentUser && (
+                          <span className="ml-2 font-mono text-xs text-[var(--color-secondary)]">
+                            (YOU)
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span
+                          className="font-display text-xs uppercase tracking-wider"
+                          style={{ color: tierColor }}
+                        >
+                          {entry.status_tier}
+                        </span>
+                        <span className="text-[var(--color-muted)]">•</span>
+                        <span className="font-mono text-xs text-[var(--color-muted)]">
+                          LVL {entry.level}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Value */}
+                    <div className="text-right">
+                      <p className="font-mono text-lg font-bold text-[var(--color-warning)]">
+                        {formatValue(entry.value, metric)}
+                      </p>
                     </div>
                   </div>
-
-                  {/* Value */}
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-yellow-400">
-                      {formatValue(entry.value, metric)}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Hall of Fame */}
       {records.length > 0 && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <span>🏆</span> Hall of Fame
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {records.map((record) => (
-              <div
-                key={record.record_type}
-                className="bg-gray-700/50 rounded-lg p-4 border border-gray-600"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{record.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-400">{record.display_name}</p>
-                    <p className="font-semibold truncate">
-                      {record.kingpin_name || record.username}
-                    </p>
-                    <p className="text-yellow-400 font-bold">
-                      {formatRecordValue(record.record_type, record.record_value)}
-                    </p>
-                    {record.previousHolderUsername && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Previous: {record.previousHolderUsername} ({formatRecordValue(record.record_type, record.previous_value!)})
+        <Card variant="default" scanlines className="p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle className="flex items-center gap-2">
+              <span>🏆</span> HALL OF FAME
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {records.map((record) => (
+                <div
+                  key={record.record_type}
+                  className="p-4 border-2 border-[var(--tier-legendary)]/30 bg-[var(--tier-legendary)]/5"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{record.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+                        {record.display_name}
                       </p>
-                    )}
+                      <p className="font-display uppercase tracking-wider truncate mt-1">
+                        {record.kingpin_name || record.username}
+                      </p>
+                      <p className="font-mono font-bold text-[var(--tier-legendary)] mt-1">
+                        {formatRecordValue(record.record_type, record.record_value)}
+                      </p>
+                      {record.previousHolderUsername && (
+                        <p className="font-mono text-[10px] text-[var(--color-muted)] mt-2">
+                          PREV: {record.previousHolderUsername} (
+                          {formatRecordValue(record.record_type, record.previous_value!)})
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
 }
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
 
 function formatRecordValue(record_type: string, value: string): string {
   const num = parseInt(value, 10)
@@ -313,7 +373,7 @@ function formatRecordValue(record_type: string, value: string): string {
     return '$' + num.toLocaleString()
   }
   if (record_type.includes('streak')) {
-    return num + ' days'
+    return num + ' DAYS'
   }
   return num.toLocaleString()
 }

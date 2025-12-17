@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/business-revenue",
       "schedule": "0 */3 * * *"
+    },
+    {
+      "path": "/api/cron/audio-queue",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/buff-cleanup",
+      "schedule": "0 * * * *"
     }
   ]
 }

@@ -10,6 +10,7 @@ import { AchievementService } from './achievement.service'
 import { FactionService } from './faction.service'
 import { NotificationService } from './notification.service'
 import { DiscordService } from './discord.service'
+import { BuffService } from './buff.service'
 
 // =============================================================================
 // ROB SERVICE TYPES
@@ -229,17 +230,31 @@ export const RobService = {
       FactionService.getAggregatedBuffs(targetId),
     ])
 
+    // Get consumable buffs for attacker and defender
+    const [attackerConsumableBuff, defenderConsumableBuff] = await Promise.all([
+      BuffService.getMultiplier(attackerId, 'rob_attack'),
+      BuffService.getMultiplier(targetId, 'rob_defense'),
+    ])
+
     // Apply rob_success buff (from The Ports, Deadzone)
     const factionRobBonus = attackerFactionBuffs['rob_success'] || 0
     // Apply defense buff (from The Hollows)
     const factionDefenseBonus = defenderFactionBuffs['defense'] || 0
 
-    const successRate = calculateRobSuccessRate({
+    // Calculate base success rate
+    const baseSuccessRate = calculateRobSuccessRate({
       attackerLevel: attacker.level ?? 1,
       defenderLevel: target.level ?? 1,
       attackerWeaponBonus: weaponBonus + factionRobBonus,
       defenderArmorBonus: armorBonus + factionDefenseBonus,
     })
+
+    // Apply consumable buffs: attacker buff increases success, defender buff decreases it
+    // Formula: baseSuccessRate * attackMultiplier / defenseMultiplier
+    // Capped at 0.95 max and 0.05 min
+    const successRate = Math.min(0.95, Math.max(0.05,
+      baseSuccessRate * attackerConsumableBuff / defenderConsumableBuff
+    ))
 
     // Roll for success
     const roll = Math.random()

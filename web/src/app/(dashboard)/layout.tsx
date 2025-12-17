@@ -4,6 +4,16 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { DashboardNav } from '@/components/layout/dashboard-nav'
+import { MobileNav } from '@/components/layout/mobile-nav'
+import { InitializingLoader } from '@/components/ui/initializing-loader'
+
+const AUTH_BOOT_SEQUENCE = [
+  'KINGPIN TERMINAL v2.0.45',
+  'ESTABLISHING SECURE CONNECTION...',
+  'AUTHENTICATING USER CREDENTIALS...',
+  'VERIFYING SESSION TOKEN...',
+  'LOADING USER PROFILE...',
+]
 
 export default function DashboardLayout({
   children,
@@ -21,8 +31,10 @@ export default function DashboardLayout({
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-void)]">
+        <div className="w-full max-w-md">
+          <InitializingLoader lines={AUTH_BOOT_SEQUENCE} speed={80} />
+        </div>
       </div>
     )
   }
@@ -32,9 +44,10 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--color-void)]">
       <DashboardNav />
-      <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
+      <main className="flex-1 container mx-auto px-4 py-8 pb-24 lg:pb-8">{children}</main>
+      <MobileNav />
     </div>
   )
 }

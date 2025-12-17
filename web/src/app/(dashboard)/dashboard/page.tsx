@@ -3,6 +3,15 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { KineticNumber, CurrencyDisplay, XPDisplay, StatValue } from '@/components/ui/kinetic-number'
+import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface UserProfile {
   id: string
@@ -31,6 +40,11 @@ interface UserStats {
   totalDonated: number
   juicernautWins: number
 }
+
+// =============================================================================
+// DASHBOARD PAGE
+// Bento Grid Layout with Cyberpunk Diegetic Interface
+// =============================================================================
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -77,7 +91,6 @@ export default function DashboardPage() {
 
       if (res.ok) {
         setCheckInResult({ success: true, message: `+${data.data.xpAwarded} XP, +$${data.data.wealthAwarded}!` })
-        // Refresh profile to get updated values
         const profileRes = await fetch('/api/users/me')
         if (profileRes.ok) {
           const profileData = await profileRes.json()
@@ -86,8 +99,8 @@ export default function DashboardPage() {
       } else {
         setCheckInResult({ success: false, message: data.error || 'Check-in failed' })
       }
-    } catch (error) {
-      setCheckInResult({ success: false, message: 'Network error' })
+    } catch {
+      setCheckInResult({ success: false, message: 'NETWORK ERROR' })
     } finally {
       setCheckingIn(false)
     }
@@ -104,217 +117,370 @@ export default function DashboardPage() {
   const xpProgress = profile ? (profile.xp / xpForNextLevel(profile.level + 1)) * 100 : 0
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING EMPIRE DATA" />
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">
-            Welcome back, <span className="text-gradient">{profile?.kingpin_name || session?.user?.name || 'Player'}</span>
+          <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider text-[var(--color-foreground)]">
+            Welcome back,{' '}
+            <span className="text-gradient-primary">
+              {profile?.kingpin_name || session?.user?.name || 'OPERATOR'}
+            </span>
           </h1>
-          <p className="text-gray-400 mt-1">Here's your empire overview</p>
+          <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+            {'// EMPIRE OVERVIEW // '}
+            <span className="text-[var(--color-primary)]">STATUS: ONLINE</span>
+          </p>
         </div>
-        <button
+        <Button
           onClick={handleCheckIn}
           disabled={checkingIn || !canCheckIn()}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-            canCheckIn()
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-              : 'bg-gray-700 cursor-not-allowed'
-          }`}
+          variant={canCheckIn() ? 'default' : 'ghost'}
+          size="lg"
+          className={cn(
+            canCheckIn() && 'glow-primary'
+          )}
         >
-          {checkingIn ? 'Checking in...' : canCheckIn() ? 'Daily Check-in' : 'Already Checked In'}
-        </button>
+          {checkingIn ? (
+            <InitializingText text="PROCESSING" className="text-xs" />
+          ) : canCheckIn() ? (
+            'DAILY CHECK-IN'
+          ) : (
+            'CHECKED IN'
+          )}
+        </Button>
       </div>
 
-      {/* Check-in Result */}
+      {/* Check-in Result Alert */}
       {checkInResult && (
-        <div
-          className={`p-4 rounded-lg ${
+        <Card
+          variant="outlined"
+          className={cn(
+            'p-4',
             checkInResult.success
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}
-        >
-          {checkInResult.message}
-          {checkInResult.success && profile && (
-            <span className="ml-2 text-gray-400">Streak: {profile.checkInStreak} days</span>
+              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
           )}
-        </div>
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                'font-display uppercase text-sm',
+                checkInResult.success
+                  ? 'text-[var(--color-success)]'
+                  : 'text-[var(--color-destructive)]'
+              )}
+            >
+              {checkInResult.success ? '✓ SUCCESS' : '✗ ERROR'}
+            </span>
+            <span className="font-mono">{checkInResult.message}</span>
+            {checkInResult.success && profile && (
+              <span className="text-[var(--color-muted)] font-mono text-sm ml-auto">
+                STREAK: {profile.checkInStreak} DAYS
+              </span>
+            )}
+          </div>
+        </Card>
       )}
 
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Wealth */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-              <DollarIcon className="w-5 h-5 text-yellow-400" />
+      {/* ===== BENTO GRID LAYOUT ===== */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Hero Cell: Avatar/Identity (2x2) */}
+        <Card
+          variant="default"
+          glow="primary"
+          scanlines
+          className="col-span-2 row-span-2 p-6"
+        >
+          <div className="h-full flex flex-col">
+            {/* Player Identity */}
+            <div className="flex items-start gap-4 mb-6">
+              {/* Avatar Placeholder */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-[var(--color-primary)] bg-[var(--color-surface)] flex items-center justify-center">
+                <span className="font-display text-3xl sm:text-4xl text-[var(--color-primary)]">
+                  {(profile?.kingpin_name || 'K')[0].toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1">
+                <h2 className="font-display text-lg sm:text-xl uppercase tracking-wider text-[var(--color-primary)]">
+                  {profile?.kingpin_name || 'UNKNOWN'}
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <TierBadge tier={profile?.tier || 'Rookie'} />
+                  <span className="font-mono text-sm text-[var(--color-muted)]">
+                    LVL {profile?.level || 1}
+                  </span>
+                </div>
+              </div>
             </div>
-            <span className="text-gray-400 text-sm">Wealth</span>
-          </div>
-          <p className="text-2xl font-bold text-yellow-400">${profile?.wealth.toLocaleString() || 0}</p>
-        </div>
 
-        {/* Level */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <StarIcon className="w-5 h-5 text-blue-400" />
+            {/* XP Progress Bar */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+                  EXPERIENCE
+                </span>
+                <span className="font-mono text-xs text-[var(--color-primary)]">
+                  <KineticNumber value={profile?.xp || 0} /> / {xpForNextLevel((profile?.level || 0) + 1)}
+                </span>
+              </div>
+              <div className="h-2 bg-[var(--color-surface)] border border-[var(--color-primary)]/30">
+                <div
+                  className="h-full bg-[var(--color-primary)] transition-all duration-500"
+                  style={{ width: `${Math.min(xpProgress, 100)}%` }}
+                />
+              </div>
             </div>
-            <span className="text-gray-400 text-sm">Level</span>
-          </div>
-          <p className="text-2xl font-bold text-blue-400">{profile?.level || 1}</p>
-          <div className="mt-2">
-            <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
-                style={{ width: `${Math.min(xpProgress, 100)}%` }}
-              />
+
+            {/* Check-in Streak */}
+            <div className="mt-auto flex items-center gap-3 p-3 bg-[var(--color-surface)]/50 border border-[var(--color-warning)]/30">
+              <FlameIcon className="w-6 h-6 text-[var(--color-warning)]" />
+              <div>
+                <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] block">
+                  STREAK
+                </span>
+                <span className="font-mono text-lg text-[var(--color-warning)]">
+                  <KineticNumber value={profile?.checkInStreak || 0} suffix=" DAYS" />
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">{profile?.xp || 0} / {xpForNextLevel((profile?.level || 0) + 1)} XP</p>
           </div>
-        </div>
+        </Card>
 
-        {/* Tier */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <CrownIcon className="w-5 h-5 text-purple-400" />
-            </div>
-            <span className="text-gray-400 text-sm">Rank</span>
+        {/* Cash Cell (1x1) */}
+        <Card variant="solid" className="p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarIcon className="w-5 h-5 text-[var(--color-warning)]" />
+            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+              WEALTH
+            </span>
           </div>
-          <p className="text-2xl font-bold text-purple-400">{profile?.tier || 'Rookie'}</p>
-        </div>
+          <CurrencyDisplay value={profile?.wealth || 0} size="lg" />
+        </Card>
 
-        {/* Check-in Streak */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-              <FlameIcon className="w-5 h-5 text-orange-400" />
-            </div>
-            <span className="text-gray-400 text-sm">Streak</span>
+        {/* Level Cell (1x1) */}
+        <Card variant="solid" className="p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-2">
+            <StarIcon className="w-5 h-5 text-[var(--color-primary)]" />
+            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+              LEVEL
+            </span>
           </div>
-          <p className="text-2xl font-bold text-orange-400">{profile?.checkInStreak || 0} days</p>
-        </div>
-      </div>
+          <span className="font-mono text-3xl font-bold text-[var(--color-primary)]">
+            <KineticNumber value={profile?.level || 1} />
+          </span>
+        </Card>
 
-      {/* Stats & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Criminal Record */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Criminal Record</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <StatItem label="Robberies" value={stats?.totalRobberies || 0} />
-            <StatItem label="Success Rate" value={`${stats?.totalRobberies ? Math.round((stats.successfulRobberies / stats.totalRobberies) * 100) : 0}%`} />
-            <StatItem label="Times Robbed" value={stats?.timesRobbed || 0} />
-            <StatItem label="Items Owned" value={stats?.itemsOwned || 0} />
-          </div>
-        </div>
-
-        {/* Achievements */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Progress</h2>
-            <Link href="/achievements" className="text-sm text-purple-400 hover:text-purple-300">
-              View All
+        {/* Linked Accounts (2x1) */}
+        <Card variant="solid" className="col-span-2 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+              LINKED SYSTEMS
+            </span>
+            <Link
+              href="/profile"
+              className="font-mono text-xs text-[var(--color-primary)] hover:underline"
+            >
+              MANAGE →
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <StatItem label="Achievements" value={`${stats?.achievementsUnlocked || 0}/90+`} />
-            <StatItem label="Missions Done" value={stats?.missionsCompleted || 0} />
-            <StatItem label="Total Donated" value={`$${stats?.totalDonated || 0}`} />
-            <StatItem label="Juicernaut Wins" value={stats?.juicernautWins || 0} />
+          <div className="flex gap-2">
+            <AccountIndicator
+              platform="KICK"
+              connected={!!profile?.linkedAccounts?.kick}
+              color="#53fc18"
+            />
+            <AccountIndicator
+              platform="TWITCH"
+              connected={!!profile?.linkedAccounts?.twitch}
+              color="#9146FF"
+            />
+            <AccountIndicator
+              platform="DISCORD"
+              connected={!!profile?.linkedAccounts?.discord}
+              color="#5865F2"
+            />
           </div>
-        </div>
+        </Card>
+
+        {/* Criminal Record (2x1) */}
+        <Card variant="default" className="col-span-2 lg:col-span-2 p-4">
+          <CardHeader className="p-0 pb-3 border-none">
+            <CardTitle className="text-sm">CRIMINAL RECORD</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatValue
+                label="ROBBERIES"
+                value={stats?.totalRobberies || 0}
+                valueClassName="text-[var(--color-secondary)]"
+              />
+              <StatValue
+                label="SUCCESS RATE"
+                value={stats?.totalRobberies ? Math.round((stats.successfulRobberies / stats.totalRobberies) * 100) : 0}
+                suffix="%"
+                valueClassName="text-[var(--color-success)]"
+              />
+              <StatValue
+                label="TIMES ROBBED"
+                value={stats?.timesRobbed || 0}
+                valueClassName="text-[var(--color-destructive)]"
+              />
+              <StatValue
+                label="ITEMS OWNED"
+                value={stats?.itemsOwned || 0}
+                valueClassName="text-[var(--color-primary)]"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Progress (2x1) */}
+        <Card variant="default" className="col-span-2 lg:col-span-2 p-4">
+          <CardHeader className="p-0 pb-3 border-none">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">PROGRESS</CardTitle>
+              <Link
+                href="/achievements"
+                className="font-mono text-xs text-[var(--color-primary)] hover:underline"
+              >
+                VIEW ALL →
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatValue
+                label="ACHIEVEMENTS"
+                value={stats?.achievementsUnlocked || 0}
+                valueClassName="text-[var(--color-warning)]"
+              />
+              <StatValue
+                label="MISSIONS"
+                value={stats?.missionsCompleted || 0}
+                valueClassName="text-[var(--color-success)]"
+              />
+              <StatValue
+                label="DONATED"
+                value={stats?.totalDonated || 0}
+                prefix="$"
+                valueClassName="text-[var(--color-secondary)]"
+              />
+              <StatValue
+                label="JUICERNAUT"
+                value={stats?.juicernautWins || 0}
+                valueClassName="text-[var(--color-primary)]"
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickActionLink href="/inventory" icon={<BackpackIcon className="w-5 h-5" />} label="Inventory" />
-          <QuickActionLink href="/shop" icon={<StoreIcon className="w-5 h-5" />} label="Shop" />
-          <QuickActionLink href="/missions" icon={<TargetIcon className="w-5 h-5" />} label="Missions" />
-          <QuickActionLink href="/crates" icon={<BoxIcon className="w-5 h-5" />} label="Open Crates" />
-        </div>
-      </div>
-
-      {/* Linked Accounts */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Linked Accounts</h2>
-          <Link href="/profile" className="text-sm text-purple-400 hover:text-purple-300">
-            Manage
-          </Link>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <AccountBadge
-            platform="Kick"
-            username={profile?.linkedAccounts?.kick?.username}
-            color="#53fc18"
-          />
-          <AccountBadge
-            platform="Twitch"
-            username={profile?.linkedAccounts?.twitch?.username}
-            color="#9146FF"
-          />
-          <AccountBadge
-            platform="Discord"
-            username={profile?.linkedAccounts?.discord?.username}
-            color="#5865F2"
-          />
-        </div>
-      </div>
+      <Card variant="solid" className="p-4">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle className="text-sm">QUICK ACTIONS</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <QuickActionLink href="/inventory" icon={<BackpackIcon />} label="INVENTORY" />
+            <QuickActionLink href="/shop" icon={<StoreIcon />} label="SHOP" />
+            <QuickActionLink href="/missions" icon={<TargetIcon />} label="MISSIONS" />
+            <QuickActionLink href="/crates" icon={<BoxIcon />} label="CRATES" />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
-function StatItem({ label, value }: { label: string; value: string | number }) {
+// =============================================================================
+// SUB-COMPONENTS
+// =============================================================================
+
+function TierBadge({ tier }: { tier: string }) {
+  const tierColors: Record<string, string> = {
+    Rookie: 'var(--tier-common)',
+    Enforcer: 'var(--tier-uncommon)',
+    Capo: 'var(--tier-rare)',
+    Boss: 'var(--tier-rare)',
+    Kingpin: 'var(--tier-legendary)',
+  }
+  const color = tierColors[tier] || 'var(--tier-common)'
+
   return (
-    <div>
-      <p className="text-gray-400 text-sm">{label}</p>
-      <p className="text-xl font-semibold">{value}</p>
+    <span
+      className="font-display text-xs uppercase tracking-wider px-2 py-0.5 border"
+      style={{ color, borderColor: color }}
+    >
+      {tier}
+    </span>
+  )
+}
+
+function AccountIndicator({
+  platform,
+  connected,
+  color,
+}: {
+  platform: string
+  connected: boolean
+  color: string
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 px-3 py-1.5 border font-mono text-xs uppercase',
+        connected ? 'opacity-100' : 'opacity-40'
+      )}
+      style={{
+        borderColor: connected ? color : 'var(--color-muted)',
+        color: connected ? color : 'var(--color-muted)',
+      }}
+    >
+      <div
+        className="w-2 h-2"
+        style={{ backgroundColor: connected ? color : 'var(--color-muted)' }}
+      />
+      {platform}
     </div>
   )
 }
 
-function QuickActionLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function QuickActionLink({
+  href,
+  icon,
+  label,
+}: {
+  href: string
+  icon: React.ReactNode
+  label: string
+}) {
   return (
     <Link
       href={href}
-      className="flex flex-col items-center gap-2 p-4 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition-colors"
+      className={cn(
+        'flex flex-col items-center gap-2 p-4',
+        'bg-[var(--color-surface)] border-2 border-[var(--color-primary)]/20',
+        'hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5',
+        'transition-all duration-150',
+        'touch-target'
+      )}
     >
-      {icon}
-      <span className="text-sm">{label}</span>
+      <span className="text-[var(--color-primary)]">{icon}</span>
+      <span className="font-display text-xs uppercase tracking-wider">{label}</span>
     </Link>
   )
 }
 
-function AccountBadge({ platform, username, color }: { platform: string; username?: string; color: string }) {
-  const isLinked = !!username
-  return (
-    <div
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
-        isLinked ? 'border-opacity-30' : 'border-gray-600 opacity-50'
-      }`}
-      style={{ borderColor: isLinked ? color : undefined, backgroundColor: isLinked ? `${color}10` : undefined }}
-    >
-      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: isLinked ? color : '#6b7280' }} />
-      <span style={{ color: isLinked ? color : '#9ca3af' }}>{platform}</span>
-      {isLinked && <span className="text-gray-400 text-sm">@{username}</span>}
-    </div>
-  )
-}
+// =============================================================================
+// ICONS
+// =============================================================================
 
-// Icons
 function DollarIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -331,14 +497,6 @@ function StarIcon({ className }: { className?: string }) {
   )
 }
 
-function CrownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l3.3-5.5a1 1 0 011.7 0l2.5 4.167 2.5-4.167a1 1 0 011.7 0l3.3 5.5M4.5 12.75v4.5a1.5 1.5 0 001.5 1.5h12a1.5 1.5 0 001.5-1.5v-4.5" />
-    </svg>
-  )
-}
-
 function FlameIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -348,25 +506,25 @@ function FlameIcon({ className }: { className?: string }) {
   )
 }
 
-function BackpackIcon({ className }: { className?: string }) {
+function BackpackIcon() {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
     </svg>
   )
 }
 
-function StoreIcon({ className }: { className?: string }) {
+function StoreIcon() {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
     </svg>
   )
 }
 
-function TargetIcon({ className }: { className?: string }) {
+function TargetIcon() {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <circle cx="12" cy="12" r="10" />
       <circle cx="12" cy="12" r="6" />
       <circle cx="12" cy="12" r="2" />
@@ -374,9 +532,9 @@ function TargetIcon({ className }: { className?: string }) {
   )
 }
 
-function BoxIcon({ className }: { className?: string }) {
+function BoxIcon() {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
     </svg>
   )

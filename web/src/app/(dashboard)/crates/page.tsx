@@ -1,6 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { KineticNumber } from '@/components/ui/kinetic-number'
+import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface CrateInfo {
   id: number
@@ -46,35 +55,49 @@ interface CrateOpenResult {
   }
 }
 
-const TIER_COLORS: Record<string, string> = {
-  common: 'text-gray-400 border-gray-600',
-  uncommon: 'text-green-400 border-green-600',
-  rare: 'text-blue-400 border-blue-600',
-  legendary: 'text-yellow-400 border-yellow-600',
-}
-
-const TIER_BG: Record<string, string> = {
-  common: 'bg-gray-500/10',
-  uncommon: 'bg-green-500/10',
-  rare: 'bg-blue-500/10',
-  legendary: 'bg-yellow-500/10',
-}
-
-const TIER_GLOW: Record<string, string> = {
-  common: '',
-  uncommon: 'shadow-green-500/20',
-  rare: 'shadow-blue-500/30',
-  legendary: 'shadow-yellow-500/50 shadow-lg',
-}
-
-const DROP_TYPE_ICONS: Record<string, string> = {
-  weapon: '/icons/weapon.png',
-  armor: '/icons/armor.png',
-  wealth: '/icons/wealth.png',
-  title: '/icons/title.png',
-}
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
 const TIER_ORDER = ['legendary', 'rare', 'uncommon', 'common']
+
+const TIER_STYLES: Record<string, { color: string; border: string; bg: string; glow: string }> = {
+  common: {
+    color: 'var(--tier-common)',
+    border: 'border-[var(--tier-common)]/50',
+    bg: 'bg-[var(--tier-common)]/5',
+    glow: '',
+  },
+  uncommon: {
+    color: 'var(--tier-uncommon)',
+    border: 'border-[var(--tier-uncommon)]/50',
+    bg: 'bg-[var(--tier-uncommon)]/5',
+    glow: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+  },
+  rare: {
+    color: 'var(--tier-rare)',
+    border: 'border-[var(--tier-rare)]/50',
+    bg: 'bg-[var(--tier-rare)]/5',
+    glow: 'shadow-[0_0_25px_rgba(59,130,246,0.3)]',
+  },
+  legendary: {
+    color: 'var(--tier-legendary)',
+    border: 'border-[var(--tier-legendary)]/50',
+    bg: 'bg-[var(--tier-legendary)]/5',
+    glow: 'shadow-[0_0_30px_rgba(255,215,0,0.4)]',
+  },
+}
+
+const DROP_CHANCES: Record<string, string[]> = {
+  common: ['40% WEAPON', '40% ARMOR', '20% WEALTH'],
+  uncommon: ['38% WEAPON', '38% ARMOR', '22% WEALTH', '2% TITLE'],
+  rare: ['35% WEAPON', '35% ARMOR', '25% WEALTH', '5% TITLE'],
+  legendary: ['30% WEAPON', '30% ARMOR', '30% WEALTH', '10% TITLE'],
+}
+
+// =============================================================================
+// CRATES PAGE
+// =============================================================================
 
 export default function CratesPage() {
   const [data, setData] = useState<CrateData | null>(null)
@@ -117,17 +140,16 @@ export default function CratesPage() {
       const json = await res.json()
 
       if (res.ok) {
-        // Show animation
         setIsAnimating(true)
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await new Promise((resolve) => setTimeout(resolve, 1500))
         setIsAnimating(false)
         setOpenResult(json.data)
         await fetchCrates()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'FAILED TO OPEN' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to open crate' })
+    } catch {
+      setMessage({ type: 'error', text: 'NETWORK ERROR' })
     } finally {
       setActionLoading(null)
     }
@@ -155,25 +177,23 @@ export default function CratesPage() {
         const results = json.data.results as CrateOpenResult[]
         const stats = json.data.stats
 
-        // Build summary message
-        let summary = `Opened ${stats.opened} crate${stats.opened !== 1 ? 's' : ''}!`
+        let summary = `OPENED ${stats.opened} CRATE${stats.opened !== 1 ? 'S' : ''}`
         if (stats.stoppedEarly) {
-          summary += ` (Stopped: ${stats.stopReason})`
+          summary += ` (STOPPED: ${stats.stopReason?.toUpperCase()})`
         }
 
         setMessage({ type: 'success', text: summary })
 
-        // Show last result if any
         if (results.length > 0) {
           setOpenResult(results[results.length - 1])
         }
 
         await fetchCrates()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'FAILED TO OPEN' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to open crates' })
+    } catch {
+      setMessage({ type: 'error', text: 'NETWORK ERROR' })
     } finally {
       setActionLoading(null)
     }
@@ -193,13 +213,13 @@ export default function CratesPage() {
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Crate claimed from escrow!' })
+        setMessage({ type: 'success', text: 'CRATE CLAIMED FROM ESCROW' })
         await fetchCrates()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'CLAIM FAILED' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to claim crate' })
+    } catch {
+      setMessage({ type: 'error', text: 'NETWORK ERROR' })
     } finally {
       setActionLoading(null)
     }
@@ -207,161 +227,184 @@ export default function CratesPage() {
 
   function formatTimeRemaining(expires_at: string): string {
     const diff = new Date(expires_at).getTime() - Date.now()
-    if (diff <= 0) return 'Expired'
+    if (diff <= 0) return 'EXPIRED'
 
     const minutes = Math.floor(diff / 60000)
-    if (minutes < 60) return `${minutes}m`
-    return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+    if (minutes < 60) return `${minutes}M`
+    return `${Math.floor(minutes / 60)}H ${minutes % 60}M`
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING CRATE DATA" />
   }
 
   if (!data) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-400">Failed to load crates</p>
-      </div>
+      <Card variant="outlined" className="border-[var(--color-destructive)] p-8 text-center">
+        <p className="font-mono text-[var(--color-destructive)]">{'> CRATE DATA UNAVAILABLE'}</p>
+      </Card>
     )
   }
 
-  const regularCrates = data.crates.filter(c => !c.is_escrowed)
-  const escrowedCrates = data.crates.filter(c => c.is_escrowed)
+  const regularCrates = data.crates.filter((c) => !c.is_escrowed)
+  const escrowedCrates = data.crates.filter((c) => c.is_escrowed)
 
-  // Group crates by tier
   const cratesByTier: Record<string, CrateInfo[]> = {}
   for (const tier of TIER_ORDER) {
-    const tierCrates = regularCrates.filter(c => c.tier === tier)
+    const tierCrates = regularCrates.filter((c) => c.tier === tier)
     if (tierCrates.length > 0) {
       cratesByTier[tier] = tierCrates
     }
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Crates</h1>
-          <p className="text-gray-400 mt-1">
-            {data.stats.total}/{data.stats.maxCrates} crates
-            {data.stats.escrowedCount > 0 && ` | ${data.stats.escrowedCount} in escrow`}
+          <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+            <span className="text-[var(--color-primary)]">CRATES</span>
+          </h1>
+          <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+            {'// '}
+            <KineticNumber value={data.stats.total} />/{data.stats.maxCrates} CRATES
+            {data.stats.escrowedCount > 0 && (
+              <span className="text-[var(--color-warning)]">
+                {' // '}{data.stats.escrowedCount} IN ESCROW
+              </span>
+            )}
           </p>
         </div>
         {data.stats.total > 1 && data.canOpen && (
-          <button
+          <Button
             onClick={handleOpenAll}
             disabled={actionLoading === 'open-all'}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg font-semibold transition-all disabled:opacity-50"
+            variant="default"
+            size="lg"
+            className="glow-primary"
           >
-            {actionLoading === 'open-all' ? 'Opening...' : `Open All (${Math.min(data.stats.total, 10)})`}
-          </button>
+            {actionLoading === 'open-all' ? (
+              <InitializingText text="OPENING" className="text-xs" />
+            ) : (
+              `OPEN ALL (${Math.min(data.stats.total, 10)})`
+            )}
+          </Button>
         )}
       </div>
 
       {/* Message */}
       {message && (
-        <div
-          className={`p-4 rounded-lg ${
+        <Card
+          variant="outlined"
+          className={cn(
+            'p-4',
             message.type === 'success'
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}
+              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
+          )}
         >
-          {message.text}
-        </div>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                'font-display uppercase text-sm',
+                message.type === 'success'
+                  ? 'text-[var(--color-success)]'
+                  : 'text-[var(--color-destructive)]'
+              )}
+            >
+              {message.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
+            </span>
+            <span className="font-mono text-sm">{message.text}</span>
+          </div>
+        </Card>
       )}
 
       {/* Cannot Open Warning */}
       {!data.canOpen && data.canOpenReason && data.stats.total > 0 && (
-        <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
-          {data.canOpenReason}
-        </div>
+        <Card variant="outlined" className="border-[var(--color-warning)]/50 bg-[var(--color-warning)]/5 p-4">
+          <p className="font-mono text-sm text-[var(--color-warning)]">
+            ⚠ {data.canOpenReason.toUpperCase()}
+          </p>
+        </Card>
       )}
 
       {/* Crates by Tier */}
       {data.stats.total === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-12 text-center">
+        <Card variant="solid" className="p-12 text-center">
           <div className="text-6xl mb-4">📦</div>
-          <h2 className="text-xl font-semibold mb-2">No Crates</h2>
-          <p className="text-gray-400">
-            Earn crates by playing, completing missions, or reaching check-in milestones!
+          <h2 className="font-display text-xl uppercase tracking-wider mb-2">NO CRATES</h2>
+          <p className="font-mono text-sm text-[var(--color-muted)]">
+            EARN CRATES BY PLAYING, COMPLETING MISSIONS, OR CHECK-IN MILESTONES
           </p>
-        </div>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TIER_ORDER.map(tier => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {TIER_ORDER.map((tier) => {
             const count = data.stats.byTier[tier] || 0
             if (count === 0) return null
 
             const tierCrates = cratesByTier[tier] || []
             const firstCrate = tierCrates[0]
+            const style = TIER_STYLES[tier]
 
             return (
               <div
                 key={tier}
-                className={`relative p-6 rounded-xl border-2 ${TIER_COLORS[tier]} ${TIER_BG[tier]} ${TIER_GLOW[tier]} transition-all hover:scale-[1.02]`}
+                className={cn(
+                  'relative p-6 border-2 transition-all hover:scale-[1.02]',
+                  style.border,
+                  style.bg,
+                  style.glow
+                )}
               >
                 {/* Tier Badge */}
-                <div className={`absolute -top-3 left-4 px-3 py-1 rounded-full text-xs font-bold uppercase ${TIER_BG[tier]} border ${TIER_COLORS[tier]}`}>
+                <div
+                  className={cn(
+                    'absolute -top-3 left-4 px-3 py-1 font-display text-xs uppercase tracking-wider border',
+                    style.border,
+                    style.bg
+                  )}
+                  style={{ color: style.color }}
+                >
                   {tier}
                 </div>
 
                 {/* Crate Visual */}
                 <div className="flex flex-col items-center py-8">
                   <div className="text-6xl mb-2">📦</div>
-                  <div className="text-3xl font-bold">x{count}</div>
+                  <div className="font-mono text-3xl font-bold">
+                    x<KineticNumber value={count} />
+                  </div>
                 </div>
 
                 {/* Drop Chances */}
-                <div className="text-xs text-gray-400 space-y-1 mb-4">
-                  {tier === 'common' && (
-                    <>
-                      <p>40% Weapon | 40% Armor</p>
-                      <p>20% Wealth</p>
-                    </>
-                  )}
-                  {tier === 'uncommon' && (
-                    <>
-                      <p>38% Weapon | 38% Armor</p>
-                      <p>22% Wealth | 2% Title</p>
-                    </>
-                  )}
-                  {tier === 'rare' && (
-                    <>
-                      <p>35% Weapon | 35% Armor</p>
-                      <p>25% Wealth | 5% Title</p>
-                    </>
-                  )}
-                  {tier === 'legendary' && (
-                    <>
-                      <p>30% Weapon | 30% Armor</p>
-                      <p>30% Wealth | 10% Title</p>
-                    </>
-                  )}
+                <div className="font-mono text-[10px] text-[var(--color-muted)] space-y-1 mb-4">
+                  {DROP_CHANCES[tier]?.map((chance, i) => (
+                    <p key={i}>{chance}</p>
+                  ))}
                 </div>
 
                 {/* Open Button */}
-                <button
+                <Button
                   onClick={() => handleOpenCrate(firstCrate?.id, tier)}
-                  disabled={!data.canOpen || actionLoading === `open-${tier}` || actionLoading === `open-${firstCrate?.id}`}
-                  className={`w-full py-3 rounded-lg font-semibold transition-all disabled:opacity-50 ${
-                    tier === 'legendary'
-                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600'
-                      : tier === 'rare'
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-                      : tier === 'uncommon'
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-                      : 'bg-gray-600 hover:bg-gray-500'
-                  }`}
+                  disabled={
+                    !data.canOpen ||
+                    actionLoading === `open-${tier}` ||
+                    actionLoading === `open-${firstCrate?.id}`
+                  }
+                  variant="default"
+                  className="w-full"
+                  style={{
+                    backgroundColor: `${style.color}20`,
+                    borderColor: style.color,
+                  }}
                 >
-                  {actionLoading?.startsWith('open-') ? 'Opening...' : 'Open'}
-                </button>
+                  {actionLoading?.startsWith('open-') ? (
+                    <InitializingText text="..." className="text-xs" />
+                  ) : (
+                    'OPEN'
+                  )}
+                </Button>
               </div>
             )
           })}
@@ -370,45 +413,64 @@ export default function CratesPage() {
 
       {/* Escrowed Crates */}
       {escrowedCrates.length > 0 && (
-        <div className="bg-gray-800/50 border border-orange-500/30 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-2 text-orange-400">
-            Escrow ({escrowedCrates.length}/{data.stats.maxEscrow})
-          </h2>
-          <p className="text-sm text-gray-400 mb-4">
-            Claim these crates before they expire! Escrow expires in 1 hour.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {escrowedCrates.map(crate => (
-              <div
-                key={crate.id}
-                className={`p-4 rounded-lg border ${TIER_COLORS[crate.tier]} ${TIER_BG[crate.tier]}`}
-              >
-                <p className="text-xs uppercase opacity-70">{crate.tier}</p>
-                <div className="text-3xl my-2">📦</div>
-                {crate.escrow_expires_at && (
-                  <p className="text-xs text-orange-400 mb-2">
-                    {formatTimeRemaining(crate.escrow_expires_at)}
-                  </p>
-                )}
-                <button
-                  onClick={() => handleClaim(crate.id)}
-                  disabled={actionLoading === `claim-${crate.id}` || data.stats.total >= data.stats.maxCrates}
-                  className="w-full py-1 px-2 text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded transition-colors disabled:opacity-50"
-                >
-                  {actionLoading === `claim-${crate.id}` ? 'Claiming...' : 'Claim'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card variant="outlined" className="border-[var(--color-warning)]/50 p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle className="text-[var(--color-warning)]">
+              ⚠ ESCROW ({escrowedCrates.length}/{data.stats.maxEscrow})
+            </CardTitle>
+            <p className="font-mono text-xs text-[var(--color-muted)] mt-2">
+              CLAIM BEFORE EXPIRATION (1 HOUR)
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+              {escrowedCrates.map((crate) => {
+                const style = TIER_STYLES[crate.tier] || TIER_STYLES.common
+                return (
+                  <div
+                    key={crate.id}
+                    className={cn('p-4 border-2', style.border, style.bg)}
+                  >
+                    <p
+                      className="font-display text-[10px] uppercase tracking-wider"
+                      style={{ color: style.color }}
+                    >
+                      {crate.tier}
+                    </p>
+                    <div className="text-3xl my-2">📦</div>
+                    {crate.escrow_expires_at && (
+                      <p className="font-mono text-[10px] text-[var(--color-warning)] mb-2">
+                        {formatTimeRemaining(crate.escrow_expires_at)}
+                      </p>
+                    )}
+                    <Button
+                      onClick={() => handleClaim(crate.id)}
+                      disabled={
+                        actionLoading === `claim-${crate.id}` ||
+                        data.stats.total >= data.stats.maxCrates
+                      }
+                      variant="warning"
+                      size="sm"
+                      className="w-full"
+                    >
+                      {actionLoading === `claim-${crate.id}` ? '...' : 'CLAIM'}
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Opening Animation Overlay */}
       {isAnimating && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="text-center animate-pulse">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+          <div className="text-center">
             <div className="text-8xl mb-4 animate-bounce">📦</div>
-            <p className="text-2xl font-bold">Opening...</p>
+            <p className="font-display text-2xl uppercase tracking-wider text-[var(--color-primary)] animate-pulse">
+              OPENING...
+            </p>
           </div>
         </div>
       )}
@@ -416,17 +478,23 @@ export default function CratesPage() {
       {/* Result Modal */}
       {openResult && !isAnimating && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
           onClick={() => setOpenResult(null)}
         >
-          <div
-            className={`bg-gray-900 border-2 rounded-xl p-8 max-w-md w-full text-center ${
-              TIER_COLORS[openResult.crate_tier]
-            } ${TIER_GLOW[openResult.crate_tier]}`}
-            onClick={e => e.stopPropagation()}
+          <Card
+            variant="solid"
+            className={cn(
+              'max-w-md w-full p-8 text-center border-2',
+              TIER_STYLES[openResult.crate_tier]?.border,
+              TIER_STYLES[openResult.crate_tier]?.glow
+            )}
+            onClick={(e) => e.stopPropagation()}
           >
-            <p className={`text-sm uppercase font-bold ${TIER_COLORS[openResult.crate_tier].split(' ')[0]} mb-2`}>
-              {openResult.crate_tier} Crate
+            <p
+              className="font-display text-sm uppercase tracking-wider mb-2"
+              style={{ color: TIER_STYLES[openResult.crate_tier]?.color }}
+            >
+              {openResult.crate_tier} CRATE
             </p>
 
             {/* Reward Display */}
@@ -436,12 +504,19 @@ export default function CratesPage() {
                   <div className="text-6xl mb-4">
                     {openResult.drop_type === 'weapon' ? '⚔️' : '🛡️'}
                   </div>
-                  <h3 className={`text-2xl font-bold ${TIER_COLORS[openResult.reward.item.tier].split(' ')[0]}`}>
+                  <h3
+                    className="font-display text-2xl uppercase tracking-wider"
+                    style={{ color: TIER_STYLES[openResult.reward.item.tier]?.color }}
+                  >
                     {openResult.reward.item.name}
                   </h3>
-                  <p className="text-gray-400 capitalize">{openResult.reward.item.tier} {openResult.reward.item.type}</p>
+                  <p className="font-mono text-sm text-[var(--color-muted)] capitalize mt-1">
+                    {openResult.reward.item.tier} {openResult.reward.item.type}
+                  </p>
                   {openResult.reward.item.toEscrow && (
-                    <p className="text-orange-400 text-sm mt-2">Sent to item escrow (inventory full)</p>
+                    <p className="font-mono text-xs text-[var(--color-warning)] mt-2">
+                      SENT TO ESCROW (INVENTORY FULL)
+                    </p>
                   )}
                 </>
               )}
@@ -449,10 +524,10 @@ export default function CratesPage() {
               {openResult.reward.wealth && (
                 <>
                   <div className="text-6xl mb-4">💰</div>
-                  <h3 className="text-2xl font-bold text-green-400">
-                    ${openResult.reward.wealth.amount.toLocaleString()}
+                  <h3 className="font-mono text-3xl font-bold text-[var(--color-success)]">
+                    $<KineticNumber value={openResult.reward.wealth.amount} />
                   </h3>
-                  <p className="text-gray-400">Wealth Gained</p>
+                  <p className="font-mono text-sm text-[var(--color-muted)] mt-1">WEALTH GAINED</p>
                 </>
               )}
 
@@ -461,34 +536,37 @@ export default function CratesPage() {
                   <div className="text-6xl mb-4">👑</div>
                   {openResult.reward.title.isDuplicate ? (
                     <>
-                      <h3 className="text-xl font-bold text-gray-400 line-through mb-2">
+                      <h3 className="font-display text-xl text-[var(--color-muted)] line-through mb-2">
                         [{openResult.reward.title.title}]
                       </h3>
-                      <p className="text-sm text-gray-500 mb-2">Already owned!</p>
-                      <h3 className="text-2xl font-bold text-green-400">
-                        ${openResult.reward.title.duplicateValue?.toLocaleString()}
+                      <p className="font-mono text-xs text-[var(--color-muted)] mb-2">
+                        ALREADY OWNED
+                      </p>
+                      <h3 className="font-mono text-2xl font-bold text-[var(--color-success)]">
+                        $<KineticNumber value={openResult.reward.title.duplicateValue || 0} />
                       </h3>
-                      <p className="text-gray-400">Converted to wealth</p>
+                      <p className="font-mono text-sm text-[var(--color-muted)]">
+                        CONVERTED TO WEALTH
+                      </p>
                     </>
                   ) : (
                     <>
-                      <h3 className="text-2xl font-bold text-purple-400">
+                      <h3 className="font-display text-2xl text-[var(--color-secondary)]">
                         [{openResult.reward.title.title}]
                       </h3>
-                      <p className="text-gray-400">New Title Unlocked!</p>
+                      <p className="font-mono text-sm text-[var(--color-muted)] mt-1">
+                        NEW TITLE UNLOCKED
+                      </p>
                     </>
                   )}
                 </>
               )}
             </div>
 
-            <button
-              onClick={() => setOpenResult(null)}
-              className="px-8 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg font-semibold transition-colors"
-            >
-              Continue
-            </button>
-          </div>
+            <Button onClick={() => setOpenResult(null)} variant="default" size="lg" className="w-full">
+              CONTINUE
+            </Button>
+          </Card>
         </div>
       )}
     </div>

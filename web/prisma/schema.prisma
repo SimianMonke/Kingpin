@@ -37,6 +37,8 @@ model active_buffs {
   is_active    Boolean?  @default(true)
   expires_at   DateTime? @db.Timestamp(6)
   activated_at DateTime? @default(now()) @db.Timestamp(6)
+  source       String?   @default("system") @db.VarChar(50)  // 'consumable', 'juicernaut', 'territory', 'system'
+  category     String?   @db.VarChar(50)                      // 'xp', 'rob_attack', 'rob_defense', 'business', 'crate', 'wealth'
   users        users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([user_id, buff_type])
@@ -600,6 +602,7 @@ model streaming_sessions {
   heist_events               heist_events[]
   heist_schedule             heist_schedule?
   session_contributions      session_contributions[]
+  stream_action_usage        stream_action_usage[]
   users                      users?                  @relation(fields: [current_juicernaut_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -767,6 +770,9 @@ model users {
   user_missions                                                       user_missions[]
   user_notifications                                                  user_notifications[]
   user_titles                                                         user_titles[]
+  user_consumables                                                    user_consumables[]
+  consumable_purchases                                                consumable_purchases[]
+  stream_action_usage                                                 stream_action_usage[]
   factions                                                            factions?                  @relation(fields: [faction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -784,4 +790,107 @@ model business_revenue_history {
   users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id, collected_at(sort: Desc)], map: "idx_business_revenue_user_date")
+}
+
+// =============================================================================
+// SUPPLY DEPOT - Consumable Items System
+// =============================================================================
+
+model consumable_types {
+  id                   String                 @id @db.VarChar(50)  // e.g., 'xp_25', 'bail_bond'
+  name                 String                 @db.VarChar(100)
+  category             String                 @db.VarChar(50)      // 'xp', 'combat', 'economy', 'utility'
+  cost                 Int
+  is_duration_buff     Boolean?               @default(true)
+  duration_hours       Int?                   @default(24)
+  buff_key             String?                @db.VarChar(50)      // Maps to active_buffs.buff_type
+  buff_value           Decimal?               @db.Decimal(5, 2)    // Multiplier value (e.g., 1.25 for +25%)
+  is_single_use        Boolean?               @default(false)
+  max_owned            Int?                                        // NULL = unlimited
+  description          String?
+  flavor_text          String?
+  icon                 String?                @db.VarChar(50)
+  sort_order           Int?                   @default(0)
+  is_active            Boolean?               @default(true)
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  user_consumables     user_consumables[]
+  consumable_purchases consumable_purchases[]
+}
+
+model user_consumables {
+  id              Int              @id @default(autoincrement())
+  user_id         Int
+  consumable_id   String           @db.VarChar(50)
+  quantity        Int?             @default(1)
+  created_at      DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?        @default(now()) @db.Timestamp(6)
+  users           users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  consumable_type consumable_types @relation(fields: [consumable_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, consumable_id])
+  @@index([user_id], map: "idx_user_consumables_user")
+}
+
+model consumable_purchases {
+  id                            Int              @id @default(autoincrement())
+  user_id                       Int
+  consumable_id                 String           @db.VarChar(50)
+  cost                          Int
+  was_extension                 Boolean?         @default(false)   // Extended existing buff
+  was_upgrade                   Boolean?         @default(false)   // Replaced lower-tier buff
+  previous_buff_remaining_mins  Int?                               // Minutes remaining when replaced/extended
+  error_message                 String?                            // Track failures
+  purchased_at                  DateTime?        @default(now()) @db.Timestamp(6)
+  users                         users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  consumable_type               consumable_types @relation(fields: [consumable_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_consumable_purchases_user")
+}
+
+// =============================================================================
+// STREAM ACTIONS - Lumia Stream Integration
+// =============================================================================
+
+model stream_action_types {
+  id                      String                    @id @db.VarChar(50)  // e.g., 'fog_burst', 'tts_short'
+  name                    String                    @db.VarChar(100)
+  description             String?
+  category                String                    @db.VarChar(50)      // 'lights', 'fog', 'sound', 'tts'
+  cost                    Int
+  cooldown_seconds        Int
+  limit_per_stream        Int?                                           // NULL = unlimited
+  lumia_command_id        String?                   @db.VarChar(100)     // Command trigger sent to Lumia
+  queue_behavior          String                    @default("overwrite") @db.VarChar(20)  // 'overwrite' | 'queue'
+  max_characters          Int?                                           // For TTS actions
+  is_active               Boolean?                  @default(true)
+  sort_order              Int?                      @default(0)
+  created_at              DateTime?                 @default(now()) @db.Timestamp(6)
+  stream_action_usage     stream_action_usage[]
+  stream_action_cooldowns stream_action_cooldowns?
+}
+
+model stream_action_usage {
+  id                  Int                  @id @default(autoincrement())
+  session_id          Int?
+  user_id             Int
+  action_id           String               @db.VarChar(50)
+  cost                Int
+  payload             Json?                                              // TTS text, color values, etc.
+  status              String               @default("pending") @db.VarChar(20)  // 'pending', 'processing', 'completed', 'failed', 'overwritten'
+  error_message       String?
+  triggered_at        DateTime             @default(now()) @db.Timestamp(6)
+  completed_at        DateTime?            @db.Timestamp(6)
+  users               users                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  streaming_sessions  streaming_sessions?  @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stream_action_types stream_action_types  @relation(fields: [action_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([session_id], map: "idx_stream_action_usage_session")
+  @@index([user_id], map: "idx_stream_action_usage_user")
+}
+
+model stream_action_cooldowns {
+  id                  Int                 @id @default(autoincrement())
+  action_id           String              @unique @db.VarChar(50)
+  expires_at          DateTime            @db.Timestamp(6)
+  stream_action_types stream_action_types @relation(fields: [action_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }

@@ -1,6 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { CurrencyDisplay, KineticNumber, StatValue } from '@/components/ui/kinetic-number'
+import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface ShopItem {
   shopItemId: number
@@ -31,23 +40,36 @@ interface ShopData {
   }
 }
 
-interface UserWealth {
-  wealth: string
+// =============================================================================
+// TIER STYLING
+// =============================================================================
+
+const TIER_STYLES: Record<string, { color: string; border: string; bg: string }> = {
+  common: {
+    color: 'var(--tier-common)',
+    border: 'border-[var(--tier-common)]/50',
+    bg: 'bg-[var(--tier-common)]/5',
+  },
+  uncommon: {
+    color: 'var(--tier-uncommon)',
+    border: 'border-[var(--tier-uncommon)]/50',
+    bg: 'bg-[var(--tier-uncommon)]/5',
+  },
+  rare: {
+    color: 'var(--tier-rare)',
+    border: 'border-[var(--tier-rare)]/50',
+    bg: 'bg-[var(--tier-rare)]/5',
+  },
+  legendary: {
+    color: 'var(--tier-legendary)',
+    border: 'border-[var(--tier-legendary)]/50',
+    bg: 'bg-[var(--tier-legendary)]/5',
+  },
 }
 
-const TIER_COLORS: Record<string, string> = {
-  common: 'text-gray-400 border-gray-600',
-  uncommon: 'text-green-400 border-green-600',
-  rare: 'text-blue-400 border-blue-600',
-  legendary: 'text-yellow-400 border-yellow-600',
-}
-
-const TIER_BG: Record<string, string> = {
-  common: 'bg-gray-500/10',
-  uncommon: 'bg-green-500/10',
-  rare: 'bg-blue-500/10',
-  legendary: 'bg-yellow-500/10',
-}
+// =============================================================================
+// SHOP PAGE
+// =============================================================================
 
 export default function ShopPage() {
   const [shopData, setShopData] = useState<ShopData | null>(null)
@@ -84,9 +106,9 @@ export default function ShopPage() {
     }
   }
 
-  async function handleBuy(shopItemId: number, itemName: string, price: number) {
+  async function handleBuy(shopItemId: number, price: number) {
     if (userWealth < price) {
-      setMessage({ type: 'error', text: `Not enough wealth! You need $${price.toLocaleString()}` })
+      setMessage({ type: 'error', text: `INSUFFICIENT FUNDS - NEED $${price.toLocaleString()}` })
       return
     }
 
@@ -103,15 +125,15 @@ export default function ShopPage() {
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: json.data.message })
+        setMessage({ type: 'success', text: json.data.message.toUpperCase() })
         setUserWealth(Number(json.data.newWealth))
         setSelectedItem(null)
         await fetchData()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error.toUpperCase() })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to purchase item' })
+    } catch {
+      setMessage({ type: 'error', text: 'TRANSACTION FAILED' })
     } finally {
       setActionLoading(null)
     }
@@ -122,245 +144,399 @@ export default function ShopPage() {
     setMessage(null)
 
     try {
-      const res = await fetch('/api/users/me/shop/reroll', {
-        method: 'POST',
-      })
-
+      const res = await fetch('/api/users/me/shop/reroll', { method: 'POST' })
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: json.data.message })
+        setMessage({ type: 'success', text: 'INVENTORY REFRESHED' })
         await fetchData()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error.toUpperCase() })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to refresh shop' })
+    } catch {
+      setMessage({ type: 'error', text: 'REFRESH FAILED' })
     } finally {
       setActionLoading(null)
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING SHOP INVENTORY" />
   }
 
   if (!shopData) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-400">Failed to load shop</p>
-      </div>
+      <Card variant="outlined" className="border-[var(--color-destructive)] p-8 text-center">
+        <p className="font-mono text-[var(--color-destructive)]">{'> SHOP DATA UNAVAILABLE'}</p>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Shop</h1>
-          <p className="text-gray-400 mt-1">
-            Personal inventory based on your <span className="text-purple-400">{shopData.playerTier}</span> rank
+          <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+            BLACK <span className="text-[var(--color-primary)]">MARKET</span>
+          </h1>
+          <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+            {'// TIER: '}
+            <span className="text-[var(--color-secondary)]">{shopData.playerTier.toUpperCase()}</span>
+            {' // PERSONAL INVENTORY'}
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm text-gray-400">Your Wealth</p>
-            <p className="text-xl font-bold text-yellow-400">${userWealth.toLocaleString()}</p>
+            <p className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+              AVAILABLE FUNDS
+            </p>
+            <CurrencyDisplay value={userWealth} size="lg" />
           </div>
-          <button
+          <Button
             onClick={handleReroll}
             disabled={actionLoading === 'reroll'}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50"
+            variant="outline"
           >
-            {actionLoading === 'reroll' ? 'Refreshing...' : 'Refresh Shop'}
-          </button>
+            {actionLoading === 'reroll' ? (
+              <InitializingText text="REFRESH" className="text-xs" />
+            ) : (
+              'REFRESH'
+            )}
+          </Button>
         </div>
       </div>
 
       {/* Message */}
       {message && (
-        <div
-          className={`p-4 rounded-lg ${
+        <Card
+          variant="outlined"
+          className={cn(
+            'p-4',
             message.type === 'success'
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}
+              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
+          )}
         >
-          {message.text}
-        </div>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                'font-display uppercase text-sm',
+                message.type === 'success'
+                  ? 'text-[var(--color-success)]'
+                  : 'text-[var(--color-destructive)]'
+              )}
+            >
+              {message.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
+            </span>
+            <span className="font-mono text-sm">{message.text}</span>
+          </div>
+        </Card>
       )}
 
-      {/* Accessible Tiers Info */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-        <p className="text-sm text-gray-400">
-          As a <span className="text-purple-400 font-medium">{shopData.playerTier}</span>, you have access to:
-          {' '}
+      {/* Tier Access Info */}
+      <Card variant="solid" className="p-4">
+        <p className="font-mono text-sm text-[var(--color-muted)]">
+          {'> ACCESS GRANTED: '}
           {shopData.accessibleTiers.map((tier, i) => (
             <span key={tier}>
-              <span className={TIER_COLORS[tier].split(' ')[0]}>{tier}</span>
+              <span style={{ color: TIER_STYLES[tier]?.color }}>{tier.toUpperCase()}</span>
               {i < shopData.accessibleTiers.length - 1 && ', '}
             </span>
           ))}
-          {' '}items
         </p>
-      </div>
+      </Card>
 
-      {/* Shop Items */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Available Items ({shopData.items.length})</h2>
-        {shopData.items.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No items available. Try refreshing the shop!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {shopData.items.map((item) => (
-              <div
-                key={item.shopItemId}
-                className={`p-4 rounded-lg border ${TIER_COLORS[item.tier]} ${TIER_BG[item.tier]} cursor-pointer hover:scale-105 transition-transform`}
-                onClick={() => setSelectedItem(item)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <p className={`text-xs uppercase ${TIER_COLORS[item.tier].split(' ')[0]}`}>{item.tier}</p>
-                  <p className="text-xs text-gray-400 capitalize">{item.type}</p>
-                </div>
-                <p className="font-semibold mb-2">{item.itemName}</p>
-                <div className="space-y-1 text-xs mb-3">
-                  {item.rob_bonus && <p className="text-red-400">+{item.rob_bonus}% Rob Bonus</p>}
-                  {item.defense_bonus && <p className="text-blue-400">+{item.defense_bonus}% Defense</p>}
-                  {item.insurance_percent && <p className="text-green-400">{item.insurance_percent}% Insurance</p>}
-                  {item.revenue_min && <p className="text-yellow-400">${item.revenue_min}-{item.revenue_max} Revenue</p>}
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className={`font-bold ${userWealth >= item.price ? 'text-green-400' : 'text-red-400'}`}>
-                    ${item.price.toLocaleString()}
-                  </p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleBuy(item.shopItemId, item.itemName, item.price)
-                    }}
-                    disabled={actionLoading === `buy-${item.shopItemId}` || userWealth < item.price}
-                    className={`px-3 py-1 text-sm rounded transition-colors ${
-                      userWealth >= item.price
-                        ? 'bg-purple-500 hover:bg-purple-600'
-                        : 'bg-gray-700 cursor-not-allowed opacity-50'
-                    }`}
-                  >
-                    {actionLoading === `buy-${item.shopItemId}` ? '...' : 'Buy'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Shop Items Grid */}
+      <Card variant="solid" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>AVAILABLE ITEMS ({shopData.items.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {shopData.items.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="font-mono text-[var(--color-muted)]">{'> NO ITEMS AVAILABLE'}</p>
+              <p className="font-mono text-xs text-[var(--color-muted)]/70 mt-2">
+                {'// TRY REFRESHING THE INVENTORY'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {shopData.items.map((item) => (
+                <ShopItemCard
+                  key={item.shopItemId}
+                  item={item}
+                  userWealth={userWealth}
+                  onSelect={() => setSelectedItem(item)}
+                  onBuy={() => handleBuy(item.shopItemId, item.price)}
+                  isLoading={actionLoading === `buy-${item.shopItemId}`}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Shop Stats */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Your Shopping History</h2>
-        <div className="grid grid-cols-2 gap-4 text-center">
-          <div>
-            <p className="text-2xl font-bold text-purple-400">{shopData.stats.totalPurchases}</p>
-            <p className="text-sm text-gray-400">Total Purchases</p>
+      <Card variant="default" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>PURCHASE HISTORY</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-2 gap-6">
+            <StatValue
+              label="TOTAL PURCHASES"
+              value={shopData.stats.totalPurchases}
+              valueClassName="text-[var(--color-secondary)]"
+            />
+            <StatValue
+              label="TOTAL SPENT"
+              value={shopData.stats.totalSpent}
+              prefix="$"
+              valueClassName="text-[var(--color-success)]"
+            />
           </div>
-          <div>
-            <p className="text-2xl font-bold text-green-400">${shopData.stats.totalSpent.toLocaleString()}</p>
-            <p className="text-sm text-gray-400">Total Spent</p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Item Detail Modal */}
       {selectedItem && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedItem(null)}
-        >
-          <div
-            className={`bg-gray-900 border ${TIER_COLORS[selectedItem.tier]} rounded-xl p-6 max-w-md w-full`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className={`text-xs uppercase ${TIER_COLORS[selectedItem.tier].split(' ')[0]}`}>
-                  {selectedItem.tier} {selectedItem.type}
-                </p>
-                <h3 className="text-xl font-bold mt-1">{selectedItem.itemName}</h3>
-              </div>
-              <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-white">
-                <XIcon className="w-6 h-6" />
-              </button>
-            </div>
-
-            {selectedItem.description && (
-              <p className="text-gray-300 text-sm mb-2">{selectedItem.description}</p>
-            )}
-            {selectedItem.flavor_text && (
-              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavor_text}"</p>
-            )}
-
-            <div className="space-y-2 text-sm mb-4">
-              {selectedItem.rob_bonus && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Rob Bonus</span>
-                  <span className="text-red-400">+{selectedItem.rob_bonus}%</span>
-                </div>
-              )}
-              {selectedItem.defense_bonus && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Defense Bonus</span>
-                  <span className="text-blue-400">+{selectedItem.defense_bonus}%</span>
-                </div>
-              )}
-              {selectedItem.insurance_percent && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Insurance</span>
-                  <span className="text-green-400">{selectedItem.insurance_percent}%</span>
-                </div>
-              )}
-              {selectedItem.revenue_min && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Revenue</span>
-                  <span className="text-yellow-400">${selectedItem.revenue_min}-{selectedItem.revenue_max}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-gray-700 pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-400">Price</span>
-                <span className={`text-xl font-bold ${userWealth >= selectedItem.price ? 'text-green-400' : 'text-red-400'}`}>
-                  ${selectedItem.price.toLocaleString()}
-                </span>
-              </div>
-              <button
-                onClick={() => handleBuy(selectedItem.shopItemId, selectedItem.itemName, selectedItem.price)}
-                disabled={actionLoading === `buy-${selectedItem.shopItemId}` || userWealth < selectedItem.price}
-                className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                  userWealth >= selectedItem.price
-                    ? 'bg-purple-500 hover:bg-purple-600'
-                    : 'bg-gray-700 cursor-not-allowed'
-                }`}
-              >
-                {actionLoading === `buy-${selectedItem.shopItemId}`
-                  ? 'Purchasing...'
-                  : userWealth >= selectedItem.price
-                  ? 'Purchase'
-                  : `Need $${(selectedItem.price - userWealth).toLocaleString()} more`}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ItemDetailModal
+          item={selectedItem}
+          userWealth={userWealth}
+          onClose={() => setSelectedItem(null)}
+          onBuy={() => handleBuy(selectedItem.shopItemId, selectedItem.price)}
+          isLoading={actionLoading === `buy-${selectedItem.shopItemId}`}
+        />
       )}
     </div>
   )
 }
+
+// =============================================================================
+// SHOP ITEM CARD
+// =============================================================================
+
+function ShopItemCard({
+  item,
+  userWealth,
+  onSelect,
+  onBuy,
+  isLoading,
+}: {
+  item: ShopItem
+  userWealth: number
+  onSelect: () => void
+  onBuy: () => void
+  isLoading: boolean
+}) {
+  const tierStyle = TIER_STYLES[item.tier] || TIER_STYLES.common
+  const canAfford = userWealth >= item.price
+
+  return (
+    <div
+      className={cn(
+        'p-4 border-2 cursor-pointer transition-all duration-150',
+        tierStyle.border,
+        tierStyle.bg,
+        'hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(0,255,241,0.2)]'
+      )}
+      onClick={onSelect}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <span
+          className="font-display text-xs uppercase tracking-wider"
+          style={{ color: tierStyle.color }}
+        >
+          {item.tier}
+        </span>
+        <span className="font-mono text-xs text-[var(--color-muted)] uppercase">
+          {item.type}
+        </span>
+      </div>
+
+      {/* Name */}
+      <h3 className="font-display text-sm uppercase tracking-wider mb-3 line-clamp-1">
+        {item.itemName}
+      </h3>
+
+      {/* Stats */}
+      <div className="space-y-1 text-xs font-mono mb-4 min-h-[48px]">
+        {item.rob_bonus && (
+          <p className="text-[var(--color-destructive)]">+{item.rob_bonus}% ROB</p>
+        )}
+        {item.defense_bonus && (
+          <p className="text-[var(--color-primary)]">+{item.defense_bonus}% DEF</p>
+        )}
+        {item.insurance_percent && (
+          <p className="text-[var(--color-success)]">{item.insurance_percent}% INS</p>
+        )}
+        {item.revenue_min && (
+          <p className="text-[var(--color-warning)]">
+            ${item.revenue_min}-{item.revenue_max} REV
+          </p>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-current/20">
+        <span
+          className={cn(
+            'font-mono font-bold',
+            canAfford ? 'text-[var(--color-success)]' : 'text-[var(--color-destructive)]'
+          )}
+        >
+          $<KineticNumber value={item.price} />
+        </span>
+        <Button
+          onClick={(e) => {
+            e.stopPropagation()
+            onBuy()
+          }}
+          disabled={isLoading || !canAfford}
+          variant={canAfford ? 'default' : 'ghost'}
+          size="sm"
+        >
+          {isLoading ? '...' : 'BUY'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// ITEM DETAIL MODAL
+// =============================================================================
+
+function ItemDetailModal({
+  item,
+  userWealth,
+  onClose,
+  onBuy,
+  isLoading,
+}: {
+  item: ShopItem
+  userWealth: number
+  onClose: () => void
+  onBuy: () => void
+  isLoading: boolean
+}) {
+  const tierStyle = TIER_STYLES[item.tier] || TIER_STYLES.common
+  const canAfford = userWealth >= item.price
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <Card
+        variant="solid"
+        className={cn('max-w-md w-full p-6 border-2', tierStyle.border)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <span
+              className="font-display text-xs uppercase tracking-wider"
+              style={{ color: tierStyle.color }}
+            >
+              {item.tier} {item.type}
+            </span>
+            <h3 className="font-display text-xl uppercase tracking-wider mt-1">
+              {item.itemName}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] p-1"
+          >
+            <XIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Description */}
+        {item.description && (
+          <p className="font-mono text-sm text-[var(--color-foreground)] mb-2">
+            {item.description}
+          </p>
+        )}
+        {item.flavor_text && (
+          <p className="font-mono text-xs text-[var(--color-muted)] italic mb-4">
+            "{item.flavor_text}"
+          </p>
+        )}
+
+        {/* Stats */}
+        <div className="space-y-2 font-mono text-sm mb-6">
+          {item.rob_bonus && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">ROB BONUS</span>
+              <span className="text-[var(--color-destructive)]">+{item.rob_bonus}%</span>
+            </div>
+          )}
+          {item.defense_bonus && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">DEFENSE BONUS</span>
+              <span className="text-[var(--color-primary)]">+{item.defense_bonus}%</span>
+            </div>
+          )}
+          {item.insurance_percent && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">INSURANCE</span>
+              <span className="text-[var(--color-success)]">{item.insurance_percent}%</span>
+            </div>
+          )}
+          {item.revenue_min && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">REVENUE</span>
+              <span className="text-[var(--color-warning)]">
+                ${item.revenue_min}-{item.revenue_max}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Purchase Section */}
+        <div className="border-t border-[var(--color-primary)]/20 pt-4">
+          <div className="flex items-center justify-between mb-4">
+            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+              PRICE
+            </span>
+            <span
+              className={cn(
+                'font-mono text-xl font-bold',
+                canAfford ? 'text-[var(--color-success)]' : 'text-[var(--color-destructive)]'
+              )}
+            >
+              $<KineticNumber value={item.price} />
+            </span>
+          </div>
+          <Button
+            onClick={onBuy}
+            disabled={isLoading || !canAfford}
+            variant={canAfford ? 'default' : 'destructive'}
+            className="w-full"
+            size="lg"
+          >
+            {isLoading ? (
+              <InitializingText text="PROCESSING" className="text-xs" />
+            ) : canAfford ? (
+              'PURCHASE'
+            ) : (
+              `NEED $${(item.price - userWealth).toLocaleString()} MORE`
+            )}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// =============================================================================
+// ICONS
+// =============================================================================
 
 function XIcon({ className }: { className?: string }) {
   return (

@@ -2,6 +2,7 @@ import { prisma } from '../db'
 import { JAIL_CONFIG } from '../game'
 import { formatTimeRemaining } from '../game/formulas'
 import type { PrismaTransactionClient } from './inventory.service'
+import { ConsumableService } from './consumable.service'
 
 // =============================================================================
 // JAIL SERVICE TYPES
@@ -19,6 +20,7 @@ export interface BailResult {
   wasJailed: boolean
   bailCost: number
   newWealth: bigint
+  usedBailBond?: boolean  // True if user used a bail_bond consumable
 }
 
 export interface CooldownInfo {
@@ -121,6 +123,10 @@ export const JailService = {
       throw new Error('User not found')
     }
 
+    // Check for bail_bond consumable (skips bail cost)
+    const hasBailBond = await ConsumableService.hasConsumable(user_id, 'bail_bond')
+    let usedBailBond = false
+
     // Calculate bail cost (10% of wealth, minimum from config)
     const wealthNum = Number(user.wealth)
     const bailCost = Math.max(
@@ -128,8 +134,16 @@ export const JailService = {
       Math.floor(wealthNum * JAIL_CONFIG.BAIL_COST_PERCENT)
     )
 
+    // If player has bail_bond, use it and skip cost
     // If player has less than minimum bail, they can still bail for free
-    const actualCost = wealthNum < JAIL_CONFIG.MIN_BAIL ? 0 : bailCost
+    let actualCost: number
+    if (hasBailBond) {
+      await ConsumableService.useConsumable(user_id, 'bail_bond')
+      actualCost = 0
+      usedBailBond = true
+    } else {
+      actualCost = wealthNum < JAIL_CONFIG.MIN_BAIL ? 0 : bailCost
+    }
 
     // Process bail in transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -170,6 +184,7 @@ export const JailService = {
       wasJailed: true,
       bailCost: actualCost,
       newWealth: result.wealth ?? BigInt(0),
+      usedBailBond,
     }
   },
 

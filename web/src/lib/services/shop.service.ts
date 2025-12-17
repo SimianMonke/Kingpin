@@ -9,6 +9,7 @@ import {
 import { randomInt } from '../game/formulas'
 import { InventoryService } from './inventory.service'
 import { BusinessService } from './business.service'
+import { ConsumableService } from './consumable.service'
 
 // =============================================================================
 // SHOP SERVICE TYPES
@@ -173,8 +174,19 @@ export const ShopService = {
 
   /**
    * Reroll/refresh player's shop
+   * If user has a reroll_token consumable, uses it for a free reroll
    */
-  async rerollShop(user_id: number): Promise<{ success: boolean; itemCount: number }> {
+  async rerollShop(user_id: number): Promise<{ success: boolean; itemCount: number; usedRerollToken?: boolean }> {
+    // Check for reroll_token consumable (provides free reroll)
+    const hasRerollToken = await ConsumableService.hasConsumable(user_id, 'reroll_token')
+    let usedRerollToken = false
+
+    if (hasRerollToken) {
+      await ConsumableService.useConsumable(user_id, 'reroll_token')
+      usedRerollToken = true
+    }
+    // Note: When reroll costs are implemented, skip cost deduction if usedRerollToken
+
     await this.generateShop(user_id)
 
     const newCount = await prisma.player_shop_inventory.count({
@@ -188,12 +200,14 @@ export const ShopService = {
         event_type: 'shop_reroll',
         wealth_change: 0,
         xp_change: 0,
-        event_description: 'Rerolled shop inventory',
+        event_description: usedRerollToken
+          ? 'Rerolled shop inventory (used Reroll Token)'
+          : 'Rerolled shop inventory',
         success: true,
       },
     })
 
-    return { success: true, itemCount: newCount }
+    return { success: true, itemCount: newCount, usedRerollToken }
   },
 
   /**

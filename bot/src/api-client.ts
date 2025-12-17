@@ -53,6 +53,11 @@ export interface PlayResult {
     tier: string
     toEscrow: boolean
   }
+  expiringBuffs?: Array<{
+    buffType: string
+    description: string | null
+    remainingMinutes: number | null
+  }>
 }
 
 export interface RobResult {
@@ -949,6 +954,99 @@ class ApiClient {
     try {
       const response = await this.client.get('/api/gambling/stats', {
         params: { userId },
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  // ===========================================================================
+  // SUPPLY DEPOT & BUFFS (Phase 6)
+  // ===========================================================================
+
+  async getUserBuffs(userId: number): Promise<ApiResponse<{
+    buffs: Array<{
+      buffType: string
+      category: string | null
+      multiplier: number
+      source: string
+      description: string | null
+      remainingMinutes: number | null
+      expiresAt: string | null
+    }>
+    expiringBuffs: Array<{
+      buffType: string
+      description: string | null
+      remainingMinutes: number | null
+    }>
+    totalActive: number
+  }>> {
+    try {
+      const response = await this.client.get(`/api/users/${userId}/buffs`)
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async getSupplyCatalog(): Promise<ApiResponse<{
+    consumables: Array<{
+      id: string
+      name: string
+      category: string
+      cost: number
+      description: string | null
+      isDurationBuff: boolean
+      durationHours: number | null
+      buffKey: string | null
+      buffValue: number | null
+      isSingleUse: boolean
+      maxOwned: number | null
+    }>
+  }>> {
+    try {
+      const response = await this.client.get('/api/shop/supplies')
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async getUserSupplyInventory(userId: number): Promise<ApiResponse<{
+    inventory: Array<{
+      consumableId: string
+      name: string
+      quantity: number
+      maxOwned: number | null
+    }>
+  }>> {
+    try {
+      const response = await this.client.get('/api/shop/supplies/inventory', {
+        params: { userId },
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async purchaseConsumable(userId: number, consumableId: string): Promise<ApiResponse<{
+    success: boolean
+    consumableName?: string
+    pricePaid?: number
+    newWealth?: number
+    buffApplied?: boolean
+    wasExtension?: boolean
+    wasUpgrade?: boolean
+    wasDowngrade?: boolean
+    quantityNow?: number
+    reason?: string
+  }>> {
+    try {
+      const response = await this.client.post('/api/shop/supplies/purchase', {
+        userId,
+        consumableId,
       })
       return response.data
     } catch (error) {

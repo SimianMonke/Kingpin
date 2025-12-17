@@ -1,5 +1,6 @@
 import { prisma } from '../db'
 import { BUSINESS_REVENUE_CONFIG } from '../game'
+import { BuffService } from './buff.service'
 
 // =============================================================================
 // BUSINESS SERVICE TYPES
@@ -99,7 +100,11 @@ export const BusinessService = {
     const operatingCost = Math.floor((equippedBusiness.items.operating_cost || 0) / BUSINESS_REVENUE_CONFIG.CALCULATIONS_PER_DAY)
 
     const { base, variance, total } = this.calculateRevenue(dailyRevenue)
-    const netRevenue = Math.max(0, total - operatingCost)
+    const baseNetRevenue = Math.max(0, total - operatingCost)
+
+    // Apply consumable buff (business_revenue multiplier from Supply Depot)
+    const revenueMultiplier = await BuffService.getMultiplier(user_id, 'business_revenue')
+    const netRevenue = Math.floor(baseNetRevenue * revenueMultiplier)
 
     // Add wealth to user and record P&L history
     await prisma.$transaction([

@@ -14,6 +14,7 @@ import { missionCommands } from './missions'
 import { adminCommands } from './admin'
 import { heistCommands } from './heist'
 import { gamblingCommands } from './gambling'
+import { suppliesCommands } from './supplies'
 
 // =============================================================================
 // COMMAND REGISTRY
@@ -217,6 +218,28 @@ registerCommand('gamblestats', {
   aliases: ['gstats', 'gamblingstat'],
   handler: gamblingCommands.gamblestats,
   cooldown: 10000,
+})
+
+// Supply Depot & Buff commands
+registerCommand('buffs', {
+  aliases: ['mybuffs', 'activebuffs'],
+  handler: suppliesCommands.buffs,
+})
+
+registerCommand('supplies', {
+  aliases: ['depot', 'supplydepot'],
+  handler: suppliesCommands.supplies,
+})
+
+registerCommand('buysupply', {
+  aliases: ['buyboost', 'purchasesupply'],
+  handler: suppliesCommands.buysupply,
+  cooldown: 5000,
+})
+
+registerCommand('myitems', {
+  aliases: ['myconsumables', 'consumables'],
+  handler: suppliesCommands.myitems,
 })
 
 // Admin commands

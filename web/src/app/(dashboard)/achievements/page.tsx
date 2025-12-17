@@ -1,7 +1,15 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { KineticNumber } from '@/components/ui/kinetic-number'
+import { PageLoader } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface Achievement {
   id: number
@@ -42,36 +50,60 @@ interface RecentUnlock {
   completed_at: string
 }
 
-const CATEGORY_INFO: Record<string, { name: string; icon: string; color: string }> = {
-  wealth: { name: 'Wealth', icon: '💰', color: 'text-yellow-400' },
-  combat: { name: 'Combat', icon: '⚔️', color: 'text-red-400' },
-  loyalty: { name: 'Loyalty', icon: '❤️', color: 'text-pink-400' },
-  progression: { name: 'Progression', icon: '📈', color: 'text-green-400' },
-  activity: { name: 'Activity', icon: '🎮', color: 'text-blue-400' },
-  social: { name: 'Social', icon: '👥', color: 'text-cyan-400' },
-  juicernaut: { name: 'Juicernaut', icon: '👑', color: 'text-purple-400' },
-  special: { name: 'Special', icon: '⭐', color: 'text-orange-400' },
-  faction: { name: 'Faction', icon: '🏴', color: 'text-gray-400' },
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+const CATEGORY_INFO: Record<string, { name: string; icon: string }> = {
+  wealth: { name: 'WEALTH', icon: '💰' },
+  combat: { name: 'COMBAT', icon: '⚔️' },
+  loyalty: { name: 'LOYALTY', icon: '❤️' },
+  progression: { name: 'PROGRESSION', icon: '📈' },
+  activity: { name: 'ACTIVITY', icon: '🎮' },
+  social: { name: 'SOCIAL', icon: '👥' },
+  juicernaut: { name: 'JUICERNAUT', icon: '👑' },
+  special: { name: 'SPECIAL', icon: '⭐' },
+  faction: { name: 'FACTION', icon: '🏴' },
 }
 
-const TIER_COLORS: Record<string, string> = {
-  bronze: 'from-amber-700 to-amber-900 border-amber-600',
-  silver: 'from-gray-400 to-gray-600 border-gray-400',
-  gold: 'from-yellow-500 to-yellow-700 border-yellow-400',
-  platinum: 'from-cyan-400 to-cyan-600 border-cyan-400',
-  legendary: 'from-purple-500 to-purple-700 border-purple-400',
+const TIER_STYLES: Record<string, { color: string; border: string; bg: string; icon: string }> = {
+  bronze: {
+    color: '#CD7F32',
+    border: 'border-[#CD7F32]/50',
+    bg: 'bg-[#CD7F32]/5',
+    icon: '🥉',
+  },
+  silver: {
+    color: '#C0C0C0',
+    border: 'border-[#C0C0C0]/50',
+    bg: 'bg-[#C0C0C0]/5',
+    icon: '🥈',
+  },
+  gold: {
+    color: 'var(--tier-legendary)',
+    border: 'border-[var(--tier-legendary)]/50',
+    bg: 'bg-[var(--tier-legendary)]/5',
+    icon: '🥇',
+  },
+  platinum: {
+    color: 'var(--color-primary)',
+    border: 'border-[var(--color-primary)]/50',
+    bg: 'bg-[var(--color-primary)]/5',
+    icon: '💎',
+  },
+  legendary: {
+    color: 'var(--color-secondary)',
+    border: 'border-[var(--color-secondary)]/50',
+    bg: 'bg-[var(--color-secondary)]/5',
+    icon: '👑',
+  },
 }
 
-const TIER_ICONS: Record<string, string> = {
-  bronze: '🥉',
-  silver: '🥈',
-  gold: '🥇',
-  platinum: '💎',
-  legendary: '👑',
-}
+// =============================================================================
+// ACHIEVEMENTS PAGE
+// =============================================================================
 
 export default function AchievementsPage() {
-  const { data: session } = useSession()
   const [categories, setCategories] = useState<AchievementCategory[]>([])
   const [stats, setStats] = useState<AchievementStats | null>(null)
   const [recentUnlocks, setRecentUnlocks] = useState<RecentUnlock[]>([])
@@ -113,105 +145,112 @@ export default function AchievementsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING ACHIEVEMENT DATA" />
   }
 
-  const activeAchievements = categories.find(c => c.category === activeCategory)?.achievements || []
+  const activeAchievements = categories.find((c) => c.category === activeCategory)?.achievements || []
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">
-          <span className="text-gradient">Achievements</span>
+        <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+          <span className="text-[var(--color-primary)]">ACHIEVEMENTS</span>
         </h1>
-        <p className="text-gray-400 mt-1">Track your progress and earn rewards</p>
+        <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+          {'// TRACK PROGRESS AND EARN REWARDS'}
+        </p>
       </div>
 
       {/* Overall Progress */}
       {stats && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+        <Card variant="default" glow="primary" className="p-6">
           <div className="flex flex-col md:flex-row md:items-center gap-6">
             {/* Total Progress */}
             <div className="flex-1">
-              <h2 className="text-lg font-semibold mb-2">Total Progress</h2>
+              <h2 className="font-display text-sm uppercase tracking-wider text-[var(--color-muted)] mb-2">
+                TOTAL PROGRESS
+              </h2>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-3 bg-[var(--color-surface)] border border-[var(--color-primary)]/30">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-cyan-500"
+                      className="h-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]"
                       style={{ width: `${stats.percentage}%` }}
                     />
                   </div>
                 </div>
-                <span className="text-lg font-bold">
-                  {stats.completed} / {stats.total}
+                <span className="font-mono text-lg font-bold">
+                  <KineticNumber value={stats.completed} /> / {stats.total}
                 </span>
               </div>
             </div>
 
             {/* Tier Breakdown */}
             <div className="flex gap-4">
-              {Object.entries(stats.byTier).map(([tier, data]) => (
-                <div key={tier} className="text-center">
-                  <div className="text-xl mb-1">{TIER_ICONS[tier]}</div>
-                  <div className="text-sm">
-                    <span className="text-white font-semibold">{data.completed}</span>
-                    <span className="text-gray-500">/{data.total}</span>
+              {Object.entries(stats.byTier).map(([tier, data]) => {
+                const style = TIER_STYLES[tier] || TIER_STYLES.bronze
+                return (
+                  <div key={tier} className="text-center">
+                    <div className="text-xl mb-1">{style.icon}</div>
+                    <div className="font-mono text-sm">
+                      <span className="font-bold">{data.completed}</span>
+                      <span className="text-[var(--color-muted)]">/{data.total}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Recent Unlocks */}
       {recentUnlocks.length > 0 && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Unlocks</h2>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {recentUnlocks.map((unlock, index) => (
-              <div
-                key={index}
-                className={`flex-shrink-0 px-4 py-2 rounded-lg border bg-gradient-to-r ${
-                  TIER_COLORS[unlock.tier] || 'from-gray-700 to-gray-800 border-gray-600'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{TIER_ICONS[unlock.tier] || '🏅'}</span>
-                  <span className="font-semibold">{unlock.name}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card variant="solid" className="p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle>RECENT UNLOCKS</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {recentUnlocks.map((unlock, index) => {
+                const style = TIER_STYLES[unlock.tier] || TIER_STYLES.bronze
+                return (
+                  <div
+                    key={index}
+                    className={cn('flex-shrink-0 px-4 py-2 border-2', style.border, style.bg)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{style.icon}</span>
+                      <span className="font-display uppercase tracking-wider text-sm">
+                        {unlock.name}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-2">
         {categories.map((cat) => {
-          const info = CATEGORY_INFO[cat.category] || { name: cat.category, icon: '📋', color: 'text-gray-400' }
+          const info = CATEGORY_INFO[cat.category] || { name: cat.category.toUpperCase(), icon: '📋' }
           return (
-            <button
+            <Button
               key={cat.category}
               onClick={() => setActiveCategory(cat.category)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                activeCategory === cat.category
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
+              variant={activeCategory === cat.category ? 'default' : 'ghost'}
+              size="sm"
             >
-              <span>{info.icon}</span>
-              <span>{info.name}</span>
-              <span className="text-xs opacity-75">
+              <span className="mr-2">{info.icon}</span>
+              {info.name}
+              <span className="ml-2 font-mono text-xs opacity-70">
                 {cat.completedCount}/{cat.totalCount}
               </span>
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -219,21 +258,26 @@ export default function AchievementsPage() {
       {/* Achievement Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {activeAchievements.map((achievement) => {
-          // Hide locked hidden achievements
+          // Hidden achievements that aren't completed
           if (achievement.is_hidden && !achievement.is_completed) {
             return (
-              <div
+              <Card
                 key={achievement.id}
-                className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 opacity-50"
+                variant="solid"
+                className="p-4 opacity-50"
               >
                 <div className="flex items-center gap-3">
                   <div className="text-2xl">❓</div>
                   <div>
-                    <h3 className="font-semibold text-gray-500">Hidden Achievement</h3>
-                    <p className="text-sm text-gray-600">Keep playing to unlock...</p>
+                    <h3 className="font-display uppercase tracking-wider text-[var(--color-muted)]">
+                      HIDDEN ACHIEVEMENT
+                    </h3>
+                    <p className="font-mono text-sm text-[var(--color-muted)]/70">
+                      Keep playing to unlock...
+                    </p>
                   </div>
                 </div>
-              </div>
+              </Card>
             )
           }
 
@@ -241,80 +285,82 @@ export default function AchievementsPage() {
             achievement.current_progress,
             achievement.requirement_value
           )
+          const style = TIER_STYLES[achievement.tier] || TIER_STYLES.bronze
 
           return (
-            <div
+            <Card
               key={achievement.id}
-              className={`relative bg-gray-800/50 border rounded-xl p-4 overflow-hidden ${
-                achievement.is_completed
-                  ? `border-l-4 ${TIER_COLORS[achievement.tier]?.split(' ')[0] || 'border-gray-600'}`
-                  : 'border-gray-700'
-              }`}
+              variant="solid"
+              className={cn(
+                'p-4 overflow-hidden',
+                achievement.is_completed && style.border,
+                achievement.is_completed && 'border-l-4'
+              )}
             >
               {/* Tier Badge */}
-              <div className="absolute top-3 right-3">
-                <span className="text-xl">{TIER_ICONS[achievement.tier] || '🏅'}</span>
-              </div>
-
-              {/* Content */}
-              <div className="pr-10">
-                <h3 className="font-semibold mb-1 flex items-center gap-2">
-                  {achievement.name}
-                  {achievement.is_completed && (
-                    <span className="text-green-400">✓</span>
-                  )}
-                </h3>
-                <p className="text-sm text-gray-400 mb-3">{achievement.description}</p>
-
-                {/* Progress */}
-                {!achievement.is_completed && (
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>Progress</span>
-                      <span>
-                        {formatValue(achievement.current_progress)} / {formatValue(achievement.requirement_value)}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-purple-500"
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Rewards */}
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-yellow-400">
-                    +${achievement.reward_wealth.toLocaleString()}
-                  </span>
-                  <span className="text-purple-400">
-                    +{achievement.reward_xp} XP
-                  </span>
-                  {achievement.reward_title && (
-                    <span className="text-cyan-400 text-xs bg-cyan-400/10 px-2 py-0.5 rounded">
-                      Title: {achievement.reward_title}
-                    </span>
-                  )}
-                </div>
-
-                {/* Completion Date */}
-                {achievement.is_completed && achievement.completed_at && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Completed: {new Date(achievement.completed_at).toLocaleDateString()}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="font-display uppercase tracking-wider truncate flex items-center gap-2">
+                    {achievement.name}
+                    {achievement.is_completed && (
+                      <span className="text-[var(--color-success)]">✓</span>
+                    )}
+                  </h3>
+                  <p className="font-mono text-sm text-[var(--color-muted)] mt-1">
+                    {achievement.description}
                   </p>
+                </div>
+                <span className="text-xl flex-shrink-0">{style.icon}</span>
+              </div>
+
+              {/* Progress */}
+              {!achievement.is_completed && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between font-mono text-xs text-[var(--color-muted)] mb-1">
+                    <span>PROGRESS</span>
+                    <span>
+                      {formatValue(achievement.current_progress)} / {formatValue(achievement.requirement_value)}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-[var(--color-surface)] border border-[var(--color-primary)]/20">
+                    <div
+                      className="h-full bg-[var(--color-primary)]"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Rewards */}
+              <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
+                <span className="text-[var(--color-warning)]">
+                  +${achievement.reward_wealth.toLocaleString()}
+                </span>
+                <span className="text-[var(--color-primary)]">
+                  +{achievement.reward_xp} XP
+                </span>
+                {achievement.reward_title && (
+                  <span className="text-[var(--color-secondary)] text-xs px-2 py-0.5 border border-[var(--color-secondary)]/30">
+                    TITLE: {achievement.reward_title}
+                  </span>
                 )}
               </div>
-            </div>
+
+              {/* Completion Date */}
+              {achievement.is_completed && achievement.completed_at && (
+                <p className="font-mono text-xs text-[var(--color-muted)] mt-3">
+                  COMPLETED: {new Date(achievement.completed_at).toLocaleDateString().toUpperCase()}
+                </p>
+              )}
+            </Card>
           )
         })}
       </div>
 
       {/* Empty State */}
       {activeAchievements.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
-          No achievements in this category
+        <div className="text-center py-12">
+          <p className="font-mono text-[var(--color-muted)]">{'> NO ACHIEVEMENTS IN THIS CATEGORY'}</p>
         </div>
       )}
     </div>

@@ -1,6 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { KineticNumber, StatValue } from '@/components/ui/kinetic-number'
+import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface InventoryItem {
   id: number
@@ -46,26 +55,43 @@ interface InventoryData {
   escrowed: InventoryItem[]
 }
 
-const TIER_COLORS: Record<string, string> = {
-  common: 'text-gray-400 border-gray-600',
-  uncommon: 'text-green-400 border-green-600',
-  rare: 'text-blue-400 border-blue-600',
-  legendary: 'text-yellow-400 border-yellow-600',
+// =============================================================================
+// TIER STYLING
+// =============================================================================
+
+const TIER_STYLES: Record<string, { color: string; border: string; bg: string }> = {
+  common: {
+    color: 'var(--tier-common)',
+    border: 'border-[var(--tier-common)]/50',
+    bg: 'bg-[var(--tier-common)]/5',
+  },
+  uncommon: {
+    color: 'var(--tier-uncommon)',
+    border: 'border-[var(--tier-uncommon)]/50',
+    bg: 'bg-[var(--tier-uncommon)]/5',
+  },
+  rare: {
+    color: 'var(--tier-rare)',
+    border: 'border-[var(--tier-rare)]/50',
+    bg: 'bg-[var(--tier-rare)]/5',
+  },
+  legendary: {
+    color: 'var(--tier-legendary)',
+    border: 'border-[var(--tier-legendary)]/50',
+    bg: 'bg-[var(--tier-legendary)]/5',
+  },
 }
 
-const TIER_BG: Record<string, string> = {
-  common: 'bg-gray-500/10',
-  uncommon: 'bg-green-500/10',
-  rare: 'bg-blue-500/10',
-  legendary: 'bg-yellow-500/10',
-}
+const SLOT_CONFIG: { key: keyof EquippedItems; label: string; icon: string }[] = [
+  { key: 'weapon', label: 'WEAPON', icon: '⚔️' },
+  { key: 'armor', label: 'ARMOR', icon: '🛡️' },
+  { key: 'business', label: 'BUSINESS', icon: '🏢' },
+  { key: 'housing', label: 'HOUSING', icon: '🏠' },
+]
 
-const SLOT_NAMES: Record<string, string> = {
-  weapon: 'Weapon',
-  armor: 'Armor',
-  business: 'Business',
-  housing: 'Housing',
-}
+// =============================================================================
+// INVENTORY PAGE
+// =============================================================================
 
 export default function InventoryPage() {
   const [data, setData] = useState<InventoryData | null>(null)
@@ -106,14 +132,14 @@ export default function InventoryPage() {
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: json.data.message })
+        setMessage({ type: 'success', text: 'ITEM EQUIPPED' })
         await fetchInventory()
         setSelectedItem(null)
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'EQUIP FAILED' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to equip item' })
+    } catch {
+      setMessage({ type: 'error', text: 'EQUIP OPERATION FAILED' })
     } finally {
       setActionLoading(null)
     }
@@ -133,13 +159,13 @@ export default function InventoryPage() {
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: json.data.message })
+        setMessage({ type: 'success', text: 'ITEM UNEQUIPPED' })
         await fetchInventory()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'UNEQUIP FAILED' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to unequip item' })
+    } catch {
+      setMessage({ type: 'error', text: 'UNEQUIP OPERATION FAILED' })
     } finally {
       setActionLoading(null)
     }
@@ -159,14 +185,14 @@ export default function InventoryPage() {
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: json.data.message })
+        setMessage({ type: 'success', text: json.data?.message?.toUpperCase() || 'ITEM SOLD' })
         await fetchInventory()
         setSelectedItem(null)
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'SELL FAILED' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to sell item' })
+    } catch {
+      setMessage({ type: 'error', text: 'SELL OPERATION FAILED' })
     } finally {
       setActionLoading(null)
     }
@@ -186,265 +212,510 @@ export default function InventoryPage() {
       const json = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Item claimed from escrow!' })
+        setMessage({ type: 'success', text: 'ITEM CLAIMED FROM ESCROW' })
         await fetchInventory()
       } else {
-        setMessage({ type: 'error', text: json.error })
+        setMessage({ type: 'error', text: json.error?.toUpperCase() || 'CLAIM FAILED' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to claim item' })
+    } catch {
+      setMessage({ type: 'error', text: 'CLAIM OPERATION FAILED' })
     } finally {
       setActionLoading(null)
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING INVENTORY DATA" />
   }
 
   if (!data) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-400">Failed to load inventory</p>
-      </div>
+      <Card variant="outlined" className="border-[var(--color-destructive)] p-8 text-center">
+        <p className="font-mono text-[var(--color-destructive)]">{'> INVENTORY DATA UNAVAILABLE'}</p>
+      </Card>
     )
   }
 
-  const unequippedItems = data.inventory.filter(item => !item.is_equipped)
+  const unequippedItems = data.inventory.filter((item) => !item.is_equipped)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Inventory</h1>
-        <p className="text-gray-400 mt-1">
-          {data.stats.usedSlots}/{data.stats.totalSlots} slots used
-          {data.stats.escrowedCount > 0 && ` | ${data.stats.escrowedCount} in escrow`}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+            <span className="text-[var(--color-primary)]">INVENTORY</span>
+          </h1>
+          <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+            {'// '}
+            <KineticNumber value={data.stats.usedSlots} />/{data.stats.totalSlots} SLOTS USED
+            {data.stats.escrowedCount > 0 && (
+              <span className="text-[var(--color-warning)]">
+                {' // '}{data.stats.escrowedCount} IN ESCROW
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <StatValue
+            label="AVAILABLE"
+            value={data.stats.availableSlots}
+            valueClassName="text-[var(--color-success)]"
+          />
+        </div>
       </div>
 
       {/* Message */}
       {message && (
-        <div
-          className={`p-4 rounded-lg ${
+        <Card
+          variant="outlined"
+          className={cn(
+            'p-4',
             message.type === 'success'
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}
+              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
+          )}
         >
-          {message.text}
-        </div>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                'font-display uppercase text-sm',
+                message.type === 'success'
+                  ? 'text-[var(--color-success)]'
+                  : 'text-[var(--color-destructive)]'
+              )}
+            >
+              {message.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
+            </span>
+            <span className="font-mono text-sm">{message.text}</span>
+          </div>
+        </Card>
       )}
 
       {/* Equipped Items */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Equipped</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(['weapon', 'armor', 'business', 'housing'] as const).map((slot) => {
-            const item = data.equipped[slot]
-            return (
-              <div key={slot} className="relative">
-                <p className="text-xs text-gray-500 mb-2 uppercase">{SLOT_NAMES[slot]}</p>
-                {item ? (
-                  <div
-                    className={`p-4 rounded-lg border-2 ${TIER_COLORS[item.tier]} ${TIER_BG[item.tier]} cursor-pointer hover:opacity-80 transition-opacity`}
-                    onClick={() => setSelectedItem(item)}
-                  >
-                    <p className="font-medium truncate">{item.itemName}</p>
-                    <div className="flex items-center gap-2 mt-2 text-sm">
-                      {item.rob_bonus && <span className="text-red-400">+{item.rob_bonus}% Rob</span>}
-                      {item.defense_bonus && <span className="text-blue-400">+{item.defense_bonus}% Def</span>}
-                      {item.insurance_percent && <span className="text-green-400">{item.insurance_percent}% Ins</span>}
-                      {item.revenue_min && <span className="text-yellow-400">${item.revenue_min}-{item.revenue_max}</span>}
-                    </div>
-                    <div className="mt-2">
-                      <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-green-500 to-yellow-500"
-                          style={{ width: `${(item.durability / item.maxDurability) * 100}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{item.durability}/{item.maxDurability}</p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleUnequip(slot)
-                      }}
-                      disabled={actionLoading === `unequip-${slot}`}
-                      className="mt-2 w-full py-1 px-2 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50"
-                    >
-                      {actionLoading === `unequip-${slot}` ? 'Unequipping...' : 'Unequip'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-lg border-2 border-dashed border-gray-700 bg-gray-800/30 text-center">
-                    <p className="text-gray-500 text-sm">Empty</p>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <Card variant="default" glow="primary" scanlines className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>EQUIPPED LOADOUT</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {SLOT_CONFIG.map(({ key, label, icon }) => {
+              const item = data.equipped[key]
+              return (
+                <EquipmentSlot
+                  key={key}
+                  slot={key}
+                  label={label}
+                  icon={icon}
+                  item={item}
+                  onUnequip={() => handleUnequip(key)}
+                  onSelect={() => item && setSelectedItem(item)}
+                  isLoading={actionLoading === `unequip-${key}`}
+                />
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Unequipped Items */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Items ({unequippedItems.length})</h2>
-        {unequippedItems.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No items in inventory. Visit the shop to buy some!</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {unequippedItems.map((item) => (
-              <div
-                key={item.id}
-                className={`p-4 rounded-lg border ${TIER_COLORS[item.tier]} ${TIER_BG[item.tier]} cursor-pointer hover:opacity-80 transition-opacity`}
-                onClick={() => setSelectedItem(item)}
-              >
-                <p className="text-xs uppercase opacity-70">{item.tier}</p>
-                <p className="font-medium truncate mt-1">{item.itemName}</p>
-                <p className="text-xs text-gray-400 mt-1 capitalize">{item.type}</p>
-                <div className="mt-2">
-                  <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-green-500 to-yellow-500"
-                      style={{ width: `${(item.durability / item.maxDurability) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <Card variant="solid" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>STORAGE ({unequippedItems.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {unequippedItems.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="font-mono text-[var(--color-muted)]">{'> STORAGE EMPTY'}</p>
+              <p className="font-mono text-xs text-[var(--color-muted)]/70 mt-2">
+                {'// VISIT THE BLACK MARKET TO ACQUIRE ITEMS'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {unequippedItems.map((item) => (
+                <InventoryItemCard
+                  key={item.id}
+                  item={item}
+                  onSelect={() => setSelectedItem(item)}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Escrowed Items */}
       {data.escrowed.length > 0 && (
-        <div className="bg-gray-800/50 border border-orange-500/30 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-2 text-orange-400">Escrow</h2>
-          <p className="text-sm text-gray-400 mb-4">Claim these items before they expire!</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {data.escrowed.map((item) => (
-              <div
-                key={item.id}
-                className={`p-4 rounded-lg border ${TIER_COLORS[item.tier]} ${TIER_BG[item.tier]}`}
-              >
-                <p className="text-xs uppercase opacity-70">{item.tier}</p>
-                <p className="font-medium truncate mt-1">{item.itemName}</p>
-                {item.escrow_expires_at && (
-                  <p className="text-xs text-orange-400 mt-2">
-                    Expires: {new Date(item.escrow_expires_at).toLocaleString()}
-                  </p>
-                )}
-                <button
-                  onClick={() => handleClaim(item.id)}
-                  disabled={actionLoading === `claim-${item.id}` || data.stats.availableSlots === 0}
-                  className="mt-2 w-full py-1 px-2 text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded transition-colors disabled:opacity-50"
-                >
-                  {actionLoading === `claim-${item.id}` ? 'Claiming...' : 'Claim'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card variant="outlined" className="border-[var(--color-warning)]/50 p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle className="text-[var(--color-warning)]">⚠ ESCROW ({data.escrowed.length})</CardTitle>
+            <p className="font-mono text-xs text-[var(--color-muted)] mt-2">
+              {'// CLAIM BEFORE EXPIRATION'}
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {data.escrowed.map((item) => (
+                <EscrowedItemCard
+                  key={item.id}
+                  item={item}
+                  onClaim={() => handleClaim(item.id)}
+                  isLoading={actionLoading === `claim-${item.id}`}
+                  canClaim={data.stats.availableSlots > 0}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Item Detail Modal */}
-      {selectedItem && (
+      {selectedItem && !selectedItem.is_escrowed && (
+        <ItemDetailModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onEquip={() => handleEquip(selectedItem.id)}
+          onSell={() => handleSell(selectedItem.id)}
+          isEquipping={actionLoading === `equip-${selectedItem.id}`}
+          isSelling={actionLoading === `sell-${selectedItem.id}`}
+        />
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// EQUIPMENT SLOT
+// =============================================================================
+
+function EquipmentSlot({
+  slot,
+  label,
+  icon,
+  item,
+  onUnequip,
+  onSelect,
+  isLoading,
+}: {
+  slot: string
+  label: string
+  icon: string
+  item: InventoryItem | null
+  onUnequip: () => void
+  onSelect: () => void
+  isLoading: boolean
+}) {
+  const tierStyle = item ? TIER_STYLES[item.tier] || TIER_STYLES.common : null
+
+  return (
+    <div>
+      <p className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] mb-2 flex items-center gap-2">
+        <span>{icon}</span>
+        {label}
+      </p>
+      {item ? (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedItem(null)}
+          className={cn(
+            'p-4 border-2 cursor-pointer transition-all',
+            tierStyle?.border,
+            tierStyle?.bg,
+            'hover:shadow-[0_0_15px_rgba(0,255,241,0.2)]'
+          )}
+          onClick={onSelect}
         >
-          <div
-            className={`bg-gray-900 border ${TIER_COLORS[selectedItem.tier]} rounded-xl p-6 max-w-md w-full`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className={`text-xs uppercase ${TIER_COLORS[selectedItem.tier].split(' ')[0]}`}>
-                  {selectedItem.tier} {selectedItem.type}
-                </p>
-                <h3 className="text-xl font-bold mt-1">{selectedItem.itemName}</h3>
-              </div>
-              <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-white">
-                <XIcon className="w-6 h-6" />
-              </button>
-            </div>
-
-            {selectedItem.description && (
-              <p className="text-gray-300 text-sm mb-2">{selectedItem.description}</p>
-            )}
-            {selectedItem.flavor_text && (
-              <p className="text-gray-500 text-sm italic mb-4">"{selectedItem.flavor_text}"</p>
-            )}
-
-            <div className="space-y-2 text-sm mb-4">
-              {selectedItem.rob_bonus && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Rob Bonus</span>
-                  <span className="text-red-400">+{selectedItem.rob_bonus}%</span>
-                </div>
-              )}
-              {selectedItem.defense_bonus && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Defense Bonus</span>
-                  <span className="text-blue-400">+{selectedItem.defense_bonus}%</span>
-                </div>
-              )}
-              {selectedItem.insurance_percent && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Insurance</span>
-                  <span className="text-green-400">{selectedItem.insurance_percent}%</span>
-                </div>
-              )}
-              {selectedItem.revenue_min && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Revenue</span>
-                  <span className="text-yellow-400">${selectedItem.revenue_min}-{selectedItem.revenue_max}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-400">Durability</span>
-                <span>{selectedItem.durability}/{selectedItem.maxDurability}</span>
-              </div>
-              {selectedItem.sell_price && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Sell Price</span>
-                  <span className="text-green-400">${selectedItem.sell_price.toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              {!selectedItem.is_equipped && (
-                <>
-                  <button
-                    onClick={() => handleEquip(selectedItem.id)}
-                    disabled={actionLoading === `equip-${selectedItem.id}`}
-                    className="flex-1 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  >
-                    {actionLoading === `equip-${selectedItem.id}` ? 'Equipping...' : 'Equip'}
-                  </button>
-                  <button
-                    onClick={() => handleSell(selectedItem.id)}
-                    disabled={actionLoading === `sell-${selectedItem.id}`}
-                    className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  >
-                    {actionLoading === `sell-${selectedItem.id}` ? 'Selling...' : `Sell ($${selectedItem.sell_price?.toLocaleString() ?? 0})`}
-                  </button>
-                </>
-              )}
-            </div>
+          <p className="font-display text-sm uppercase tracking-wider truncate mb-2">
+            {item.itemName}
+          </p>
+          <div className="flex flex-wrap gap-2 text-xs font-mono mb-3">
+            {item.rob_bonus && <span className="text-[var(--color-destructive)]">+{item.rob_bonus}% ROB</span>}
+            {item.defense_bonus && <span className="text-[var(--color-primary)]">+{item.defense_bonus}% DEF</span>}
+            {item.insurance_percent && <span className="text-[var(--color-success)]">{item.insurance_percent}% INS</span>}
+            {item.revenue_min && <span className="text-[var(--color-warning)]">${item.revenue_min}-{item.revenue_max}</span>}
           </div>
+          {/* Durability Bar */}
+          <DurabilityBar current={item.durability} max={item.maxDurability} />
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              onUnequip()
+            }}
+            disabled={isLoading}
+            variant="ghost"
+            size="sm"
+            className="w-full mt-3"
+          >
+            {isLoading ? <InitializingText text="..." className="text-xs" /> : 'UNEQUIP'}
+          </Button>
+        </div>
+      ) : (
+        <div className="p-4 border-2 border-dashed border-[var(--color-muted)]/30 bg-[var(--color-surface)]/30 text-center min-h-[120px] flex items-center justify-center">
+          <p className="font-mono text-xs text-[var(--color-muted)]">EMPTY</p>
         </div>
       )}
     </div>
   )
 }
+
+// =============================================================================
+// INVENTORY ITEM CARD
+// =============================================================================
+
+function InventoryItemCard({
+  item,
+  onSelect,
+}: {
+  item: InventoryItem
+  onSelect: () => void
+}) {
+  const tierStyle = TIER_STYLES[item.tier] || TIER_STYLES.common
+
+  return (
+    <div
+      className={cn(
+        'p-3 border-2 cursor-pointer transition-all',
+        tierStyle.border,
+        tierStyle.bg,
+        'hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(0,255,241,0.2)]'
+      )}
+      onClick={onSelect}
+    >
+      <span
+        className="font-display text-[10px] uppercase tracking-wider"
+        style={{ color: tierStyle.color }}
+      >
+        {item.tier}
+      </span>
+      <p className="font-display text-xs uppercase tracking-wider truncate mt-1">
+        {item.itemName}
+      </p>
+      <p className="font-mono text-[10px] text-[var(--color-muted)] uppercase mt-1">
+        {item.type}
+      </p>
+      <DurabilityBar current={item.durability} max={item.maxDurability} className="mt-2" />
+    </div>
+  )
+}
+
+// =============================================================================
+// ESCROWED ITEM CARD
+// =============================================================================
+
+function EscrowedItemCard({
+  item,
+  onClaim,
+  isLoading,
+  canClaim,
+}: {
+  item: InventoryItem
+  onClaim: () => void
+  isLoading: boolean
+  canClaim: boolean
+}) {
+  const tierStyle = TIER_STYLES[item.tier] || TIER_STYLES.common
+
+  return (
+    <div className={cn('p-3 border-2', tierStyle.border, tierStyle.bg)}>
+      <span
+        className="font-display text-[10px] uppercase tracking-wider"
+        style={{ color: tierStyle.color }}
+      >
+        {item.tier}
+      </span>
+      <p className="font-display text-xs uppercase tracking-wider truncate mt-1">
+        {item.itemName}
+      </p>
+      {item.escrow_expires_at && (
+        <p className="font-mono text-[10px] text-[var(--color-warning)] mt-2">
+          EXP: {new Date(item.escrow_expires_at).toLocaleDateString()}
+        </p>
+      )}
+      <Button
+        onClick={onClaim}
+        disabled={isLoading || !canClaim}
+        variant="warning"
+        size="sm"
+        className="w-full mt-2"
+      >
+        {isLoading ? '...' : 'CLAIM'}
+      </Button>
+    </div>
+  )
+}
+
+// =============================================================================
+// DURABILITY BAR
+// =============================================================================
+
+function DurabilityBar({
+  current,
+  max,
+  className,
+}: {
+  current: number
+  max: number
+  className?: string
+}) {
+  const percentage = (current / max) * 100
+  const color =
+    percentage > 50
+      ? 'bg-[var(--color-success)]'
+      : percentage > 25
+      ? 'bg-[var(--color-warning)]'
+      : 'bg-[var(--color-destructive)]'
+
+  return (
+    <div className={className}>
+      <div className="h-1 bg-[var(--color-surface)] border border-[var(--color-primary)]/20">
+        <div className={cn('h-full transition-all', color)} style={{ width: `${percentage}%` }} />
+      </div>
+      <p className="font-mono text-[10px] text-[var(--color-muted)] mt-1">
+        {current}/{max}
+      </p>
+    </div>
+  )
+}
+
+// =============================================================================
+// ITEM DETAIL MODAL
+// =============================================================================
+
+function ItemDetailModal({
+  item,
+  onClose,
+  onEquip,
+  onSell,
+  isEquipping,
+  isSelling,
+}: {
+  item: InventoryItem
+  onClose: () => void
+  onEquip: () => void
+  onSell: () => void
+  isEquipping: boolean
+  isSelling: boolean
+}) {
+  const tierStyle = TIER_STYLES[item.tier] || TIER_STYLES.common
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <Card
+        variant="solid"
+        className={cn('max-w-md w-full p-6 border-2', tierStyle.border)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <span
+              className="font-display text-xs uppercase tracking-wider"
+              style={{ color: tierStyle.color }}
+            >
+              {item.tier} {item.type}
+            </span>
+            <h3 className="font-display text-xl uppercase tracking-wider mt-1">
+              {item.itemName}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] p-1"
+          >
+            <XIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Description */}
+        {item.description && (
+          <p className="font-mono text-sm text-[var(--color-foreground)] mb-2">
+            {item.description}
+          </p>
+        )}
+        {item.flavor_text && (
+          <p className="font-mono text-xs text-[var(--color-muted)] italic mb-4">
+            "{item.flavor_text}"
+          </p>
+        )}
+
+        {/* Stats */}
+        <div className="space-y-2 font-mono text-sm mb-4">
+          {item.rob_bonus && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">ROB BONUS</span>
+              <span className="text-[var(--color-destructive)]">+{item.rob_bonus}%</span>
+            </div>
+          )}
+          {item.defense_bonus && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">DEFENSE BONUS</span>
+              <span className="text-[var(--color-primary)]">+{item.defense_bonus}%</span>
+            </div>
+          )}
+          {item.insurance_percent && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">INSURANCE</span>
+              <span className="text-[var(--color-success)]">{item.insurance_percent}%</span>
+            </div>
+          )}
+          {item.revenue_min && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">REVENUE</span>
+              <span className="text-[var(--color-warning)]">
+                ${item.revenue_min}-{item.revenue_max}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-[var(--color-muted)]">DURABILITY</span>
+            <span>{item.durability}/{item.maxDurability}</span>
+          </div>
+          {item.sell_price && (
+            <div className="flex justify-between">
+              <span className="text-[var(--color-muted)]">SELL VALUE</span>
+              <span className="text-[var(--color-success)]">${item.sell_price.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Durability Bar */}
+        <DurabilityBar current={item.durability} max={item.maxDurability} className="mb-4" />
+
+        {/* Actions */}
+        {!item.is_equipped && (
+          <div className="flex gap-3 pt-4 border-t border-[var(--color-primary)]/20">
+            <Button
+              onClick={onEquip}
+              disabled={isEquipping}
+              variant="default"
+              className="flex-1"
+            >
+              {isEquipping ? <InitializingText text="..." className="text-xs" /> : 'EQUIP'}
+            </Button>
+            <Button
+              onClick={onSell}
+              disabled={isSelling}
+              variant="destructive"
+              className="flex-1"
+            >
+              {isSelling ? (
+                <InitializingText text="..." className="text-xs" />
+              ) : (
+                `SELL $${item.sell_price?.toLocaleString() ?? 0}`
+              )}
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+// =============================================================================
+// ICONS
+// =============================================================================
 
 function XIcon({ className }: { className?: string }) {
   return (

@@ -25,6 +25,8 @@ import { CrateService } from './crate.service'
 import { FactionService } from './faction.service'
 import { NotificationService } from './notification.service'
 import { DiscordService } from './discord.service'
+import { BuffService } from './buff.service'
+import { ConsumableService } from './consumable.service'
 
 // Note: Weapon durability is NOT affected by play events.
 // Durability only decays during robbery actions (attacker: -3, defender: -2).
@@ -58,8 +60,15 @@ export interface PlayResult {
   crate_tier?: CrateTier
   crateToEscrow?: boolean
   crateLost?: boolean
+  usedCrateMagnet?: boolean  // True if crate_magnet consumable was used
 
   // Buffs applied
+  consumableBuffBonuses?: {
+    wealthBonus: number
+    xpBonus: number
+    crateDropBonus: number  // Percentage bonus to drop chance
+    buffsApplied: string[]
+  }
   juicernautBonuses?: {
     wealthBonus: number
     xpBonus: number
@@ -69,6 +78,13 @@ export interface PlayResult {
     xpBonus: number
     buffsApplied: string[]
   }
+
+  // Expiring buffs warning (buffs expiring within 60 minutes)
+  expiringBuffs?: Array<{
+    buffType: string
+    description: string | null
+    remainingMinutes: number | null
+  }>
 }
 
 export interface PlayPreCheck {
@@ -161,6 +177,41 @@ export const PlayService = {
     let wealth_earned = randomInt(event.wealth.min, event.wealth.max)
     let xp_earned = randomInt(event.xp.min, event.xp.max)
 
+    // Apply consumable buffs (from Supply Depot purchases)
+    let consumableBuffBonuses: { wealthBonus: number; xpBonus: number; crateDropBonus: number; buffsApplied: string[] } | undefined
+    const [xpMultiplier, wealthMultiplier, crateDropMultiplier] = await Promise.all([
+      BuffService.getMultiplier(user_id, 'xp_multiplier'),
+      BuffService.getMultiplier(user_id, 'wealth_gain'),
+      BuffService.getMultiplier(user_id, 'crate_drop'),
+    ])
+
+    if (xpMultiplier > 1 || wealthMultiplier > 1 || crateDropMultiplier > 1) {
+      let consumableWealthBonus = 0
+      let consumableXpBonus = 0
+      const buffsApplied: string[] = []
+
+      if (wealthMultiplier > 1) {
+        consumableWealthBonus = Math.floor(wealth_earned * (wealthMultiplier - 1))
+        wealth_earned += consumableWealthBonus
+        buffsApplied.push(`+${Math.round((wealthMultiplier - 1) * 100)}% Wealth`)
+      }
+
+      if (xpMultiplier > 1) {
+        consumableXpBonus = Math.floor(xp_earned * (xpMultiplier - 1))
+        xp_earned += consumableXpBonus
+        buffsApplied.push(`+${Math.round((xpMultiplier - 1) * 100)}% XP`)
+      }
+
+      if (consumableWealthBonus > 0 || consumableXpBonus > 0 || crateDropMultiplier > 1) {
+        consumableBuffBonuses = {
+          wealthBonus: consumableWealthBonus,
+          xpBonus: consumableXpBonus,
+          crateDropBonus: crateDropMultiplier > 1 ? Math.round((crateDropMultiplier - 1) * 100) : 0,
+          buffsApplied,
+        }
+      }
+    }
+
     // Apply Juicernaut buffs
     let juicernautBonuses: { wealthBonus: number; xpBonus: number } | undefined
     if (juicernautBuffs.isJuicernaut) {
@@ -227,18 +278,33 @@ export const PlayService = {
     }
 
     // Roll for crate drop
-    // Apply Juicernaut loot buff (3x) and faction crate_drop buff (e.g., +10% from Silicon Sprawl)
+    // Apply consumable crate_drop buff, Juicernaut loot buff (3x), and faction crate_drop buff
     let crateDropChance = PLAY_CRATE_DROP_CHANCE
+    if (crateDropMultiplier > 1) {
+      crateDropChance *= crateDropMultiplier
+    }
     if (juicernautBuffs.hasLootBuff) {
       crateDropChance *= JUICERNAUT_BUFFS.LOOT_MULTIPLIER
     }
     if (factionBuffs['crate_drop']) {
       crateDropChance *= (1 + factionBuffs['crate_drop'] / 100)
     }
+
+    // Check for crate_magnet consumable (guarantees 50% drop chance)
+    let usedCrateMagnet = false
+    const hasCrateMagnet = await ConsumableService.hasConsumable(user_id, 'crate_magnet')
+    if (hasCrateMagnet && Math.random() < 0.5) {
+      // Magnet triggers on 50% chance - consume and guarantee drop
+      await ConsumableService.useConsumable(user_id, 'crate_magnet')
+      crateDropChance = 1.0  // Guarantee drop
+      usedCrateMagnet = true
+    }
+
     const crateDropped = Math.random() < crateDropChance
     let crate_tier: CrateTier | undefined
     let crateToEscrow = false
     let crateLost = false
+    let magnetUsedForDrop = usedCrateMagnet && crateDropped
 
     if (crateDropped) {
       crate_tier = this.rollCrateTier(playerTier)
@@ -364,6 +430,21 @@ export const PlayService = {
       'play.service:faction:territoryScore'
     )
 
+    // Get expiring buffs (within 60 minutes) for warning
+    let expiringBuffs: PlayResult['expiringBuffs'] = undefined
+    try {
+      const expiring = await BuffService.getExpiringBuffs(user_id, 60)
+      if (expiring.length > 0) {
+        expiringBuffs = expiring.map((b) => ({
+          buffType: b.buffType,
+          description: b.description,
+          remainingMinutes: b.remainingMinutes,
+        }))
+      }
+    } catch {
+      // Non-critical, ignore errors
+    }
+
     return {
       success: true,
       busted: false,
@@ -380,8 +461,11 @@ export const PlayService = {
       crate_tier,
       crateToEscrow,
       crateLost,
+      usedCrateMagnet: magnetUsedForDrop,
+      consumableBuffBonuses,
       juicernautBonuses,
       factionBonuses,
+      expiringBuffs,
     }
   },
 

@@ -1,5 +1,5 @@
 import { apiClient } from '../api-client'
-import { formatProfile, formatWealth, formatXp, formatJailStatus } from '../utils/formatter'
+import { formatProfile, formatWealth, formatXp, formatJailStatus, formatBuffSummary } from '../utils/formatter'
 import type { CommandContext } from '../types'
 
 // =============================================================================
@@ -13,6 +13,7 @@ export const profileCommands = {
    */
   async profile(ctx: CommandContext): Promise<void> {
     const targetUsername = ctx.args[0]?.replace('@', '') || ctx.message.username
+    const isOwnProfile = targetUsername.toLowerCase() === ctx.message.username.toLowerCase()
 
     // Try to get profile by username
     const response = await apiClient.getProfileByUsername(targetUsername)
@@ -31,7 +32,18 @@ export const profileCommands = {
       return
     }
 
-    await ctx.reply(formatProfile(profile))
+    let message = formatProfile(profile)
+
+    // Add buff summary for own profile
+    if (isOwnProfile) {
+      const buffResponse = await apiClient.getUserBuffs(profile.id)
+      if (buffResponse.success && buffResponse.data && buffResponse.data.totalActive > 0) {
+        const buffSummary = formatBuffSummary(buffResponse.data.buffs)
+        message += ` | ${buffSummary}`
+      }
+    }
+
+    await ctx.reply(message)
   },
 
   /**

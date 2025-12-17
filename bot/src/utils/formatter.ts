@@ -399,6 +399,71 @@ export function formatCrateOpen(
   return message
 }
 
+// Buff type display names
+const BUFF_DISPLAY_NAMES: Record<string, string> = {
+  xp_multiplier: 'XP',
+  wealth_gain: 'Wealth',
+  crate_drop: 'Crate',
+  rob_attack: 'Attack',
+  rob_defense: 'Defense',
+  business_revenue: 'Business',
+}
+
+/**
+ * Format buff summary for profile display
+ */
+export function formatBuffSummary(buffs: Array<{
+  buffType: string
+  multiplier: number
+  remainingMinutes: number | null
+}>): string {
+  if (buffs.length === 0) return ''
+
+  const buffStrs = buffs.slice(0, 3).map((b) => {
+    const name = BUFF_DISPLAY_NAMES[b.buffType] || b.buffType.split('_')[0]
+    const bonus = Math.round((b.multiplier - 1) * 100)
+    return `${name}+${bonus}%`
+  })
+
+  const moreCount = buffs.length - 3
+  const moreStr = moreCount > 0 ? ` +${moreCount}` : ''
+
+  return `🔥 ${buffStrs.join(', ')}${moreStr}`
+}
+
+/**
+ * Format play result with buff expiry warning
+ */
+export function formatPlayResultWithBuffWarning(
+  username: string,
+  equippedTitle: string | null | undefined,
+  result: {
+    event: {
+      name: string
+      description: string
+      wealthChange: number
+      xpGained: number
+      isBust: boolean
+    }
+    jailed?: { durationMinutes: number }
+    crateDropped?: { tier: string }
+  },
+  expiringBuffs?: Array<{ buffType: string; remainingMinutes: number | null }>
+): string {
+  let message = formatPlayResult(username, equippedTitle, result)
+
+  // Add expiring buff warning
+  if (expiringBuffs && expiringBuffs.length > 0) {
+    const buffNames = expiringBuffs
+      .slice(0, 2)
+      .map((b) => BUFF_DISPLAY_NAMES[b.buffType] || b.buffType.split('_')[0])
+      .join(', ')
+    message += ` | ⚠️ ${buffNames} expiring soon!`
+  }
+
+  return message
+}
+
 export default {
   formatUsernameWithTitle,
   formatWealth,
@@ -413,6 +478,7 @@ export default {
   formatLeaderboardEntry,
   formatProfile,
   formatPlayResult,
+  formatPlayResultWithBuffWarning,
   formatRobResult,
   formatBailResult,
   formatCrateOpenResult,
@@ -420,4 +486,5 @@ export default {
   formatJailStatus,
   formatLevelUp,
   formatCheckin,
+  formatBuffSummary,
 }

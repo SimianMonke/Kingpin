@@ -5,20 +5,53 @@ import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useState } from 'react'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-  { href: '/profile', label: 'Profile', icon: UserIcon },
-  { href: '/inventory', label: 'Inventory', icon: BackpackIcon },
-  { href: '/crates', label: 'Crates', icon: BoxIcon },
-  { href: '/shop', label: 'Shop', icon: StoreIcon },
-  { href: '/market', label: 'Black Market', icon: SkullIcon },
-  { href: '/missions', label: 'Missions', icon: TargetIcon },
-  { href: '/achievements', label: 'Achievements', icon: TrophyIcon },
-  { href: '/leaderboards', label: 'Leaderboards', icon: ChartIcon },
-  { href: '/faction', label: 'Faction', icon: SwordsIcon },
-  { href: '/events', label: 'Events', icon: AlertIcon },
+// =============================================================================
+// NAVIGATION ITEMS
+// =============================================================================
+
+const NAV_SECTIONS = [
+  {
+    label: 'CORE',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: HomeIcon },
+      { href: '/profile', label: 'Profile', icon: UserIcon },
+    ],
+  },
+  {
+    label: 'ECONOMY',
+    items: [
+      { href: '/inventory', label: 'Inventory', icon: BackpackIcon },
+      { href: '/crates', label: 'Crates', icon: BoxIcon },
+      { href: '/shop', label: 'Shop', icon: StoreIcon },
+      { href: '/market', label: 'Black Market', icon: SkullIcon },
+    ],
+  },
+  {
+    label: 'PROGRESS',
+    items: [
+      { href: '/missions', label: 'Missions', icon: TargetIcon },
+      { href: '/achievements', label: 'Achievements', icon: TrophyIcon },
+      { href: '/leaderboards', label: 'Leaderboards', icon: ChartIcon },
+    ],
+  },
+  {
+    label: 'SOCIAL',
+    items: [
+      { href: '/faction', label: 'Faction', icon: SwordsIcon },
+      { href: '/events', label: 'Events', icon: AlertIcon },
+    ],
+  },
 ]
+
+// Flat list for mobile
+const ALL_NAV_ITEMS = NAV_SECTIONS.flatMap((section) => section.items)
+
+// =============================================================================
+// DASHBOARD NAVIGATION
+// =============================================================================
 
 export function DashboardNav() {
   const pathname = usePathname()
@@ -26,84 +59,129 @@ export function DashboardNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <nav className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800">
-      <div className="container mx-auto px-4">
+    <nav className="sticky top-0 z-50">
+      {/* Glass background */}
+      <div className="absolute inset-0 bg-[var(--color-void)]/95 backdrop-blur-md border-b-2 border-[var(--color-primary)]/30" />
+
+      <div className="relative container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/dashboard" className="font-bold text-xl text-gradient">
+          <Link
+            href="/dashboard"
+            className="font-display text-xl uppercase tracking-wider text-gradient-primary"
+          >
             KINGPIN
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => {
+            {ALL_NAV_ITEMS.slice(0, 8).map((item) => {
               const Icon = item.icon
-              const is_active = pathname === item.href
+              const isActive = pathname === item.href
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    is_active
-                      ? 'bg-purple-500/20 text-purple-400'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                  }`}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 font-display text-xs uppercase tracking-wider transition-all',
+                    isActive
+                      ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+                      : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)]'
+                  )}
                 >
                   <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
+                  <span className="hidden xl:inline">{item.label}</span>
                 </Link>
               )
             })}
+
+            {/* More dropdown for overflow items */}
+            {ALL_NAV_ITEMS.length > 8 && (
+              <MoreDropdown items={ALL_NAV_ITEMS.slice(8)} pathname={pathname} />
+            )}
           </div>
 
           {/* User Menu */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-3">
             {/* Notification Bell */}
             <NotificationBell />
 
-            <span className="hidden sm:block text-sm text-gray-400">
-              {session?.user?.name}
-            </span>
-            <button
-              onClick={() => signOut({ callbackUrl: '/' })}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              Sign Out
-            </button>
+            {/* User Info */}
+            <div className="hidden sm:flex items-center gap-3">
+              <span className="font-mono text-sm text-[var(--color-muted)]">
+                {session?.user?.name}
+              </span>
+              <Button
+                onClick={() => signOut({ callbackUrl: '/' })}
+                variant="ghost"
+                size="sm"
+              >
+                LOGOUT
+              </Button>
+            </div>
 
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-400 hover:text-white"
+              className="lg:hidden p-2 text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
+              aria-label="Toggle menu"
             >
-              <MenuIcon className="w-6 h-6" />
+              {mobileMenuOpen ? (
+                <XIcon className="w-6 h-6" />
+              ) : (
+                <MenuIcon className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-gray-800">
-            <div className="grid grid-cols-2 gap-2">
-              {navItems.map((item) => {
-                const Icon = item.icon
-                const is_active = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      is_active
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                )
-              })}
+          <div className="lg:hidden py-4 border-t border-[var(--color-primary)]/20">
+            {NAV_SECTIONS.map((section) => (
+              <div key={section.label} className="mb-4">
+                <p className="font-display text-[10px] uppercase tracking-wider text-[var(--color-muted)] px-2 mb-2">
+                  {section.label}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {section.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-3 font-display text-xs uppercase tracking-wider transition-all touch-target',
+                          isActive
+                            ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-l-2 border-[var(--color-primary)]'
+                            : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-surface)]'
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Mobile logout */}
+            <div className="pt-4 border-t border-[var(--color-primary)]/20">
+              <div className="flex items-center justify-between px-2">
+                <span className="font-mono text-sm text-[var(--color-muted)]">
+                  {session?.user?.name}
+                </span>
+                <Button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  variant="destructive"
+                  size="sm"
+                >
+                  LOGOUT
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -112,7 +190,69 @@ export function DashboardNav() {
   )
 }
 
-// Icons
+// =============================================================================
+// MORE DROPDOWN
+// =============================================================================
+
+function MoreDropdown({
+  items,
+  pathname,
+}: {
+  items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[]
+  pathname: string
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          'flex items-center gap-1 px-3 py-2 font-display text-xs uppercase tracking-wider transition-all',
+          items.some((i) => pathname === i.href)
+            ? 'text-[var(--color-primary)]'
+            : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)]'
+        )}
+      >
+        MORE
+        <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--color-surface)] border-2 border-[var(--color-primary)]/30 z-50">
+            {items.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-3 font-display text-xs uppercase tracking-wider transition-all',
+                    isActive
+                      ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                      : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-primary)]/5'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// ICONS
+// =============================================================================
+
 function HomeIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -204,10 +344,26 @@ function MenuIcon({ className }: { className?: string }) {
   )
 }
 
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
 function AlertIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
     </svg>
   )
 }

@@ -1,7 +1,11 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { KineticNumber, StatValue } from '@/components/ui/kinetic-number'
+import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
 
 // =============================================================================
 // TYPES
@@ -93,12 +97,6 @@ interface UserFactionData {
 // CONSTANTS
 // =============================================================================
 
-const FACTION_COLORS: Record<string, string> = {
-  '#DC143C': 'border-red-500 bg-red-500/10 text-red-400',
-  '#00CED1': 'border-cyan-500 bg-cyan-500/10 text-cyan-400',
-  '#808000': 'border-yellow-600 bg-yellow-600/10 text-yellow-500',
-}
-
 const BUFF_ICONS: Record<string, string> = {
   xp: '📈',
   wealth: '💰',
@@ -111,22 +109,21 @@ const BUFF_ICONS: Record<string, string> = {
 }
 
 const BUFF_LABELS: Record<string, string> = {
-  xp: 'XP Bonus',
-  wealth: 'Wealth Bonus',
-  rob_success: 'Rob Success',
-  defense: 'Defense',
-  crate_drop: 'Crate Drop Rate',
-  shop_discount: 'Shop Discount',
-  business_revenue: 'Business Revenue',
-  all_rewards: 'All Rewards',
+  xp: 'XP BONUS',
+  wealth: 'WEALTH BONUS',
+  rob_success: 'ROB SUCCESS',
+  defense: 'DEFENSE',
+  crate_drop: 'CRATE DROP',
+  shop_discount: 'SHOP DISCOUNT',
+  business_revenue: 'BUSINESS REV',
+  all_rewards: 'ALL REWARDS',
 }
 
 // =============================================================================
-// PAGE COMPONENT
+// FACTION PAGE
 // =============================================================================
 
 export default function FactionPage() {
-  const { data: session } = useSession()
   const [userFaction, setUserFaction] = useState<UserFactionData | null>(null)
   const [allFactions, setAllFactions] = useState<FactionSummary[]>([])
   const [territories, setTerritories] = useState<TerritoryStatus[]>([])
@@ -182,20 +179,20 @@ export default function FactionPage() {
       const data = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: `Welcome to ${data.data.factions.name}!` })
+        setMessage({ type: 'success', text: `WELCOME TO ${data.data.factions.name.toUpperCase()}!` })
         await fetchData()
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to join faction' })
+        setMessage({ type: 'error', text: data.error?.toUpperCase() || 'FAILED TO JOIN' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to join faction' })
+    } catch {
+      setMessage({ type: 'error', text: 'NETWORK ERROR' })
     } finally {
       setJoining(null)
     }
   }
 
   const handleLeave = async () => {
-    if (!confirm('Are you sure you want to leave your faction? You will have a 7-day cooldown before joining another.')) {
+    if (!confirm('CONFIRM LEAVE FACTION? 7-DAY COOLDOWN APPLIES.')) {
       return
     }
 
@@ -203,65 +200,74 @@ export default function FactionPage() {
     setMessage(null)
 
     try {
-      const res = await fetch('/api/factions/leave', {
-        method: 'POST',
-      })
-
+      const res = await fetch('/api/factions/leave', { method: 'POST' })
       const data = await res.json()
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'You have left your faction.' })
+        setMessage({ type: 'success', text: 'YOU HAVE LEFT YOUR FACTION' })
         await fetchData()
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to leave faction' })
+        setMessage({ type: 'error', text: data.error?.toUpperCase() || 'FAILED TO LEAVE' })
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to leave faction' })
+    } catch {
+      setMessage({ type: 'error', text: 'NETWORK ERROR' })
     } finally {
       setLeaving(false)
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING FACTION DATA" />
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">
-          <span className="text-gradient">Factions & Territories</span>
+        <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+          FACTIONS & <span className="text-[var(--color-primary)]">TERRITORIES</span>
         </h1>
-        <p className="text-gray-400 mt-1">
-          Join a faction and compete for territory control
+        <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+          {'// JOIN A FACTION AND COMPETE FOR TERRITORY CONTROL'}
         </p>
       </div>
 
-      {/* Message Toast */}
+      {/* Message */}
       {message && (
-        <div
-          className={`p-4 rounded-xl border ${
+        <Card
+          variant="outlined"
+          className={cn(
+            'p-4',
             message.type === 'success'
-              ? 'bg-green-500/20 border-green-500/50 text-green-400'
-              : 'bg-red-500/20 border-red-500/50 text-red-400'
-          }`}
+              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
+          )}
         >
-          {message.text}
-          <button
-            onClick={() => setMessage(null)}
-            className="ml-4 text-sm opacity-70 hover:opacity-100"
-          >
-            Dismiss
-          </button>
-        </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  'font-display uppercase text-sm',
+                  message.type === 'success'
+                    ? 'text-[var(--color-success)]'
+                    : 'text-[var(--color-destructive)]'
+                )}
+              >
+                {message.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
+              </span>
+              <span className="font-mono text-sm">{message.text}</span>
+            </div>
+            <button
+              onClick={() => setMessage(null)}
+              className="text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+            >
+              ✕
+            </button>
+          </div>
+        </Card>
       )}
 
-      {/* Current Faction Status */}
+      {/* Current Faction Status OR Faction Selector */}
       {userFaction?.inFaction && userFaction.faction ? (
         <CurrentFactionCard
           faction={userFaction.faction}
@@ -282,69 +288,81 @@ export default function FactionPage() {
       )}
 
       {/* Territory Map */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold">Territory Map</h2>
-          <p className="text-sm text-gray-400">12 territories across Lazarus City</p>
-        </div>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {territories.map((territory) => (
-            <TerritoryCard key={territory.id} territory={territory} />
-          ))}
-        </div>
-      </div>
+      <Card variant="solid" className="overflow-hidden">
+        <CardHeader className="p-4 border-b border-[var(--color-primary)]/20">
+          <CardTitle>TERRITORY MAP</CardTitle>
+          <p className="font-mono text-xs text-[var(--color-muted)] mt-1">
+            12 TERRITORIES ACROSS LAZARUS CITY
+          </p>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {territories.map((territory) => (
+              <TerritoryCard key={territory.id} territory={territory} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Faction Standings */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold">Faction Standings</h2>
-          <p className="text-sm text-gray-400">This week's competition</p>
-        </div>
-        <div className="divide-y divide-gray-700">
-          {allFactions
-            .sort((a, b) => (b.territories_controlled - a.territories_controlled))
-            .map((faction, index) => (
-              <FactionStandingRow key={faction.id} faction={faction} rank={index + 1} />
-            ))}
-        </div>
-      </div>
+      <Card variant="solid" className="overflow-hidden">
+        <CardHeader className="p-4 border-b border-[var(--color-primary)]/20">
+          <CardTitle>FACTION STANDINGS</CardTitle>
+          <p className="font-mono text-xs text-[var(--color-muted)] mt-1">
+            THIS WEEK'S COMPETITION
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y divide-[var(--color-primary)]/10">
+            {allFactions
+              .sort((a, b) => b.territories_controlled - a.territories_controlled)
+              .map((faction, index) => (
+                <FactionStandingRow key={faction.id} faction={faction} rank={index + 1} />
+              ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* How Factions Work */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold mb-4">How Factions Work</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-400">
-          <div className="flex items-start gap-3">
-            <span className="text-purple-400">1.</span>
-            <p>Join a faction at level 20+ (Associate tier)</p>
+      <Card variant="default" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>HOW FACTIONS WORK</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--color-primary)]">01.</span>
+              <p className="text-[var(--color-muted)]">Join a faction at level 20+ (Associate tier)</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--color-primary)]">02.</span>
+              <p className="text-[var(--color-muted)]">Your activities earn territory points</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--color-primary)]">03.</span>
+              <p className="text-[var(--color-muted)]">Factions compete for territory control</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--color-primary)]">04.</span>
+              <p className="text-[var(--color-muted)]">Controlled territories grant buffs to ALL members</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--color-primary)]">05.</span>
+              <p className="text-[var(--color-muted)]">Weekly rewards distributed based on territories</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--color-primary)]">06.</span>
+              <p className="text-[var(--color-muted)]">7-day cooldown when switching factions</p>
+            </div>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="text-purple-400">2.</span>
-            <p>Your activities (!play, !rob, !checkin, missions) earn territory points</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-purple-400">3.</span>
-            <p>Factions compete for territory control based on daily scores</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-purple-400">4.</span>
-            <p>Controlled territories grant buffs to ALL faction members</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-purple-400">5.</span>
-            <p>Weekly rewards distributed based on territories held</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-purple-400">6.</span>
-            <p>7-day cooldown when switching factions</p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
 // =============================================================================
-// SUBCOMPONENTS
+// CURRENT FACTION CARD
 // =============================================================================
 
 function CurrentFactionCard({
@@ -362,74 +380,99 @@ function CurrentFactionCard({
   onLeave: () => void
   leaving: boolean
 }) {
-  const colorClass = FACTION_COLORS[faction.color_hex ?? ''] || 'border-gray-500 bg-gray-500/10'
-
   return (
-    <div className={`border rounded-xl overflow-hidden ${colorClass}`}>
-      {/* Faction Header */}
+    <Card
+      variant="default"
+      glow="primary"
+      scanlines
+      className="overflow-hidden"
+      style={{
+        borderColor: faction.color_hex || 'var(--color-primary)',
+      }}
+    >
       <div className="p-6">
-        <div className="flex items-start justify-between">
+        {/* Faction Header */}
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold">{faction.name}</h2>
+            <h2
+              className="font-display text-2xl uppercase tracking-wider"
+              style={{ color: faction.color_hex || 'var(--color-primary)' }}
+            >
+              {faction.name}
+            </h2>
             {faction.motto && (
-              <p className="text-sm opacity-70 italic mt-1">"{faction.motto}"</p>
+              <p className="font-mono text-sm text-[var(--color-muted)] italic mt-1">
+                "{faction.motto}"
+              </p>
             )}
             {faction.description && (
-              <p className="text-gray-400 mt-2">{faction.description}</p>
+              <p className="font-mono text-sm text-[var(--color-muted)] mt-2">
+                {faction.description}
+              </p>
             )}
           </div>
-          <button
+          <Button
             onClick={onLeave}
             disabled={leaving}
-            className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm rounded-lg border border-red-500/30 transition-colors disabled:opacity-50"
+            variant="destructive"
+            size="sm"
           >
-            {leaving ? 'Leaving...' : 'Leave'}
-          </button>
+            {leaving ? <InitializingText text="..." className="text-xs" /> : 'LEAVE'}
+          </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <div className="bg-black/20 rounded-lg p-3">
-            <div className="text-2xl font-bold">{faction.memberCount}</div>
-            <div className="text-xs text-gray-400">Members</div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-3">
-            <div className="text-2xl font-bold">{faction.territories_controlled}</div>
-            <div className="text-xs text-gray-400">Territories</div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-3">
-            <div className="text-2xl font-bold">#{rank?.rank ?? '-'}</div>
-            <div className="text-xs text-gray-400">Your Rank</div>
-          </div>
-          <div className="bg-black/20 rounded-lg p-3">
-            <div className="text-2xl font-bold">{rank?.weeklyScore ?? 0}</div>
-            <div className="text-xs text-gray-400">Your Points</div>
-          </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatValue
+            label="MEMBERS"
+            value={faction.memberCount}
+            valueClassName="text-[var(--color-foreground)]"
+          />
+          <StatValue
+            label="TERRITORIES"
+            value={faction.territories_controlled}
+            valueClassName="text-[var(--color-success)]"
+          />
+          <StatValue
+            label="YOUR RANK"
+            value={rank?.rank || 0}
+            prefix="#"
+            valueClassName="text-[var(--color-secondary)]"
+          />
+          <StatValue
+            label="YOUR POINTS"
+            value={rank?.weeklyScore || 0}
+            valueClassName="text-[var(--color-warning)]"
+          />
         </div>
 
         {/* Reward Cooldown Warning */}
         {membership.rewardCooldownUntil && (
-          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
-            Reward cooldown active until{' '}
-            {new Date(membership.rewardCooldownUntil).toLocaleDateString()}
-          </div>
+          <Card variant="outlined" className="border-[var(--color-warning)]/50 bg-[var(--color-warning)]/5 p-3 mb-6">
+            <p className="font-mono text-sm text-[var(--color-warning)]">
+              ⚠ REWARD COOLDOWN UNTIL{' '}
+              {new Date(membership.rewardCooldownUntil).toLocaleDateString().toUpperCase()}
+            </p>
+          </Card>
         )}
       </div>
 
       {/* Active Buffs */}
       {faction.buffs.length > 0 && (
-        <div className="p-4 bg-black/20 border-t border-white/10">
-          <h3 className="text-sm font-semibold mb-3 text-gray-300">Active Buffs</h3>
+        <div className="p-4 bg-[var(--color-surface)] border-t border-[var(--color-primary)]/20">
+          <h3 className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] mb-3">
+            ACTIVE BUFFS
+          </h3>
           <div className="flex flex-wrap gap-2">
             {faction.buffs.map((buff, idx) => (
-              <div
+              <span
                 key={idx}
-                className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full text-sm"
+                className="flex items-center gap-2 px-3 py-1 font-mono text-sm border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5"
               >
                 <span>{BUFF_ICONS[buff.type] ?? '✨'}</span>
-                <span>+{buff.value}% {BUFF_LABELS[buff.type] ?? buff.type}</span>
-                <span className="text-xs text-gray-500">({buff.territoryName})</span>
-              </div>
+                <span>+{buff.value}% {BUFF_LABELS[buff.type] ?? buff.type.toUpperCase()}</span>
+                <span className="text-xs text-[var(--color-muted)]">({buff.territoryName})</span>
+              </span>
             ))}
           </div>
         </div>
@@ -437,20 +480,28 @@ function CurrentFactionCard({
 
       {/* Assigned Territory */}
       {assignedTerritory && (
-        <div className="p-4 bg-black/30 border-t border-white/10">
-          <h3 className="text-sm font-semibold mb-2 text-gray-300">Your Assigned Territory</h3>
+        <div className="p-4 bg-[var(--color-surface)]/50 border-t border-[var(--color-primary)]/20">
+          <h3 className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] mb-2">
+            ASSIGNED TERRITORY
+          </h3>
           <div className="flex items-center gap-3">
             <span className="text-xl">📍</span>
             <div>
-              <div className="font-semibold">{assignedTerritory.name}</div>
-              <div className="text-xs text-gray-400">{assignedTerritory.description}</div>
+              <p className="font-display uppercase tracking-wider">{assignedTerritory.name}</p>
+              <p className="font-mono text-xs text-[var(--color-muted)]">
+                {assignedTerritory.description}
+              </p>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
+
+// =============================================================================
+// FACTION SELECTOR
+// =============================================================================
 
 function FactionSelector({
   factions,
@@ -466,119 +517,144 @@ function FactionSelector({
   joining: string | null
 }) {
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-gray-700">
-        <h2 className="text-lg font-semibold">Choose Your Faction</h2>
-        <p className="text-sm text-gray-400">
+    <Card variant="solid" className="overflow-hidden">
+      <CardHeader className="p-4 border-b border-[var(--color-primary)]/20">
+        <CardTitle>CHOOSE YOUR FACTION</CardTitle>
+        <p className="font-mono text-xs text-[var(--color-muted)] mt-1">
           {canJoin
-            ? 'Join a faction to start earning territory rewards'
-            : `Cooldown active until ${cooldownUntil ? new Date(cooldownUntil).toLocaleDateString() : 'soon'}`}
+            ? 'JOIN A FACTION TO START EARNING TERRITORY REWARDS'
+            : `COOLDOWN ACTIVE UNTIL ${cooldownUntil ? new Date(cooldownUntil).toLocaleDateString().toUpperCase() : 'SOON'}`}
         </p>
-      </div>
+      </CardHeader>
 
       {!canJoin && (
-        <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/30 text-yellow-400 text-sm">
-          You must wait for your cooldown to expire before joining a faction.
+        <div className="p-4 bg-[var(--color-warning)]/5 border-b border-[var(--color-warning)]/30">
+          <p className="font-mono text-sm text-[var(--color-warning)]">
+            ⚠ COOLDOWN ACTIVE - WAIT BEFORE JOINING
+          </p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-        {factions.map((faction) => {
-          const colorClass = FACTION_COLORS[faction.color_hex ?? ''] || 'border-gray-600'
-          return (
+      <CardContent className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {factions.map((faction) => (
             <div
               key={faction.id}
-              className={`border rounded-xl p-4 ${colorClass} transition-all ${
-                canJoin ? 'hover:scale-[1.02] cursor-pointer' : 'opacity-50'
-              }`}
+              className={cn(
+                'p-4 border-2 transition-all',
+                canJoin
+                  ? 'hover:scale-[1.02] cursor-pointer'
+                  : 'opacity-50'
+              )}
+              style={{
+                borderColor: faction.color_hex || 'var(--color-muted)',
+                backgroundColor: `${faction.color_hex}10` || 'transparent',
+              }}
             >
-              <h3 className="text-lg font-bold">{faction.name}</h3>
+              <h3
+                className="font-display text-lg uppercase tracking-wider"
+                style={{ color: faction.color_hex || 'var(--color-foreground)' }}
+              >
+                {faction.name}
+              </h3>
               {faction.motto && (
-                <p className="text-xs italic opacity-70 mb-2">"{faction.motto}"</p>
+                <p className="font-mono text-xs text-[var(--color-muted)] italic mb-2">
+                  "{faction.motto}"
+                </p>
               )}
               {faction.description && (
-                <p className="text-sm text-gray-400 mb-4">{faction.description}</p>
+                <p className="font-mono text-sm text-[var(--color-muted)] mb-4">
+                  {faction.description}
+                </p>
               )}
-              <div className="flex items-center gap-4 text-sm mb-4">
+              <div className="flex items-center gap-4 font-mono text-sm mb-4">
                 <span>👥 {faction.memberCount}</span>
                 <span>🏴 {faction.territories_controlled}</span>
               </div>
-              <button
+              <Button
                 onClick={() => canJoin && onJoin(faction.name)}
                 disabled={!canJoin || joining !== null}
-                className={`w-full py-2 rounded-lg font-semibold transition-colors ${
-                  canJoin
-                    ? 'bg-white/10 hover:bg-white/20 text-white'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                }`}
+                variant={canJoin ? 'default' : 'ghost'}
+                className="w-full"
               >
-                {joining === faction.name ? 'Joining...' : 'Join Faction'}
-              </button>
+                {joining === faction.name ? (
+                  <InitializingText text="JOINING" className="text-xs" />
+                ) : (
+                  'JOIN FACTION'
+                )}
+              </Button>
             </div>
-          )
-        })}
-      </div>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
-function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
-  const controllingColor = territory.factions?.color_hex
-    ? FACTION_COLORS[territory.factions.color_hex]
-    : 'border-gray-600 bg-gray-600/10'
+// =============================================================================
+// TERRITORY CARD
+// =============================================================================
 
-  // Get leading faction from scores
+function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
+  const controllingColor = territory.factions?.color_hex || 'var(--color-muted)'
   const sortedScores = [...territory.scores].sort((a, b) => b.score - a.score)
-  const leadingFaction = sortedScores[0]
   const totalScore = sortedScores.reduce((sum, s) => sum + s.score, 0)
 
   return (
-    <div className={`border rounded-lg p-4 ${controllingColor}`}>
+    <div
+      className="p-4 border-2"
+      style={{
+        borderColor: `${controllingColor}50`,
+        backgroundColor: `${controllingColor}08`,
+      }}
+    >
       <div className="flex items-start justify-between mb-2">
         <div>
-          <h3 className="font-semibold">{territory.name}</h3>
+          <h3 className="font-display uppercase tracking-wider text-sm">{territory.name}</h3>
           {territory.is_contested && (
-            <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded">
+            <span className="font-mono text-[10px] text-[var(--color-warning)] px-2 py-0.5 border border-[var(--color-warning)]/30">
               CONTESTED
             </span>
           )}
         </div>
         {territory.buff_type && (
-          <div className="flex items-center gap-1 text-sm">
+          <div className="flex items-center gap-1 font-mono text-xs">
             <span>{BUFF_ICONS[territory.buff_type] ?? '✨'}</span>
             <span>+{territory.buff_value}%</span>
           </div>
         )}
       </div>
 
-      <p className="text-xs text-gray-400 mb-3">{territory.description}</p>
+      <p className="font-mono text-xs text-[var(--color-muted)] mb-3">{territory.description}</p>
 
-      {/* Control Status */}
-      <div className="text-sm mb-3">
-        <span className="text-gray-500">Controlled by: </span>
-        <span className="font-semibold">
-          {territory.factions?.name ?? 'Neutral'}
-        </span>
-      </div>
+      <p className="font-mono text-xs mb-3">
+        <span className="text-[var(--color-muted)]">CONTROLLED BY: </span>
+        <span style={{ color: controllingColor }}>{territory.factions?.name ?? 'NEUTRAL'}</span>
+      </p>
 
       {/* Score Bars */}
       {totalScore > 0 && (
         <div className="space-y-1">
           {sortedScores.slice(0, 3).map((score) => {
             const percent = Math.round((score.score / totalScore) * 100)
-            const barColor = score.color_hex === '#DC143C' ? 'bg-red-500'
-              : score.color_hex === '#00CED1' ? 'bg-cyan-500'
-              : 'bg-yellow-600'
             return (
-              <div key={score.faction_id} className="flex items-center gap-2 text-xs">
-                <div className="w-16 truncate text-gray-400">{score.faction_name.split(' ')[1] || score.faction_name}</div>
-                <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div key={score.faction_id} className="flex items-center gap-2 font-mono text-[10px]">
+                <div
+                  className="w-12 truncate"
+                  style={{ color: score.color_hex || 'var(--color-muted)' }}
+                >
+                  {score.faction_name.split(' ')[1] || score.faction_name}
+                </div>
+                <div className="flex-1 h-1.5 bg-[var(--color-surface)] border border-[var(--color-primary)]/20">
                   <div
-                    className={`h-full ${barColor}`}
-                    style={{ width: `${percent}%` }}
+                    className="h-full"
+                    style={{
+                      width: `${percent}%`,
+                      backgroundColor: score.color_hex || 'var(--color-muted)',
+                    }}
                   />
                 </div>
-                <div className="w-8 text-right text-gray-500">{score.score}</div>
+                <div className="w-8 text-right text-[var(--color-muted)]">{score.score}</div>
               </div>
             )
           })}
@@ -588,24 +664,37 @@ function TerritoryCard({ territory }: { territory: TerritoryStatus }) {
   )
 }
 
+// =============================================================================
+// FACTION STANDING ROW
+// =============================================================================
+
 function FactionStandingRow({ faction, rank }: { faction: FactionSummary; rank: number }) {
-  const colorClass = FACTION_COLORS[faction.color_hex ?? ''] || ''
   const rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`
 
   return (
-    <div className={`p-4 flex items-center gap-4 ${rank === 1 ? 'bg-yellow-500/5' : ''}`}>
-      <div className="text-2xl w-10 text-center">{rankBadge}</div>
+    <div
+      className={cn(
+        'p-4 flex items-center gap-4',
+        rank === 1 && 'bg-[var(--tier-legendary)]/5'
+      )}
+    >
+      <div className="text-2xl w-10 text-center font-display">{rankBadge}</div>
       <div className="flex-1">
-        <div className={`font-semibold ${colorClass.includes('text-') ? colorClass.split(' ').find(c => c.startsWith('text-')) : 'text-white'}`}>
+        <p
+          className="font-display uppercase tracking-wider"
+          style={{ color: faction.color_hex || 'var(--color-foreground)' }}
+        >
           {faction.name}
-        </div>
-        <div className="text-xs text-gray-400">
-          {faction.memberCount} members
-        </div>
+        </p>
+        <p className="font-mono text-xs text-[var(--color-muted)]">
+          {faction.memberCount} MEMBERS
+        </p>
       </div>
       <div className="text-right">
-        <div className="text-lg font-bold">{faction.territories_controlled}</div>
-        <div className="text-xs text-gray-400">territories</div>
+        <p className="font-mono text-lg font-bold">
+          <KineticNumber value={faction.territories_controlled} />
+        </p>
+        <p className="font-mono text-xs text-[var(--color-muted)]">TERRITORIES</p>
       </div>
     </div>
   )

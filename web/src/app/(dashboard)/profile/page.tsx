@@ -3,6 +3,15 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input, Label } from '@/components/ui/input'
+import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { cn } from '@/lib/utils'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface UserProfile {
   id: string
@@ -25,18 +34,22 @@ interface UserProfile {
 
 type Platform = 'kick' | 'twitch' | 'discord'
 
-// Error and success message mappings
 const LINK_MESSAGES: Record<string, { type: 'success' | 'error'; message: string }> = {
-  linked: { type: 'success', message: 'Account linked successfully!' },
-  already_linked: { type: 'success', message: 'Account is already linked to your profile.' },
-  invalid_platform: { type: 'error', message: 'Invalid platform specified.' },
-  invalid_state: { type: 'error', message: 'Link session expired. Please try again.' },
-  invalid_callback: { type: 'error', message: 'Invalid OAuth callback. Please try again.' },
-  platform_mismatch: { type: 'error', message: 'Platform mismatch error. Please try again.' },
-  already_linked_other: { type: 'error', message: 'This account is already linked to another user.' },
-  oauth_denied: { type: 'error', message: 'OAuth authorization was denied.' },
-  link_failed: { type: 'error', message: 'Failed to link account. Please try again.' },
+  linked: { type: 'success', message: 'SYSTEM LINK ESTABLISHED' },
+  already_linked: { type: 'success', message: 'SYSTEM ALREADY CONNECTED' },
+  invalid_platform: { type: 'error', message: 'INVALID PLATFORM IDENTIFIER' },
+  invalid_state: { type: 'error', message: 'SESSION EXPIRED - RETRY REQUIRED' },
+  invalid_callback: { type: 'error', message: 'OAUTH CALLBACK INVALID' },
+  platform_mismatch: { type: 'error', message: 'PLATFORM MISMATCH DETECTED' },
+  already_linked_other: { type: 'error', message: 'SYSTEM LINKED TO ANOTHER USER' },
+  oauth_denied: { type: 'error', message: 'AUTHORIZATION DENIED' },
+  link_failed: { type: 'error', message: 'LINK OPERATION FAILED' },
 }
+
+// =============================================================================
+// PROFILE PAGE
+// Neo-Brutalist Settings Interface
+// =============================================================================
 
 export default function ProfilePage() {
   const { data: session } = useSession()
@@ -51,15 +64,12 @@ export default function ProfilePage() {
   const [unlinkingPlatform, setUnlinkingPlatform] = useState<Platform | null>(null)
   const [linkMessage, setLinkMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  // Handle URL parameters for link status messages
   useEffect(() => {
     const success = searchParams.get('success')
     const error = searchParams.get('error')
-    const platform = searchParams.get('platform')
 
     if (success && LINK_MESSAGES[success]) {
       setLinkMessage(LINK_MESSAGES[success])
-      // Clear URL params after reading
       window.history.replaceState({}, '', '/profile')
     } else if (error && LINK_MESSAGES[error]) {
       setLinkMessage(LINK_MESSAGES[error])
@@ -88,17 +98,17 @@ export default function ProfilePage() {
 
   const handleUpdateName = async () => {
     if (!kingpin_name.trim()) {
-      setNameError('Name cannot be empty')
+      setNameError('NAME CANNOT BE EMPTY')
       return
     }
 
     if (kingpin_name.length < 3 || kingpin_name.length > 20) {
-      setNameError('Name must be 3-20 characters')
+      setNameError('NAME MUST BE 3-20 CHARACTERS')
       return
     }
 
     if (!/^[a-zA-Z0-9_]+$/.test(kingpin_name)) {
-      setNameError('Only letters, numbers, and underscores allowed')
+      setNameError('INVALID CHARACTERS DETECTED')
       return
     }
 
@@ -118,10 +128,10 @@ export default function ProfilePage() {
         setProfile(data.data)
         setEditingName(false)
       } else {
-        setNameError(data.error || 'Failed to update name')
+        setNameError(data.error || 'UPDATE FAILED')
       }
-    } catch (error) {
-      setNameError('Network error')
+    } catch {
+      setNameError('NETWORK ERROR')
     } finally {
       setSaving(false)
     }
@@ -129,13 +139,11 @@ export default function ProfilePage() {
 
   const handleLinkAccount = (platform: Platform) => {
     setLinkingPlatform(platform)
-    setLinkMessage(null) // Clear any previous messages
-    // Redirect to secure OAuth linking flow (SEC-01 fix)
+    setLinkMessage(null)
     window.location.href = `/api/auth/link/${platform}`
   }
 
   const handleUnlinkAccount = async (platform: Platform) => {
-    // Check if this is the only linked account
     const linkedCount = [
       profile?.linkedAccounts?.kick,
       profile?.linkedAccounts?.twitch,
@@ -143,11 +151,11 @@ export default function ProfilePage() {
     ].filter(Boolean).length
 
     if (linkedCount <= 1) {
-      alert('You must have at least one linked account')
+      setLinkMessage({ type: 'error', message: 'MINIMUM ONE LINK REQUIRED' })
       return
     }
 
-    if (!confirm(`Are you sure you want to unlink your ${platform} account?`)) {
+    if (!confirm(`CONFIRM UNLINK: ${platform.toUpperCase()}?`)) {
       return
     }
 
@@ -162,12 +170,13 @@ export default function ProfilePage() {
 
       if (res.ok) {
         await fetchProfile()
+        setLinkMessage({ type: 'success', message: `${platform.toUpperCase()} UNLINKED` })
       } else {
         const data = await res.json()
-        alert(data.error || 'Failed to unlink account')
+        setLinkMessage({ type: 'error', message: data.error || 'UNLINK FAILED' })
       }
-    } catch (error) {
-      alert('Network error')
+    } catch {
+      setLinkMessage({ type: 'error', message: 'NETWORK ERROR' })
     } finally {
       setUnlinkingPlatform(null)
     }
@@ -176,225 +185,306 @@ export default function ProfilePage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
-    })
+    }).toUpperCase()
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    )
+    return <PageLoader message="LOADING PROFILE DATA" />
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Profile Header */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h1 className="text-2xl font-bold mb-6">Profile Settings</h1>
-
-        {/* Kingpin Name */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-400 mb-2">
-            Kingpin Name
-          </label>
-          {editingName ? (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={kingpin_name}
-                onChange={(e) => setKingpinName(e.target.value)}
-                maxLength={20}
-                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500"
-                placeholder="Enter your Kingpin name"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleUpdateName}
-                  disabled={saving}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingName(false)
-                    setKingpinName(profile?.kingpin_name || '')
-                    setNameError(null)
-                  }}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-4">
-              <span className="text-xl font-semibold text-gradient">
-                {profile?.kingpin_name || 'Not set'}
-              </span>
-              <button
-                onClick={() => setEditingName(true)}
-                className="text-sm text-purple-400 hover:text-purple-300"
-              >
-                Edit
-              </button>
-            </div>
-          )}
-          {nameError && (
-            <p className="mt-2 text-sm text-red-400">{nameError}</p>
-          )}
-          <p className="mt-2 text-xs text-gray-500">
-            Your Kingpin name is how other players will see you in leaderboards and chat.
-          </p>
-        </div>
-
-        {/* Account Info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
-          <div>
-            <span className="text-sm text-gray-400">Member Since</span>
-            <p className="text-lg">{profile?.created_at ? formatDate(profile.created_at) : '-'}</p>
-          </div>
-          <div>
-            <span className="text-sm text-gray-400">Current Tier</span>
-            <p className="text-lg text-purple-400">{profile?.tier || 'Rookie'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Equipped Title */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Equipped Title</h2>
-          <a href="/achievements" className="text-sm text-purple-400 hover:text-purple-300">
-            View All Titles
-          </a>
-        </div>
-        {profile?.equippedTitle ? (
-          <div className="flex items-center gap-3 p-4 bg-gray-700/50 rounded-lg">
-            <TrophyIcon className="w-6 h-6 text-yellow-400" />
-            <span className="text-lg font-semibold">{profile.equippedTitle.name}</span>
-          </div>
-        ) : (
-          <p className="text-gray-400">No title equipped. Unlock titles by earning achievements!</p>
-        )}
-      </div>
-
-      {/* Faction */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Faction</h2>
-          <a href="/faction" className="text-sm text-purple-400 hover:text-purple-300">
-            View Faction
-          </a>
-        </div>
-        {profile?.faction ? (
-          <div
-            className="flex items-center gap-3 p-4 rounded-lg border"
-            style={{
-              backgroundColor: `${profile.faction.color}10`,
-              borderColor: `${profile.faction.color}30`,
-            }}
-          >
-            <SwordsIcon className="w-6 h-6" style={{ color: profile.faction.color }} />
-            <span className="text-lg font-semibold" style={{ color: profile.faction.color }}>
-              {profile.faction.name}
-            </span>
-          </div>
-        ) : (
-          <p className="text-gray-400">Not a member of any faction. Join one to unlock faction warfare!</p>
-        )}
-      </div>
-
-      {/* Linked Accounts */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-xl font-bold mb-4">Linked Accounts</h2>
-        <p className="text-gray-400 text-sm mb-6">
-          Link your streaming accounts to play across platforms. Your progress is shared across all linked accounts.
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider text-[var(--color-foreground)]">
+          PROFILE <span className="text-[var(--color-primary)]">SETTINGS</span>
+        </h1>
+        <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+          {'// USER CONFIGURATION INTERFACE'}
         </p>
+      </div>
 
-        {/* Link status message */}
-        {linkMessage && (
-          <div
-            className={`mb-6 p-4 rounded-lg flex items-center justify-between ${
-              linkMessage.type === 'success'
-                ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-                : 'bg-red-500/10 border border-red-500/30 text-red-400'
-            }`}
-          >
-            <span>{linkMessage.message}</span>
+      {/* Status Message */}
+      {linkMessage && (
+        <Card
+          variant="outlined"
+          className={cn(
+            'p-4',
+            linkMessage.type === 'success'
+              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  'font-display uppercase text-sm',
+                  linkMessage.type === 'success'
+                    ? 'text-[var(--color-success)]'
+                    : 'text-[var(--color-destructive)]'
+                )}
+              >
+                {linkMessage.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
+              </span>
+              <span className="font-mono text-sm">{linkMessage.message}</span>
+            </div>
             <button
               onClick={() => setLinkMessage(null)}
-              className="text-current hover:opacity-75"
+              className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] p-1"
             >
-              <XIcon className="w-5 h-5" />
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
-        )}
+        </Card>
+      )}
 
-        <div className="space-y-4">
-          {/* Kick */}
+      {/* Identity Card */}
+      <Card variant="default" glow="primary" scanlines className="p-6">
+        <CardHeader className="p-0 pb-6 border-none">
+          <CardTitle>USER IDENTITY</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0 space-y-6">
+          {/* Kingpin Name */}
+          <div className="space-y-3">
+            <Label error={!!nameError}>KINGPIN NAME</Label>
+            {editingName ? (
+              <div className="space-y-3">
+                <Input
+                  value={kingpin_name}
+                  onChange={(e) => setKingpinName(e.target.value)}
+                  maxLength={20}
+                  error={!!nameError}
+                  placeholder="ENTER KINGPIN NAME"
+                />
+                {nameError && (
+                  <p className="font-mono text-xs text-[var(--color-destructive)]">
+                    {'> '}{nameError}
+                  </p>
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleUpdateName}
+                    disabled={saving}
+                    variant="success"
+                    size="sm"
+                  >
+                    {saving ? <InitializingText text="SAVING" className="text-xs" /> : 'SAVE'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setEditingName(false)
+                      setKingpinName(profile?.kingpin_name || '')
+                      setNameError(null)
+                    }}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    CANCEL
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-4 bg-[var(--color-surface)] border border-[var(--color-primary)]/30">
+                <span className="font-mono text-xl text-[var(--color-primary)]">
+                  {profile?.kingpin_name || 'NOT_SET'}
+                </span>
+                <Button onClick={() => setEditingName(true)} variant="outline" size="sm">
+                  EDIT
+                </Button>
+              </div>
+            )}
+            <p className="font-mono text-xs text-[var(--color-muted)]">
+              {'// DISPLAYED ON LEADERBOARDS AND IN CHAT'}
+            </p>
+          </div>
+
+          {/* Account Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[var(--color-primary)]/20">
+            <div className="space-y-1">
+              <Label>MEMBER SINCE</Label>
+              <p className="font-mono text-lg text-[var(--color-foreground)]">
+                {profile?.created_at ? formatDate(profile.created_at) : '---'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label>CURRENT TIER</Label>
+              <TierBadge tier={profile?.tier || 'Rookie'} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Equipped Title */}
+      <Card variant="solid" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <div className="flex items-center justify-between">
+            <CardTitle>EQUIPPED TITLE</CardTitle>
+            <a
+              href="/achievements"
+              className="font-mono text-xs text-[var(--color-primary)] hover:underline"
+            >
+              VIEW ALL →
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {profile?.equippedTitle ? (
+            <div className="flex items-center gap-4 p-4 bg-[var(--color-surface)] border border-[var(--color-warning)]/30">
+              <TrophyIcon className="w-6 h-6 text-[var(--color-warning)]" />
+              <span className="font-display text-lg uppercase tracking-wider text-[var(--color-warning)]">
+                {profile.equippedTitle.name}
+              </span>
+            </div>
+          ) : (
+            <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-muted)]/30">
+              <p className="font-mono text-sm text-[var(--color-muted)]">
+                {'> NO TITLE EQUIPPED'}
+              </p>
+              <p className="font-mono text-xs text-[var(--color-muted)]/70 mt-1">
+                {'// UNLOCK TITLES BY EARNING ACHIEVEMENTS'}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Faction */}
+      <Card variant="solid" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <div className="flex items-center justify-between">
+            <CardTitle>FACTION ALLEGIANCE</CardTitle>
+            <a
+              href="/faction"
+              className="font-mono text-xs text-[var(--color-primary)] hover:underline"
+            >
+              VIEW FACTION →
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {profile?.faction ? (
+            <div
+              className="flex items-center gap-4 p-4 border"
+              style={{
+                backgroundColor: `${profile.faction.color}10`,
+                borderColor: `${profile.faction.color}50`,
+              }}
+            >
+              <SwordsIcon className="w-6 h-6" style={{ color: profile.faction.color }} />
+              <span
+                className="font-display text-lg uppercase tracking-wider"
+                style={{ color: profile.faction.color }}
+              >
+                {profile.faction.name}
+              </span>
+            </div>
+          ) : (
+            <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-muted)]/30">
+              <p className="font-mono text-sm text-[var(--color-muted)]">
+                {'> NO FACTION ALLEGIANCE'}
+              </p>
+              <p className="font-mono text-xs text-[var(--color-muted)]/70 mt-1">
+                {'// JOIN A FACTION TO UNLOCK FACTION WARFARE'}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Linked Accounts */}
+      <Card variant="solid" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>LINKED SYSTEMS</CardTitle>
+          <p className="font-mono text-xs text-[var(--color-muted)] mt-2">
+            {'// CONNECT PLATFORM ACCOUNTS FOR CROSS-SYSTEM ACCESS'}
+          </p>
+        </CardHeader>
+        <CardContent className="p-0 space-y-3">
           <AccountRow
             platform="kick"
-            platformName="Kick"
+            platformName="KICK"
             color="#53fc18"
             account={profile?.linkedAccounts?.kick}
             onLink={() => handleLinkAccount('kick')}
             onUnlink={() => handleUnlinkAccount('kick')}
             isLinking={linkingPlatform === 'kick'}
             isUnlinking={unlinkingPlatform === 'kick'}
-            icon={<KickIcon className="w-5 h-5" />}
+            icon={<KickIcon />}
           />
-
-          {/* Twitch */}
           <AccountRow
             platform="twitch"
-            platformName="Twitch"
+            platformName="TWITCH"
             color="#9146FF"
             account={profile?.linkedAccounts?.twitch}
             onLink={() => handleLinkAccount('twitch')}
             onUnlink={() => handleUnlinkAccount('twitch')}
             isLinking={linkingPlatform === 'twitch'}
             isUnlinking={unlinkingPlatform === 'twitch'}
-            icon={<TwitchIcon className="w-5 h-5" />}
+            icon={<TwitchIcon />}
           />
-
-          {/* Discord */}
           <AccountRow
             platform="discord"
-            platformName="Discord"
+            platformName="DISCORD"
             color="#5865F2"
             account={profile?.linkedAccounts?.discord}
             onLink={() => handleLinkAccount('discord')}
             onUnlink={() => handleUnlinkAccount('discord')}
             isLinking={linkingPlatform === 'discord'}
             isUnlinking={unlinkingPlatform === 'discord'}
-            icon={<DiscordIcon className="w-5 h-5" />}
+            icon={<DiscordIcon />}
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Danger Zone */}
-      <div className="bg-red-950/30 border border-red-500/20 rounded-xl p-6">
-        <h2 className="text-xl font-bold text-red-400 mb-4">Danger Zone</h2>
-        <p className="text-gray-400 text-sm mb-4">
-          These actions are irreversible. Please proceed with caution.
-        </p>
-        <button
-          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-lg font-medium transition-colors"
-          onClick={() => alert('Account deletion is not yet implemented. Contact support to delete your account.')}
-        >
-          Delete Account
-        </button>
-      </div>
+      <Card variant="outlined" className="border-[var(--color-destructive)]/50 p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle className="text-[var(--color-destructive)]">⚠ DANGER ZONE</CardTitle>
+          <p className="font-mono text-xs text-[var(--color-muted)] mt-2">
+            {'// IRREVERSIBLE OPERATIONS - PROCEED WITH CAUTION'}
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Button
+            variant="destructive"
+            onClick={() => alert('Account deletion not yet implemented. Contact support.')}
+          >
+            DELETE ACCOUNT
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
+// =============================================================================
+// SUB-COMPONENTS
+// =============================================================================
+
+function TierBadge({ tier }: { tier: string }) {
+  const tierColors: Record<string, string> = {
+    Rookie: 'var(--tier-common)',
+    Enforcer: 'var(--tier-uncommon)',
+    Capo: 'var(--tier-rare)',
+    Boss: 'var(--tier-rare)',
+    Kingpin: 'var(--tier-legendary)',
+  }
+  const color = tierColors[tier] || 'var(--tier-common)'
+
+  return (
+    <span
+      className="inline-block font-display text-lg uppercase tracking-wider px-3 py-1 border-2"
+      style={{ color, borderColor: color }}
+    >
+      {tier}
+    </span>
+  )
+}
+
 function AccountRow({
-  platform,
   platformName,
   color,
   account,
@@ -418,48 +508,69 @@ function AccountRow({
 
   return (
     <div
-      className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-        isLinked ? 'border-opacity-30' : 'border-gray-600 bg-gray-700/30'
-      }`}
+      className={cn(
+        'flex items-center justify-between p-4 border-2 transition-colors',
+        isLinked ? '' : 'opacity-60'
+      )}
       style={{
-        borderColor: isLinked ? color : undefined,
-        backgroundColor: isLinked ? `${color}10` : undefined,
+        borderColor: isLinked ? color : 'var(--color-muted)',
+        backgroundColor: isLinked ? `${color}08` : 'var(--color-surface)',
       }}
     >
-      <div className="flex items-center gap-3">
-        <div style={{ color: isLinked ? color : '#9ca3af' }}>{icon}</div>
+      <div className="flex items-center gap-4">
+        <div style={{ color: isLinked ? color : 'var(--color-muted)' }}>
+          {icon}
+        </div>
         <div>
-          <span className="font-medium" style={{ color: isLinked ? color : '#9ca3af' }}>
+          <span
+            className="font-display uppercase tracking-wider"
+            style={{ color: isLinked ? color : 'var(--color-muted)' }}
+          >
             {platformName}
           </span>
           {isLinked && (
-            <p className="text-sm text-gray-400">@{account.username}</p>
+            <p className="font-mono text-sm text-[var(--color-muted)]">
+              @{account.username}
+            </p>
           )}
         </div>
       </div>
       {isLinked ? (
-        <button
+        <Button
           onClick={onUnlink}
           disabled={isUnlinking}
-          className="px-4 py-2 text-sm bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors disabled:opacity-50"
+          variant="ghost"
+          size="sm"
         >
-          {isUnlinking ? 'Unlinking...' : 'Unlink'}
-        </button>
+          {isUnlinking ? <InitializingText text="..." className="text-xs" /> : 'UNLINK'}
+        </Button>
       ) : (
-        <button
+        <Button
           onClick={onLink}
           disabled={isLinking}
-          className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-          style={{ backgroundColor: `${color}20`, color }}
+          variant="outline"
+          size="sm"
+          style={{ borderColor: color, color }}
         >
-          {isLinking ? 'Linking...' : 'Link Account'}
-        </button>
+          {isLinking ? <InitializingText text="..." className="text-xs" /> : 'LINK'}
+        </Button>
       )}
     </div>
   )
 }
 
-// Icons
+// =============================================================================
+// ICONS
+// =============================================================================
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
 function TrophyIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -477,34 +588,26 @@ function SwordsIcon({ className, style }: { className?: string; style?: React.CS
   )
 }
 
-function KickIcon({ className }: { className?: string }) {
+function KickIcon() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.08 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z" />
     </svg>
   )
 }
 
-function TwitchIcon({ className }: { className?: string }) {
+function TwitchIcon() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
     </svg>
   )
 }
 
-function DiscordIcon({ className }: { className?: string }) {
+function DiscordIcon() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-    </svg>
-  )
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   )
 }
