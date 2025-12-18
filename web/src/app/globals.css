@@ -803,30 +803,37 @@ body {
       inset 0 0 0 1px rgba(0, 255, 241, 0.1),
       0 0 0 0 transparent;
   }
-  92% {
+  /* Glitch happens in a tight 1.5% window for snappy effect */
+  98% {
     box-shadow:
       inset 0 0 0 1px rgba(0, 255, 241, 0.1),
       0 0 0 0 transparent;
   }
-  93% {
+  98.3% {
     box-shadow:
-      inset 2px 0 0 0 rgba(255, 0, 0, 0.8),
-      inset -2px 0 0 0 rgba(0, 255, 255, 0.8),
-      0 0 10px rgba(0, 255, 241, 0.3);
+      inset 3px 0 0 0 rgba(255, 0, 0, 0.9),
+      inset -3px 0 0 0 rgba(0, 255, 255, 0.9),
+      0 0 15px rgba(0, 255, 241, 0.4);
   }
-  94% {
+  98.6% {
     box-shadow:
-      inset -1px 0 0 0 rgba(255, 0, 0, 0.6),
-      inset 1px 0 0 0 rgba(0, 255, 255, 0.6),
-      0 0 5px rgba(255, 0, 141, 0.2);
+      inset -2px 0 0 0 rgba(255, 0, 0, 0.7),
+      inset 2px 0 0 0 rgba(0, 255, 255, 0.7),
+      0 0 8px rgba(255, 0, 141, 0.3);
   }
-  95% {
+  98.9% {
     box-shadow:
-      inset 0 2px 0 0 rgba(0, 255, 241, 0.8),
-      inset 0 -2px 0 0 rgba(255, 0, 141, 0.8),
-      0 0 15px rgba(0, 255, 241, 0.2);
+      inset 0 3px 0 0 rgba(0, 255, 241, 0.9),
+      inset 0 -3px 0 0 rgba(255, 0, 141, 0.9),
+      0 0 20px rgba(0, 255, 241, 0.3);
   }
-  96% {
+  99.2% {
+    box-shadow:
+      inset 1px 0 0 0 rgba(255, 0, 0, 0.5),
+      inset -1px 0 0 0 rgba(0, 255, 255, 0.5),
+      0 0 5px rgba(0, 255, 241, 0.2);
+  }
+  99.5% {
     box-shadow:
       inset 0 0 0 1px rgba(0, 255, 241, 0.1),
       0 0 0 0 transparent;
