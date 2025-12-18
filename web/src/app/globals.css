@@ -833,24 +833,50 @@ body {
   }
 }
 
+/* Each card gets a unique prime-ish duration so they never sync up */
+.card-glitch-1 {
+  animation: edge-flicker 23s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+.card-glitch-2 {
+  animation: edge-flicker 29s ease-in-out infinite;
+  animation-delay: 7s;
+}
+
+.card-glitch-3 {
+  animation: edge-flicker 31s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+.card-glitch-4 {
+  animation: edge-flicker 37s ease-in-out infinite;
+  animation-delay: 11s;
+}
+
+.card-glitch-5 {
+  animation: edge-flicker 41s ease-in-out infinite;
+  animation-delay: 6s;
+}
+
+.card-glitch-6 {
+  animation: edge-flicker 43s ease-in-out infinite;
+  animation-delay: 15s;
+}
+
+/* Legacy class for backwards compatibility */
 .card-glitch {
-  animation: edge-flicker 20s ease-in-out infinite;
+  animation: edge-flicker 27s ease-in-out infinite;
 }
-
-.card-glitch-fast {
-  animation: edge-flicker 15s ease-in-out infinite;
-}
-
-.card-glitch-delay-1 { animation-delay: 2s; }
-.card-glitch-delay-2 { animation-delay: 5s; }
-.card-glitch-delay-3 { animation-delay: 9s; }
-.card-glitch-delay-4 { animation-delay: 13s; }
-.card-glitch-delay-5 { animation-delay: 16s; }
-.card-glitch-delay-6 { animation-delay: 19s; }
 
 @media (prefers-reduced-motion: reduce) {
   .card-glitch,
-  .card-glitch-fast {
+  .card-glitch-1,
+  .card-glitch-2,
+  .card-glitch-3,
+  .card-glitch-4,
+  .card-glitch-5,
+  .card-glitch-6 {
     animation: none;
   }
 }
