@@ -25,7 +25,25 @@ export const GET = withErrorHandling(async () => {
     return errorResponse('User not found', 404)
   }
 
-  return successResponse(profile)
+  // Transform to frontend-expected format
+  const response = {
+    id: String(profile.id),
+    kingpin_name: profile.kingpin_name,
+    wealth: Number(profile.wealth),
+    level: profile.level,
+    xp: Number(profile.xp),
+    tier: profile.status_tier,
+    checkInStreak: profile.checkin_streak,
+    lastCheckIn: profile.last_checkin_date?.toISOString() || null,
+    created_at: profile.created_at.toISOString(),
+    linkedAccounts: {
+      kick: profile.linkedPlatforms.includes('kick') ? { username: profile.username } : null,
+      twitch: profile.linkedPlatforms.includes('twitch') ? { username: profile.username } : null,
+      discord: profile.linkedPlatforms.includes('discord') ? { username: profile.username } : null,
+    },
+  }
+
+  return successResponse(response)
 })
 
 /**
@@ -50,7 +68,29 @@ export const PATCH = withErrorHandling(async (request: NextRequest) => {
     }
   }
 
-  // Return updated profile
+  // Return updated profile in frontend-expected format
   const profile = await UserService.getProfile(session.user.id)
-  return successResponse(profile)
+
+  if (!profile) {
+    return errorResponse('User not found', 404)
+  }
+
+  const response = {
+    id: String(profile.id),
+    kingpin_name: profile.kingpin_name,
+    wealth: Number(profile.wealth),
+    level: profile.level,
+    xp: Number(profile.xp),
+    tier: profile.status_tier,
+    checkInStreak: profile.checkin_streak,
+    lastCheckIn: profile.last_checkin_date?.toISOString() || null,
+    created_at: profile.created_at.toISOString(),
+    linkedAccounts: {
+      kick: profile.linkedPlatforms.includes('kick') ? { username: profile.username } : null,
+      twitch: profile.linkedPlatforms.includes('twitch') ? { username: profile.username } : null,
+      discord: profile.linkedPlatforms.includes('discord') ? { username: profile.username } : null,
+    },
+  }
+
+  return successResponse(response)
 })
