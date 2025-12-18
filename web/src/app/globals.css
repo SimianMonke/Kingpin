@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "../styles/terminal-effects.css";
 
 /* ===== NEON NOIR COLOR SYSTEM ===== */
 :root {
@@ -568,4 +567,352 @@ body {
 /* Safe area inset for mobile */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* =============================================================================
+   LIVING TERMINAL EFFECTS
+   Cyberpunk diegetic interface - makes the terminal feel alive and breathing
+   ============================================================================= */
+
+/* =============================================================================
+   1. AMBIENT SCANLINE DRIFT
+   Slowly moving scanlines simulate CRT refresh artifacts
+   ============================================================================= */
+
+@keyframes scanline-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100vh;
+  }
+}
+
+.terminal-scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  background-size: 100% 4px;
+  animation: scanline-drift 8s linear infinite;
+}
+
+/* Reduced motion: disable animation */
+@media (prefers-reduced-motion: reduce) {
+  .terminal-scanlines {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   2. TEXT FLICKER EFFECT
+   Subtle opacity flicker simulating power fluctuations
+   ============================================================================= */
+
+@keyframes text-flicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.8;
+  }
+  94% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0.9;
+  }
+  97% {
+    opacity: 1;
+  }
+}
+
+@keyframes text-flicker-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  97.5% {
+    opacity: 0.85;
+  }
+  98% {
+    opacity: 1;
+  }
+}
+
+/* Apply to important headers - runs every 4 seconds */
+.text-flicker {
+  animation: text-flicker 4s ease-in-out infinite;
+}
+
+.text-flicker-subtle {
+  animation: text-flicker-subtle 6s ease-in-out infinite;
+}
+
+/* Randomize flicker timing with animation-delay variants */
+.text-flicker-delay-1 { animation-delay: 0.7s; }
+.text-flicker-delay-2 { animation-delay: 1.3s; }
+.text-flicker-delay-3 { animation-delay: 2.1s; }
+.text-flicker-delay-4 { animation-delay: 3.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .text-flicker,
+  .text-flicker-subtle {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   3. IDLE GLITCH PULSE
+   Rare random micro-glitches on panels - the terminal "breathes"
+   ============================================================================= */
+
+@keyframes idle-glitch {
+  0%, 100% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  97% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  97.5% {
+    transform: translate(-1px, 0);
+    filter: hue-rotate(5deg);
+  }
+  98% {
+    transform: translate(1px, 0);
+    filter: hue-rotate(-5deg);
+  }
+  98.5% {
+    transform: translate(0, -1px);
+    filter: none;
+  }
+  99% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+}
+
+@keyframes idle-glitch-chromatic {
+  0%, 100% {
+    text-shadow: none;
+  }
+  96% {
+    text-shadow: none;
+  }
+  96.5% {
+    text-shadow: -1px 0 rgba(255, 0, 0, 0.5), 1px 0 rgba(0, 255, 255, 0.5);
+  }
+  97% {
+    text-shadow: 1px 0 rgba(255, 0, 0, 0.5), -1px 0 rgba(0, 255, 255, 0.5);
+  }
+  97.5% {
+    text-shadow: none;
+  }
+}
+
+.idle-glitch {
+  animation: idle-glitch 12s ease-in-out infinite;
+}
+
+.idle-glitch-text {
+  animation: idle-glitch-chromatic 15s ease-in-out infinite;
+}
+
+.idle-glitch-delay-1 { animation-delay: 2s; }
+.idle-glitch-delay-2 { animation-delay: 5s; }
+.idle-glitch-delay-3 { animation-delay: 8s; }
+.idle-glitch-delay-4 { animation-delay: 11s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-glitch,
+  .idle-glitch-text {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   4. HOVER EFFECTS
+   ============================================================================= */
+
+@keyframes hover-glitch {
+  0%, 100% {
+    transform: translate(0);
+    text-shadow: none;
+  }
+  20% {
+    transform: translate(-2px, 0);
+    text-shadow: 2px 0 #ff0000, -2px 0 #00ffff;
+  }
+  40% {
+    transform: translate(2px, 0);
+    text-shadow: -2px 0 #ff0000, 2px 0 #00ffff;
+  }
+  60% {
+    transform: translate(-1px, 1px);
+    text-shadow: 1px 0 #ff0000, -1px 0 #00ffff;
+  }
+  80% {
+    transform: translate(1px, -1px);
+    text-shadow: -1px 0 #ff0000, 1px 0 #00ffff;
+  }
+}
+
+@keyframes hover-scan {
+  0% {
+    background-position: 0 -100%;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+@media (hover: hover) {
+  .hover-glitch:hover {
+    animation: hover-glitch 0.3s ease-in-out;
+  }
+
+  .hover-scan {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hover-scan::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 255, 241, 0.1) 50%,
+      transparent 100%
+    );
+    background-size: 100% 200%;
+    background-position: 0 -100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .hover-scan:hover::before {
+    opacity: 1;
+    animation: hover-scan 0.6s ease-out;
+  }
+
+  .hover-chromatic:hover {
+    text-shadow:
+      -1.5px 0 rgba(255, 0, 0, 0.7),
+      1.5px 0 rgba(0, 255, 255, 0.7);
+    transition: text-shadow 0.1s ease-out;
+  }
+}
+
+/* =============================================================================
+   5. CRT VIGNETTE & OVERLAY
+   ============================================================================= */
+
+.crt-effect {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      transparent 55%,
+      rgba(0, 0, 0, 0.1) 75%,
+      rgba(0, 0, 0, 0.3) 100%
+    ),
+    radial-gradient(
+      ellipse at 5% 50%,
+      rgba(255, 0, 141, 0.015) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at 95% 50%,
+      rgba(0, 255, 241, 0.015) 0%,
+      transparent 40%
+    );
+  border-radius: 12px / 8px;
+}
+
+/* =============================================================================
+   6. BOOT SEQUENCE EFFECTS
+   ============================================================================= */
+
+@keyframes boot-flicker {
+  0% { opacity: 0; }
+  10% { opacity: 0.3; }
+  20% { opacity: 0; }
+  30% { opacity: 0.6; }
+  40% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+  60% { opacity: 0.4; }
+  70% { opacity: 0.9; }
+  80% { opacity: 0.6; }
+  90%, 100% { opacity: 1; }
+}
+
+.boot-flicker {
+  animation: boot-flicker 0.8s ease-out forwards;
+}
+
+.boot-delay-1 { animation-delay: 0.1s; }
+.boot-delay-2 { animation-delay: 0.2s; }
+.boot-delay-3 { animation-delay: 0.3s; }
+.boot-delay-4 { animation-delay: 0.4s; }
+.boot-delay-5 { animation-delay: 0.5s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-flicker {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* =============================================================================
+   7. NOISE TEXTURE (Animated)
+   ============================================================================= */
+
+@keyframes noise-shift {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-1%, -1%); }
+  20% { transform: translate(1%, 1%); }
+  30% { transform: translate(-2%, 0%); }
+  40% { transform: translate(0%, 2%); }
+  50% { transform: translate(1%, -1%); }
+  60% { transform: translate(-1%, 2%); }
+  70% { transform: translate(2%, -2%); }
+  80% { transform: translate(-2%, 1%); }
+  90% { transform: translate(1%, 0%); }
+}
+
+.noise-animated::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  animation: noise-shift 0.5s steps(10) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noise-animated::before {
+    animation: none;
+  }
 }
