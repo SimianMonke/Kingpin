@@ -774,6 +774,8 @@ model users {
   consumable_purchases                                                consumable_purchases[]
   stream_action_usage                                                 stream_action_usage[]
   factions                                                            factions?                  @relation(fields: [faction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  admin_user                                                          admin_users?
+  player_bans                                                         player_bans[]
 }
 
 model business_revenue_history {
@@ -893,4 +895,86 @@ model stream_action_cooldowns {
   action_id           String              @unique @db.VarChar(50)
   expires_at          DateTime            @db.Timestamp(6)
   stream_action_types stream_action_types @relation(fields: [action_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+// =============================================================================
+// ADMIN PANEL - Settings, Audit, and Access Control
+// =============================================================================
+
+/// Global admin-configurable settings stored as JSON values
+/// Use for runtime-tunable values that don't require code deploys
+model admin_settings {
+  key          String    @id @db.VarChar(100)
+  value        Json                              // Flexible JSON value
+  value_type   String    @db.VarChar(20)         // 'boolean', 'number', 'string', 'json'
+  category     String    @db.VarChar(50)         // 'features', 'economy', 'gameplay', 'display'
+  label        String    @db.VarChar(100)        // Human-readable label
+  description  String?                           // Help text for admins
+  constraints  Json?                             // { min?: number, max?: number, options?: string[] }
+  is_sensitive Boolean   @default(false)         // Hide value in logs
+  updated_by   Int?
+  updated_at   DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([category])
+}
+
+/// Immutable audit log of all admin actions
+/// CRITICAL: Never delete or modify existing records
+model admin_audit_log {
+  id           Int       @id @default(autoincrement())
+  admin_id     Int                               // User ID of admin
+  admin_name   String    @db.VarChar(100)        // Denormalized for query speed
+  action       String    @db.VarChar(100)        // Action identifier
+  category     String    @db.VarChar(50)         // 'player', 'setting', 'economy', 'content', 'system'
+  target_type  String?   @db.VarChar(50)         // 'user', 'setting', 'item', etc.
+  target_id    String?   @db.VarChar(100)        // ID of affected entity
+  target_name  String?   @db.VarChar(200)        // Denormalized name for display
+  old_value    Json?                             // Previous state (null for creates)
+  new_value    Json?                             // New state (null for deletes)
+  ip_address   String?   @db.VarChar(45)         // IPv4 or IPv6
+  user_agent   String?   @db.VarChar(500)        // Browser/client info
+  reason       String?                           // Optional admin-provided reason
+  session_id   String?   @db.VarChar(100)        // For correlating related actions
+  created_at   DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([admin_id])
+  @@index([created_at(sort: Desc)])
+  @@index([category])
+  @@index([target_type, target_id])
+  @@index([action])
+}
+
+/// Admin role assignments
+/// Separate from users table for clean separation of concerns
+model admin_users {
+  id          Int       @id @default(autoincrement())
+  user_id     Int       @unique
+  role        String    @db.VarChar(20)          // 'owner', 'moderator'
+  permissions Json?                              // Optional granular permissions override
+  granted_by  Int?                               // User ID who granted access
+  granted_at  DateTime  @default(now()) @db.Timestamp(6)
+  revoked_at  DateTime? @db.Timestamp(6)         // Soft delete
+  notes       String?                            // Why they have access
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([role])
+}
+
+/// Player bans with history
+model player_bans {
+  id           Int       @id @default(autoincrement())
+  user_id      Int
+  banned_by    Int                               // Admin user ID
+  reason       String
+  ban_type     String    @db.VarChar(20)         // 'temporary', 'permanent'
+  expires_at   DateTime? @db.Timestamp(6)        // NULL for permanent
+  is_active    Boolean   @default(true)
+  unbanned_by  Int?
+  unbanned_at  DateTime? @db.Timestamp(6)
+  unban_reason String?
+  created_at   DateTime  @default(now()) @db.Timestamp(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([is_active])
 }

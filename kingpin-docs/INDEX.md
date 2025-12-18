@@ -36,6 +36,7 @@ Kingpin is a multi-platform economy/gambling game with web dashboard integration
 | Feature | Status | Description |
 |---------|--------|-------------|
 | [Shop Expansion](./SHOP_EXPANSION_IMPLEMENTATION.md) | 🔄 Phase 3/6 | Supply Depot (consumables) + Stream Actions (Lumia) |
+| [Admin Panel](./ADMIN_PANEL_IMPLEMENTATION.md) | 🔄 Phase 1/3 | Global settings, player management, audit logs |
 
 **Shop Expansion Progress:**
 - ✅ Phase 1: Database & BuffService
@@ -246,7 +247,9 @@ kingpin-docs/
 ├── HEIST_SYSTEM.md
 ├── DATABASE_LAYER.md
 ├── SHOP_EXPANSION.md (original bootstrap)
-└── SHOP_EXPANSION_IMPLEMENTATION.md (implementation spec)
+├── SHOP_EXPANSION_IMPLEMENTATION.md (implementation spec)
+├── ADMIN_PANEL_REFERENCE.md (architecture reference)
+└── ADMIN_PANEL_IMPLEMENTATION.md (implementation spec)
 ```
 
 ---
