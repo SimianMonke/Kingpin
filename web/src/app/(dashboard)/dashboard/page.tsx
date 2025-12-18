@@ -90,7 +90,7 @@ export default function DashboardPage() {
       const data = await res.json()
 
       if (res.ok) {
-        setCheckInResult({ success: true, message: `+${data.data.xpAwarded} XP, +$${data.data.wealthAwarded}!` })
+        setCheckInResult({ success: true, message: `+${data.data.xp_earned} XP, +$${data.data.wealth_earned}!` })
         const profileRes = await fetch('/api/users/me')
         if (profileRes.ok) {
           const profileData = await profileRes.json()
