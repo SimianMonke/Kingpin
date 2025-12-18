@@ -646,6 +646,8 @@ function MissionProgressDisplay({
   missions: Mission[]
   type: 'daily' | 'weekly'
 }) {
+  const accentColor = type === 'daily' ? 'var(--color-success)' : 'var(--color-secondary)'
+
   if (missions.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center py-2">
@@ -664,63 +666,85 @@ function MissionProgressDisplay({
 
   const completed = missions.filter((m) => m.is_completed).length
   const total = missions.length
-  const progress = (completed / total) * 100
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Progress Ring */}
-      <div className="flex items-center justify-center mb-2">
-        <div className="relative w-16 h-16">
-          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-            <circle
-              className="text-[var(--color-surface)]"
-              strokeWidth="3"
-              stroke="currentColor"
-              fill="none"
-              r="15.9"
-              cx="18"
-              cy="18"
-            />
-            <circle
-              className={type === 'daily' ? "text-[var(--color-success)]" : "text-[var(--color-secondary)]"}
-              strokeWidth="3"
-              strokeLinecap="round"
-              stroke="currentColor"
-              fill="none"
-              r="15.9"
-              cx="18"
-              cy="18"
-              strokeDasharray={`${progress}, 100`}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-mono text-sm font-bold">
-              {completed}/{total}
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Individual Mission Progress */}
+      <div className="flex-1 space-y-2 overflow-hidden">
+        {missions.slice(0, 3).map((mission, idx) => {
+          const progress = Math.min((mission.current_progress / mission.objective_value) * 100, 100)
+          const missionName = mission.template?.name || `Mission ${idx + 1}`
+
+          return (
+            <div key={mission.id} className="space-y-1">
+              {/* Mission Name & Progress Numbers */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[10px] text-[var(--color-foreground)] truncate flex-1" title={missionName}>
+                  {missionName.length > 16 ? missionName.slice(0, 16) + '...' : missionName}
+                </span>
+                <span className="font-mono text-[10px] text-[var(--color-muted)] shrink-0">
+                  {mission.current_progress}/{mission.objective_value}
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="h-1.5 bg-[var(--color-surface)] border border-[var(--color-border)]">
+                <div
+                  className={cn(
+                    "h-full transition-all duration-300",
+                    mission.is_completed && "animate-pulse"
+                  )}
+                  style={{
+                    width: `${progress}%`,
+                    backgroundColor: mission.is_completed ? accentColor : `color-mix(in srgb, ${accentColor} 70%, transparent)`
+                  }}
+                />
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Show overflow indicator if more than 3 missions */}
+        {missions.length > 3 && (
+          <div className="text-center">
+            <span className="font-mono text-[10px] text-[var(--color-muted)]">
+              +{missions.length - 3} more
             </span>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Status Text */}
-      <div className="text-center">
+      {/* Summary Footer */}
+      <div className="flex items-center justify-between pt-2 mt-auto border-t border-[var(--color-border)]">
         <span className={cn(
-          "font-display text-xs uppercase tracking-wider",
-          completed === total
-            ? "text-[var(--color-success)]"
-            : "text-[var(--color-muted)]"
+          "font-display text-[10px] uppercase tracking-wider",
+          completed === total ? "text-[var(--color-success)]" : "text-[var(--color-muted)]"
         )}>
-          {completed === total ? 'COMPLETE' : `${total - completed} REMAINING`}
+          {completed === total ? (
+            <span className="flex items-center gap-1">
+              <CheckIcon className="w-3 h-3" />
+              ALL DONE
+            </span>
+          ) : (
+            `${completed}/${total} DONE`
+          )}
         </span>
+        <Link
+          href="/missions"
+          className="font-mono text-[10px] text-[var(--color-primary)] hover:underline"
+        >
+          VIEW →
+        </Link>
       </div>
-
-      {/* View Link */}
-      <Link
-        href="/missions"
-        className="font-mono text-xs text-[var(--color-primary)] hover:underline text-center mt-auto pt-2"
-      >
-        VIEW →
-      </Link>
     </div>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
   )
 }
 
