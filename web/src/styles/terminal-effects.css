@@ -1,0 +1,699 @@
+/* =============================================================================
+   LIVING TERMINAL EFFECTS
+   Cyberpunk diegetic interface - makes the terminal feel alive and breathing
+   ============================================================================= */
+
+/* =============================================================================
+   1. AMBIENT SCANLINE DRIFT
+   Slowly moving scanlines simulate CRT refresh artifacts
+   ============================================================================= */
+
+@keyframes scanline-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100vh;
+  }
+}
+
+.terminal-scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  background-size: 100% 4px;
+  animation: scanline-drift 8s linear infinite;
+}
+
+/* Reduced motion: disable animation */
+@media (prefers-reduced-motion: reduce) {
+  .terminal-scanlines {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   2. TEXT FLICKER EFFECT
+   Subtle opacity flicker simulating power fluctuations
+   ============================================================================= */
+
+@keyframes text-flicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.8;
+  }
+  94% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0.9;
+  }
+  97% {
+    opacity: 1;
+  }
+}
+
+@keyframes text-flicker-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  97.5% {
+    opacity: 0.85;
+  }
+  98% {
+    opacity: 1;
+  }
+}
+
+/* Apply to important headers - runs every 4 seconds */
+.text-flicker {
+  animation: text-flicker 4s ease-in-out infinite;
+}
+
+.text-flicker-subtle {
+  animation: text-flicker-subtle 6s ease-in-out infinite;
+}
+
+/* Randomize flicker timing with animation-delay variants */
+.text-flicker-delay-1 { animation-delay: 0.7s; }
+.text-flicker-delay-2 { animation-delay: 1.3s; }
+.text-flicker-delay-3 { animation-delay: 2.1s; }
+.text-flicker-delay-4 { animation-delay: 3.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .text-flicker,
+  .text-flicker-subtle {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   3. IDLE GLITCH PULSE
+   Rare random micro-glitches on panels - the terminal "breathes"
+   ============================================================================= */
+
+@keyframes idle-glitch {
+  0%, 100% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  /* Glitch happens rarely - at 97-99% of the animation */
+  97% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  97.5% {
+    transform: translate(-1px, 0);
+    filter: hue-rotate(5deg);
+  }
+  98% {
+    transform: translate(1px, 0);
+    filter: hue-rotate(-5deg);
+  }
+  98.5% {
+    transform: translate(0, -1px);
+    filter: none;
+  }
+  99% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+}
+
+@keyframes idle-glitch-chromatic {
+  0%, 100% {
+    text-shadow: none;
+  }
+  96% {
+    text-shadow: none;
+  }
+  96.5% {
+    text-shadow: -1px 0 rgba(255, 0, 0, 0.5), 1px 0 rgba(0, 255, 255, 0.5);
+  }
+  97% {
+    text-shadow: 1px 0 rgba(255, 0, 0, 0.5), -1px 0 rgba(0, 255, 255, 0.5);
+  }
+  97.5% {
+    text-shadow: none;
+  }
+}
+
+/* Panel glitch - very rare, long animation cycle */
+.idle-glitch {
+  animation: idle-glitch 12s ease-in-out infinite;
+}
+
+/* Text chromatic glitch */
+.idle-glitch-text {
+  animation: idle-glitch-chromatic 15s ease-in-out infinite;
+}
+
+/* Stagger multiple elements for organic feel */
+.idle-glitch-delay-1 { animation-delay: 2s; }
+.idle-glitch-delay-2 { animation-delay: 5s; }
+.idle-glitch-delay-3 { animation-delay: 8s; }
+.idle-glitch-delay-4 { animation-delay: 11s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-glitch,
+  .idle-glitch-text {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   4. DATA STREAM LOADING EFFECTS
+   Replace spinners with scrolling hex/binary streams
+   ============================================================================= */
+
+@keyframes data-scroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes cursor-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes typing-reveal {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Data stream container */
+.data-stream {
+  font-family: var(--font-mono);
+  color: var(--color-primary);
+  opacity: 0.7;
+  overflow: hidden;
+  height: 1.5em;
+  position: relative;
+}
+
+.data-stream::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--color-void) 90%
+  );
+  pointer-events: none;
+}
+
+.data-stream-content {
+  animation: data-scroll 2s linear infinite;
+}
+
+/* Typing effect */
+.typing-text {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--color-primary);
+  animation:
+    typing-reveal 2s steps(40, end),
+    cursor-blink 0.75s step-end infinite;
+}
+
+/* Terminal cursor */
+.terminal-cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  background: var(--color-primary);
+  animation: cursor-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-stream-content {
+    animation: none;
+  }
+  .typing-text {
+    animation: none;
+    border-right: none;
+    width: 100%;
+  }
+}
+
+/* =============================================================================
+   5. HOVER INTERFERENCE EFFECT
+   RGB split + horizontal displacement on interactive elements
+   ============================================================================= */
+
+@keyframes hover-glitch {
+  0%, 100% {
+    transform: translate(0);
+    text-shadow: none;
+  }
+  20% {
+    transform: translate(-2px, 0);
+    text-shadow: 2px 0 #ff0000, -2px 0 #00ffff;
+  }
+  40% {
+    transform: translate(2px, 0);
+    text-shadow: -2px 0 #ff0000, 2px 0 #00ffff;
+  }
+  60% {
+    transform: translate(-1px, 1px);
+    text-shadow: 1px 0 #ff0000, -1px 0 #00ffff;
+  }
+  80% {
+    transform: translate(1px, -1px);
+    text-shadow: -1px 0 #ff0000, 1px 0 #00ffff;
+  }
+}
+
+@keyframes hover-scan {
+  0% {
+    background-position: 0 -100%;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+/* Glitch on hover - for buttons, links */
+@media (hover: hover) {
+  .hover-glitch:hover {
+    animation: hover-glitch 0.3s ease-in-out;
+  }
+
+  /* Scan line sweep on hover */
+  .hover-scan {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hover-scan::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 255, 241, 0.1) 50%,
+      transparent 100%
+    );
+    background-size: 100% 200%;
+    background-position: 0 -100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .hover-scan:hover::before {
+    opacity: 1;
+    animation: hover-scan 0.6s ease-out;
+  }
+
+  /* Chromatic aberration on hover - enhanced version */
+  .hover-chromatic:hover {
+    text-shadow:
+      -1.5px 0 rgba(255, 0, 0, 0.7),
+      1.5px 0 rgba(0, 255, 255, 0.7);
+    transition: text-shadow 0.1s ease-out;
+  }
+
+  /* Border glitch on hover */
+  .hover-border-glitch {
+    position: relative;
+  }
+
+  .hover-border-glitch::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    transition: border-color 0.2s;
+  }
+
+  .hover-border-glitch:hover::after {
+    border-color: var(--color-primary);
+    animation: idle-glitch 0.5s ease-in-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-glitch:hover,
+  .hover-scan:hover::before,
+  .hover-border-glitch:hover::after {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   6. CRT VIGNETTE & CURVATURE OVERLAY
+   Darkening at edges + subtle barrel distortion for CRT feel
+   ============================================================================= */
+
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Vignette - darkening at edges */
+.crt-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.15) 80%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* Color bleed effect - subtle color fringing at edges */
+.crt-color-bleed {
+  background:
+    radial-gradient(
+      ellipse at 10% 50%,
+      rgba(255, 0, 141, 0.02) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 90% 50%,
+      rgba(0, 255, 241, 0.02) 0%,
+      transparent 50%
+    );
+}
+
+/* Subtle screen curvature via border-radius on the overlay */
+.crt-curvature {
+  border-radius: 20px / 15px;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.3);
+}
+
+/* Combined CRT effect */
+.crt-effect {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background:
+    /* Vignette */
+    radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      transparent 55%,
+      rgba(0, 0, 0, 0.1) 75%,
+      rgba(0, 0, 0, 0.3) 100%
+    ),
+    /* Color bleed */
+    radial-gradient(
+      ellipse at 5% 50%,
+      rgba(255, 0, 141, 0.015) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at 95% 50%,
+      rgba(0, 255, 241, 0.015) 0%,
+      transparent 40%
+    );
+  border-radius: 12px / 8px;
+}
+
+/* =============================================================================
+   7. BOOT SEQUENCE / PAGE TRANSITION EFFECTS
+   Terminal boot-up feel for page loads and transitions
+   ============================================================================= */
+
+@keyframes boot-flicker {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.3;
+  }
+  20% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.6;
+  }
+  40% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.4;
+  }
+  70% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes boot-scan {
+  0% {
+    clip-path: inset(100% 0 0 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes power-on-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(0, 255, 241, 0);
+    border-color: transparent;
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 255, 241, 0.5);
+    border-color: var(--color-primary);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(0, 255, 241, 0);
+    border-color: rgba(0, 255, 241, 0.2);
+  }
+}
+
+/* Boot flicker - for page content reveal */
+.boot-flicker {
+  animation: boot-flicker 0.8s ease-out forwards;
+}
+
+/* Boot scan - vertical reveal */
+.boot-scan {
+  animation: boot-scan 0.6s ease-out forwards;
+}
+
+/* Power-on glow for cards/panels */
+.power-on {
+  animation: power-on-glow 1s ease-out forwards;
+}
+
+/* Staggered boot sequence for multiple elements */
+.boot-delay-1 { animation-delay: 0.1s; }
+.boot-delay-2 { animation-delay: 0.2s; }
+.boot-delay-3 { animation-delay: 0.3s; }
+.boot-delay-4 { animation-delay: 0.4s; }
+.boot-delay-5 { animation-delay: 0.5s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-flicker,
+  .boot-scan,
+  .power-on {
+    animation: none;
+    opacity: 1;
+    clip-path: none;
+  }
+}
+
+/* =============================================================================
+   8. NOISE & STATIC EFFECTS
+   Enhanced noise patterns for authentic CRT feel
+   ============================================================================= */
+
+@keyframes noise-shift {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-1%, -1%);
+  }
+  20% {
+    transform: translate(1%, 1%);
+  }
+  30% {
+    transform: translate(-2%, 0%);
+  }
+  40% {
+    transform: translate(0%, 2%);
+  }
+  50% {
+    transform: translate(1%, -1%);
+  }
+  60% {
+    transform: translate(-1%, 2%);
+  }
+  70% {
+    transform: translate(2%, -2%);
+  }
+  80% {
+    transform: translate(-2%, 1%);
+  }
+  90% {
+    transform: translate(1%, 0%);
+  }
+}
+
+/* Animated noise texture */
+.noise-animated::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  animation: noise-shift 0.5s steps(10) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noise-animated::before {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   9. SIGNAL INTERFERENCE (For Important Notifications)
+   Heavy glitch for errors, warnings, critical alerts
+   ============================================================================= */
+
+@keyframes signal-interference {
+  0%, 100% {
+    transform: translate(0);
+    filter: none;
+    clip-path: inset(0 0 0 0);
+  }
+  5% {
+    transform: translate(-3px, 0);
+    clip-path: inset(10% 0 80% 0);
+  }
+  10% {
+    transform: translate(3px, 0);
+    clip-path: inset(40% 0 40% 0);
+  }
+  15% {
+    transform: translate(-2px, 1px);
+    clip-path: inset(70% 0 10% 0);
+  }
+  20% {
+    transform: translate(2px, -1px);
+    filter: hue-rotate(90deg);
+    clip-path: inset(20% 0 60% 0);
+  }
+  25% {
+    transform: translate(0);
+    filter: none;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes signal-noise {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.1;
+  }
+}
+
+.signal-interference {
+  animation: signal-interference 0.5s ease-in-out;
+}
+
+/* For critical alerts - combine with chromatic */
+.signal-critical {
+  animation:
+    signal-interference 0.5s ease-in-out,
+    chromatic-glitch 0.5s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-interference,
+  .signal-critical {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   10. UTILITY CLASSES FOR COMBINING EFFECTS
+   ============================================================================= */
+
+/* Living panel - combines idle glitch + slight glow pulse */
+.living-panel {
+  animation:
+    idle-glitch 12s ease-in-out infinite,
+    pulse-glow 8s ease-in-out infinite;
+}
+
+/* Living text - subtle flicker + chromatic potential */
+.living-text {
+  animation: text-flicker-subtle 6s ease-in-out infinite;
+}
+
+/* Data display - monospace with potential corruption */
+.data-display {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.data-display:hover {
+  animation: idle-glitch-chromatic 0.3s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .living-panel,
+  .living-text,
+  .data-display:hover {
+    animation: none;
+  }
+}

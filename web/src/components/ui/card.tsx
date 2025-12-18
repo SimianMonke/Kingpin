@@ -55,11 +55,16 @@ const cardVariants = cva(
         true: "scanlines",
         false: "",
       },
+      living: {
+        true: "idle-glitch",
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "default",
       glow: "none",
       scanlines: false,
+      living: false,
     },
   }
 )
@@ -69,10 +74,10 @@ export interface CardProps
     VariantProps<typeof cardVariants> {}
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, glow, scanlines, ...props }, ref) => (
+  ({ className, variant, glow, scanlines, living, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(cardVariants({ variant, glow, scanlines, className }))}
+      className={cn(cardVariants({ variant, glow, scanlines, living, className }))}
       {...props}
     />
   )

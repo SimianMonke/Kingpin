@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { DashboardNav } from '@/components/layout/dashboard-nav'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { InitializingLoader } from '@/components/ui/initializing-loader'
+import { TerminalOverlay } from '@/components/ui/terminal-overlay'
 
 const AUTH_BOOT_SEQUENCE = [
   'KINGPIN TERMINAL v2.0.45',
@@ -45,6 +46,9 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-void)]">
+      {/* Living Terminal Effects */}
+      <TerminalOverlay scanlines vignette intensity={0.6} />
+
       <DashboardNav />
       <main className="flex-1 container mx-auto px-4 py-8 pb-24 lg:pb-8">{children}</main>
       <MobileNav />

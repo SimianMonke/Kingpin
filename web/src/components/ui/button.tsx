@@ -67,10 +67,20 @@ const buttonVariants = cva(
         icon: "h-12 w-12 p-0",
         "icon-sm": "h-10 w-10 p-0",
       },
+      glitch: {
+        true: "hover-glitch",
+        false: "",
+      },
+      scan: {
+        true: "hover-scan",
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      glitch: false,
+      scan: false,
     },
   }
 )
@@ -82,10 +92,10 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, glitch, scan, ...props }, ref) => {
     return (
       <button
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, glitch, scan, className }))}
         ref={ref}
         {...props}
       />

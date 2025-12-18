@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { KineticNumber, CurrencyDisplay, XPDisplay, StatValue } from '@/components/ui/kinetic-number'
 import { PageLoader, InitializingText } from '@/components/ui/initializing-loader'
+import { FlickerText, GlitchText, DataStream } from '@/components/ui/terminal-overlay'
 import { cn } from '@/lib/utils'
 
 // =============================================================================
@@ -182,7 +183,9 @@ export default function DashboardPage() {
           </h1>
           <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
             {'// EMPIRE OVERVIEW // '}
-            <span className="text-[var(--color-primary)]">STATUS: ONLINE</span>
+            <FlickerText delay={2}>
+              <span className="text-[var(--color-primary)]">STATUS: ONLINE</span>
+            </FlickerText>
           </p>
         </div>
         <Button
@@ -224,7 +227,11 @@ export default function DashboardPage() {
                   : 'text-[var(--color-destructive)]'
               )}
             >
-              {checkInResult.success ? '✓ SUCCESS' : '✗ ERROR'}
+              {checkInResult.success ? (
+                '✓ SUCCESS'
+              ) : (
+                <GlitchText intensity="medium" mode="always">✗ ERROR</GlitchText>
+              )}
             </span>
             <span className="font-mono">{checkInResult.message}</span>
             {checkInResult.success && profile && (
