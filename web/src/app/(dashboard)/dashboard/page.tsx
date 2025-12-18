@@ -386,7 +386,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Criminal Record (2x1) */}
-        <Card variant="default" className="col-span-2 lg:col-span-2 p-4 card-glitch card-glitch-delay-4 hover-card-glitch">
+        <Card variant="default" className="col-span-2 lg:col-span-2 p-4 card-glitch card-glitch-delay-5 hover-card-glitch">
           <CardHeader className="p-0 pb-3 border-none">
             <CardTitle className="text-sm hover-text-glitch">CRIMINAL RECORD</CardTitle>
           </CardHeader>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <Card variant="solid" className="p-4 card-glitch card-glitch-delay-2">
+      <Card variant="solid" className="p-4 card-glitch card-glitch-delay-6">
         <CardHeader className="p-0 pb-4 border-none">
           <CardTitle className="text-sm hover-text-glitch">QUICK ACTIONS</CardTitle>
         </CardHeader>

@@ -841,10 +841,12 @@ body {
   animation: edge-flicker 15s ease-in-out infinite;
 }
 
-.card-glitch-delay-1 { animation-delay: 3s; }
-.card-glitch-delay-2 { animation-delay: 7s; }
-.card-glitch-delay-3 { animation-delay: 12s; }
-.card-glitch-delay-4 { animation-delay: 17s; }
+.card-glitch-delay-1 { animation-delay: 2s; }
+.card-glitch-delay-2 { animation-delay: 5s; }
+.card-glitch-delay-3 { animation-delay: 9s; }
+.card-glitch-delay-4 { animation-delay: 13s; }
+.card-glitch-delay-5 { animation-delay: 16s; }
+.card-glitch-delay-6 { animation-delay: 19s; }
 
 @media (prefers-reduced-motion: reduce) {
   .card-glitch,
