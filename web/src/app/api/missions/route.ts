@@ -26,5 +26,36 @@ export const GET = withErrorHandling(async () => {
   // Get active missions
   const missions = await MissionService.getActiveMissions(user_id)
 
-  return successResponse(missions)
+  // Transform response to match frontend expected field names
+  // Frontend expects "template" but Prisma returns "mission_templates"
+  const transformMission = (m: typeof missions.daily[0]) => ({
+    id: m.id,
+    templateId: m.template_id,
+    mission_type: m.mission_type,
+    objective_value: m.objective_value,
+    reward_wealth: m.reward_wealth,
+    reward_xp: m.reward_xp,
+    current_progress: m.current_progress ?? 0,
+    is_completed: m.is_completed ?? false,
+    expires_at: m.expires_at,
+    template: m.mission_templates ? {
+      id: m.mission_templates.id,
+      name: m.mission_templates.name,
+      description: m.mission_templates.description,
+      category: m.mission_templates.category,
+      difficulty: m.mission_templates.difficulty,
+      objectiveType: m.mission_templates.objective_type,
+    } : null,
+  })
+
+  return successResponse({
+    daily: missions.daily.map(transformMission),
+    weekly: missions.weekly.map(transformMission),
+    dailyExpiresAt: missions.dailyExpiresAt,
+    weeklyExpiresAt: missions.weeklyExpiresAt,
+    canClaimDaily: missions.canClaimDaily,
+    canClaimWeekly: missions.canClaimWeekly,
+    dailyAlreadyClaimed: missions.dailyAlreadyClaimed,
+    weeklyAlreadyClaimed: missions.weeklyAlreadyClaimed,
+  })
 })
