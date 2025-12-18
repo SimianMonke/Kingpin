@@ -50,18 +50,59 @@ export interface AchievementUnlockResult {
 
 export const AchievementService = {
   /**
+   * Mapping of requirement_type to user stat fields for live progress
+   * These achievements get their progress computed from user data directly
+   */
+  LIVE_PROGRESS_TYPES: {
+    total_wealth_earned: 'wealth',
+    level: 'level',
+    checkin_streak: 'checkin_streak',
+    gambling_wins: 'wins',
+  } as Record<string, string>,
+
+  /**
+   * Get live progress value from user data
+   */
+  getLiveProgress(
+    requirement_type: string,
+    user: { wealth?: bigint | null; level?: number | null; checkin_streak?: number | null; wins?: number | null }
+  ): bigint | null {
+    switch (requirement_type) {
+      case 'total_wealth_earned':
+        return user.wealth ?? BigInt(0)
+      case 'level':
+        return BigInt(user.level ?? 1)
+      case 'checkin_streak':
+        return BigInt(user.checkin_streak ?? 0)
+      case 'gambling_wins':
+        return BigInt(user.wins ?? 0)
+      default:
+        return null
+    }
+  },
+
+  /**
    * Get all achievements with user progress
    */
   async getAchievements(user_id: number): Promise<AchievementsByCategory[]> {
-    // Get all achievements
-    const achievements = await prisma.achievements.findMany({
-      orderBy: [{ category: 'asc' }, { display_order: 'asc' }],
-    })
-
-    // Get user progress
-    const userProgress = await prisma.user_achievements.findMany({
-      where: { user_id },
-    })
+    // Get all achievements and user data in parallel
+    const [achievements, userProgress, user] = await Promise.all([
+      prisma.achievements.findMany({
+        orderBy: [{ category: 'asc' }, { display_order: 'asc' }],
+      }),
+      prisma.user_achievements.findMany({
+        where: { user_id },
+      }),
+      prisma.users.findUnique({
+        where: { id: user_id },
+        select: {
+          wealth: true,
+          level: true,
+          checkin_streak: true,
+          wins: true,
+        },
+      }),
+    ])
 
     const progressMap = new Map(
       userProgress.map(p => [p.achievement_id, p])
@@ -72,6 +113,20 @@ export const AchievementService = {
 
     for (const achievement of achievements) {
       const progress = progressMap.get(achievement.id)
+
+      // Check if this achievement type should use live progress from user stats
+      const liveProgress = this.getLiveProgress(achievement.requirement_type, user ?? {})
+
+      // Use live progress if available, otherwise use tracked progress
+      const currentProgress = liveProgress !== null
+        ? liveProgress
+        : (progress?.current_progress ?? BigInt(0))
+
+      // Check if completed (either already marked or meets requirement now)
+      const meetsRequirement = achievement.requirement_value
+        ? currentProgress >= achievement.requirement_value
+        : false
+      const isCompleted = progress?.is_completed ?? false
 
       const achievementWithProgress: AchievementWithProgress = {
         id: achievement.id,
@@ -87,8 +142,8 @@ export const AchievementService = {
         reward_title: achievement.reward_title,
         is_hidden: achievement.is_hidden,
         display_order: achievement.display_order,
-        current_progress: progress?.current_progress ?? BigInt(0),
-        is_completed: progress?.is_completed ?? false,
+        current_progress: currentProgress,
+        is_completed: isCompleted,
         completed_at: progress?.completed_at ?? null,
       }
 
@@ -120,9 +175,20 @@ export const AchievementService = {
     user_id: number,
     key: string
   ): Promise<AchievementWithProgress | null> {
-    const achievement = await prisma.achievements.findUnique({
-      where: { key },
-    })
+    const [achievement, user] = await Promise.all([
+      prisma.achievements.findUnique({
+        where: { key },
+      }),
+      prisma.users.findUnique({
+        where: { id: user_id },
+        select: {
+          wealth: true,
+          level: true,
+          checkin_streak: true,
+          wins: true,
+        },
+      }),
+    ])
 
     if (!achievement) return null
 
@@ -134,6 +200,12 @@ export const AchievementService = {
         },
       },
     })
+
+    // Check if this achievement type should use live progress
+    const liveProgress = this.getLiveProgress(achievement.requirement_type, user ?? {})
+    const currentProgress = liveProgress !== null
+      ? liveProgress
+      : (progress?.current_progress ?? BigInt(0))
 
     return {
       id: achievement.id,
@@ -149,7 +221,7 @@ export const AchievementService = {
       reward_title: achievement.reward_title,
       is_hidden: achievement.is_hidden,
       display_order: achievement.display_order,
-      current_progress: progress?.current_progress ?? BigInt(0),
+      current_progress: currentProgress,
       is_completed: progress?.is_completed ?? false,
       completed_at: progress?.completed_at ?? null,
     }
