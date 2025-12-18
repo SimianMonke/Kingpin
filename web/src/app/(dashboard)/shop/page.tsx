@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 // TYPES
 // =============================================================================
 
+// Shop Item Types
 interface ShopItem {
   shopItemId: number
   item_id: number
@@ -40,6 +41,99 @@ interface ShopData {
   }
 }
 
+// Consumable Types
+interface ConsumableType {
+  id: string
+  name: string
+  category: string
+  cost: number
+  isDurationBuff: boolean
+  durationHours: number | null
+  buffKey: string | null
+  buffValue: number | null
+  isSingleUse: boolean
+  maxOwned: number | null
+  description: string | null
+  flavorText: string | null
+  icon: string | null
+  sortOrder: number
+}
+
+interface UserBuff {
+  id: number
+  buffType: string
+  category: string | null
+  multiplier: number
+  source: string
+  description: string | null
+  expiresAt: string | null
+  remainingMinutes: number | null
+  isActive: boolean
+}
+
+interface UserConsumableItem {
+  consumableId: string
+  name: string
+  category: string
+  quantity: number
+  maxOwned: number | null
+  description: string | null
+  icon: string | null
+}
+
+interface SupplyDepotData {
+  catalog: {
+    durationBuffs: ConsumableType[]
+    singleUseItems: ConsumableType[]
+    all: ConsumableType[]
+  }
+  userBuffs: UserBuff[]
+  userInventory: UserConsumableItem[]
+  stats: {
+    totalSpent: number
+    activeBuffCount: number
+    inventoryItemCount: number
+  }
+}
+
+// Stream Action Types
+interface StreamActionType {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  cost: number
+  cooldownSeconds: number
+  limitPerStream: number | null
+  queueBehavior: 'overwrite' | 'queue'
+  maxCharacters: number | null
+  sortOrder: number
+}
+
+interface ActionAvailability {
+  available: boolean
+  reason?: string
+  cooldownRemaining?: number
+  usedThisStream?: number
+  limitPerStream?: number | null
+}
+
+interface StreamActionsData {
+  actions: StreamActionType[]
+  categories: Record<string, StreamActionType[]>
+  streamLive: boolean
+  lumiaOnline: boolean
+  lumiaLatency: number | null
+  actionStatus: Record<string, ActionAvailability>
+  audioQueue: {
+    length: number
+    isProcessing: boolean
+  }
+  categoryOrder: string[]
+}
+
+type ShopTab = 'market' | 'supplies' | 'stream'
+
 // =============================================================================
 // TIER STYLING
 // =============================================================================
@@ -67,37 +161,62 @@ const TIER_STYLES: Record<string, { color: string; border: string; bg: string }>
   },
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+  xp: '⚡',
+  combat: '⚔️',
+  economy: '💰',
+  utility: '🔧',
+  lights: '💡',
+  fog: '🌫️',
+  sound: '🔊',
+  tts: '🗣️',
+}
+
 // =============================================================================
 // SHOP PAGE
 // =============================================================================
 
 export default function ShopPage() {
-  const [shopData, setShopData] = useState<ShopData | null>(null)
+  const [activeTab, setActiveTab] = useState<ShopTab>('market')
   const [userWealth, setUserWealth] = useState<number>(0)
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null)
+
+  // Shop data states
+  const [shopData, setShopData] = useState<ShopData | null>(null)
+  const [supplyData, setSupplyData] = useState<SupplyDepotData | null>(null)
+  const [streamData, setStreamData] = useState<StreamActionsData | null>(null)
 
   useEffect(() => {
-    fetchData()
+    fetchUserData()
+    fetchShopData()
   }, [])
 
-  async function fetchData() {
+  useEffect(() => {
+    if (activeTab === 'supplies' && !supplyData) {
+      fetchSupplyData()
+    } else if (activeTab === 'stream' && !streamData) {
+      fetchStreamData()
+    }
+  }, [activeTab, supplyData, streamData])
+
+  async function fetchUserData() {
     try {
-      const [shopRes, userRes] = await Promise.all([
-        fetch('/api/users/me/shop'),
-        fetch('/api/users/me'),
-      ])
-
-      if (shopRes.ok) {
-        const json = await shopRes.json()
-        setShopData(json.data)
-      }
-
-      if (userRes.ok) {
-        const json = await userRes.json()
+      const res = await fetch('/api/users/me')
+      if (res.ok) {
+        const json = await res.json()
         setUserWealth(Number(json.data.wealth))
+      }
+    } catch (error) {
+      console.error('Failed to fetch user data:', error)
+    }
+  }
+
+  async function fetchShopData() {
+    try {
+      const res = await fetch('/api/users/me/shop')
+      if (res.ok) {
+        const json = await res.json()
+        setShopData(json.data)
       }
     } catch (error) {
       console.error('Failed to fetch shop data:', error)
@@ -105,6 +224,156 @@ export default function ShopPage() {
       setLoading(false)
     }
   }
+
+  async function fetchSupplyData() {
+    try {
+      const res = await fetch('/api/shop/supplies')
+      if (res.ok) {
+        const json = await res.json()
+        setSupplyData(json.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch supply data:', error)
+    }
+  }
+
+  async function fetchStreamData() {
+    try {
+      const res = await fetch('/api/shop/stream-actions')
+      if (res.ok) {
+        const json = await res.json()
+        setStreamData(json.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch stream actions:', error)
+    }
+  }
+
+  if (loading) {
+    return <PageLoader message="LOADING SHOP INVENTORY" />
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
+            THE <span className="text-[var(--color-primary)]">SHOP</span>
+          </h1>
+          <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
+            {'// UNDERGROUND MARKETS & SERVICES'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+            AVAILABLE FUNDS
+          </p>
+          <CurrencyDisplay value={userWealth} size="lg" />
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b-2 border-[var(--color-primary)]/20 pb-2">
+        <TabButton
+          active={activeTab === 'market'}
+          onClick={() => setActiveTab('market')}
+          label="BLACK MARKET"
+          icon="🏪"
+        />
+        <TabButton
+          active={activeTab === 'supplies'}
+          onClick={() => setActiveTab('supplies')}
+          label="SUPPLY DEPOT"
+          icon="💊"
+        />
+        <TabButton
+          active={activeTab === 'stream'}
+          onClick={() => setActiveTab('stream')}
+          label="STREAM CONTROL"
+          icon="📡"
+        />
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'market' && (
+        <BlackMarketTab
+          shopData={shopData}
+          userWealth={userWealth}
+          setUserWealth={setUserWealth}
+          onRefresh={fetchShopData}
+        />
+      )}
+      {activeTab === 'supplies' && (
+        <SupplyDepotTab
+          supplyData={supplyData}
+          userWealth={userWealth}
+          setUserWealth={setUserWealth}
+          onRefresh={fetchSupplyData}
+        />
+      )}
+      {activeTab === 'stream' && (
+        <StreamActionsTab
+          streamData={streamData}
+          userWealth={userWealth}
+          setUserWealth={setUserWealth}
+          onRefresh={fetchStreamData}
+        />
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// TAB BUTTON
+// =============================================================================
+
+function TabButton({
+  active,
+  onClick,
+  label,
+  icon,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  icon: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'px-4 py-2 font-display text-xs sm:text-sm uppercase tracking-wider transition-all duration-150',
+        'border-2 border-b-0',
+        active
+          ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+          : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:border-[var(--color-muted)]/30'
+      )}
+    >
+      <span className="mr-2">{icon}</span>
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  )
+}
+
+// =============================================================================
+// BLACK MARKET TAB
+// =============================================================================
+
+function BlackMarketTab({
+  shopData,
+  userWealth,
+  setUserWealth,
+  onRefresh,
+}: {
+  shopData: ShopData | null
+  userWealth: number
+  setUserWealth: (v: number) => void
+  onRefresh: () => void
+}) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null)
 
   async function handleBuy(shopItemId: number, price: number) {
     if (userWealth < price) {
@@ -128,7 +397,7 @@ export default function ShopPage() {
         setMessage({ type: 'success', text: json.data.message.toUpperCase() })
         setUserWealth(Number(json.data.newWealth))
         setSelectedItem(null)
-        await fetchData()
+        await onRefresh()
       } else {
         setMessage({ type: 'error', text: json.error.toUpperCase() })
       }
@@ -149,7 +418,7 @@ export default function ShopPage() {
 
       if (res.ok) {
         setMessage({ type: 'success', text: 'INVENTORY REFRESHED' })
-        await fetchData()
+        await onRefresh()
       } else {
         setMessage({ type: 'error', text: json.error.toUpperCase() })
       }
@@ -158,10 +427,6 @@ export default function ShopPage() {
     } finally {
       setActionLoading(null)
     }
-  }
-
-  if (loading) {
-    return <PageLoader message="LOADING SHOP INVENTORY" />
   }
 
   if (!shopData) {
@@ -174,65 +439,28 @@ export default function ShopPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Sub-header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider">
-            BLACK <span className="text-[var(--color-primary)]">MARKET</span>
-          </h1>
-          <p className="text-[var(--color-muted)] font-mono text-sm mt-1">
-            {'// TIER: '}
-            <span className="text-[var(--color-secondary)]">{shopData.playerTier.toUpperCase()}</span>
-            {' // PERSONAL INVENTORY'}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
-              AVAILABLE FUNDS
-            </p>
-            <CurrencyDisplay value={userWealth} size="lg" />
-          </div>
-          <Button
-            onClick={handleReroll}
-            disabled={actionLoading === 'reroll'}
-            variant="outline"
-          >
-            {actionLoading === 'reroll' ? (
-              <InitializingText text="REFRESH" className="text-xs" />
-            ) : (
-              'REFRESH'
-            )}
-          </Button>
-        </div>
+        <p className="text-[var(--color-muted)] font-mono text-sm">
+          {'// TIER: '}
+          <span className="text-[var(--color-secondary)]">{shopData.playerTier.toUpperCase()}</span>
+          {' // PERSONAL INVENTORY'}
+        </p>
+        <Button
+          onClick={handleReroll}
+          disabled={actionLoading === 'reroll'}
+          variant="outline"
+        >
+          {actionLoading === 'reroll' ? (
+            <InitializingText text="REFRESH" className="text-xs" />
+          ) : (
+            'REFRESH'
+          )}
+        </Button>
       </div>
 
       {/* Message */}
-      {message && (
-        <Card
-          variant="outlined"
-          className={cn(
-            'p-4',
-            message.type === 'success'
-              ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
-              : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={cn(
-                'font-display uppercase text-sm',
-                message.type === 'success'
-                  ? 'text-[var(--color-success)]'
-                  : 'text-[var(--color-destructive)]'
-              )}
-            >
-              {message.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
-            </span>
-            <span className="font-mono text-sm">{message.text}</span>
-          </div>
-        </Card>
-      )}
+      {message && <MessageCard message={message} />}
 
       {/* Tier Access Info */}
       <Card variant="solid" className="p-4">
@@ -314,8 +542,394 @@ export default function ShopPage() {
 }
 
 // =============================================================================
-// SHOP ITEM CARD
+// SUPPLY DEPOT TAB
 // =============================================================================
+
+function SupplyDepotTab({
+  supplyData,
+  userWealth,
+  setUserWealth,
+  onRefresh,
+}: {
+  supplyData: SupplyDepotData | null
+  userWealth: number
+  setUserWealth: (v: number) => void
+  onRefresh: () => void
+}) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  async function handlePurchase(consumableId: string, cost: number) {
+    if (userWealth < cost) {
+      setMessage({ type: 'error', text: `INSUFFICIENT FUNDS - NEED $${cost.toLocaleString()}` })
+      return
+    }
+
+    setActionLoading(consumableId)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/shop/supplies/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consumableId }),
+      })
+
+      const json = await res.json()
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: json.data.message.toUpperCase() })
+        setUserWealth(Number(json.data.newWealth))
+        await onRefresh()
+      } else {
+        setMessage({ type: 'error', text: json.error.toUpperCase() })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'TRANSACTION FAILED' })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  if (!supplyData) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <InitializingText text="LOADING SUPPLY DEPOT" className="text-lg" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Message */}
+      {message && <MessageCard message={message} />}
+
+      {/* Active Buffs */}
+      {supplyData.userBuffs.length > 0 && (
+        <Card variant="solid" className="p-6 border-[var(--color-success)]/50">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle className="text-[var(--color-success)]">ACTIVE BUFFS</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {supplyData.userBuffs.map((buff) => (
+                <div
+                  key={buff.id}
+                  className="p-4 border-2 border-[var(--color-success)]/30 bg-[var(--color-success)]/5"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-display text-xs uppercase tracking-wider text-[var(--color-success)]">
+                      {buff.category || 'BUFF'}
+                    </span>
+                    <span className="font-mono text-xs text-[var(--color-muted)]">
+                      {buff.remainingMinutes !== null
+                        ? `${Math.floor(buff.remainingMinutes / 60)}h ${buff.remainingMinutes % 60}m`
+                        : 'PERMANENT'}
+                    </span>
+                  </div>
+                  <p className="font-mono text-sm">{buff.multiplier}x {buff.buffType.replace(/_/g, ' ')}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User Inventory (Single-Use Items) */}
+      {supplyData.userInventory.length > 0 && (
+        <Card variant="solid" className="p-6 border-[var(--color-warning)]/50">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle className="text-[var(--color-warning)]">YOUR SUPPLIES</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {supplyData.userInventory.map((item) => (
+                <div
+                  key={item.consumableId}
+                  className="p-4 border-2 border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">{item.icon || '📦'}</span>
+                    <span className="font-display text-lg text-[var(--color-warning)]">x{item.quantity}</span>
+                  </div>
+                  <p className="font-display text-xs uppercase tracking-wider line-clamp-2">{item.name}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Duration Buffs Section */}
+      {supplyData.catalog.durationBuffs.length > 0 && (
+        <Card variant="solid" className="p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle>TEMPORARY BUFFS</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {supplyData.catalog.durationBuffs.map((consumable) => (
+                <ConsumableCard
+                  key={consumable.id}
+                  consumable={consumable}
+                  userWealth={userWealth}
+                  onPurchase={() => handlePurchase(consumable.id, consumable.cost)}
+                  isLoading={actionLoading === consumable.id}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Single-Use Items Section */}
+      {supplyData.catalog.singleUseItems.length > 0 && (
+        <Card variant="solid" className="p-6">
+          <CardHeader className="p-0 pb-4 border-none">
+            <CardTitle>SINGLE-USE ITEMS</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {supplyData.catalog.singleUseItems.map((consumable) => {
+                const owned = supplyData.userInventory.find(i => i.consumableId === consumable.id)
+                return (
+                  <ConsumableCard
+                    key={consumable.id}
+                    consumable={consumable}
+                    userWealth={userWealth}
+                    ownedQuantity={owned?.quantity}
+                    onPurchase={() => handlePurchase(consumable.id, consumable.cost)}
+                    isLoading={actionLoading === consumable.id}
+                  />
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stats */}
+      <Card variant="default" className="p-6">
+        <CardHeader className="p-0 pb-4 border-none">
+          <CardTitle>SUPPLY STATS</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-3 gap-6">
+            <StatValue
+              label="TOTAL SPENT"
+              value={supplyData.stats.totalSpent}
+              prefix="$"
+              valueClassName="text-[var(--color-success)]"
+            />
+            <StatValue
+              label="ACTIVE BUFFS"
+              value={supplyData.stats.activeBuffCount}
+              valueClassName="text-[var(--color-primary)]"
+            />
+            <StatValue
+              label="ITEMS OWNED"
+              value={supplyData.stats.inventoryItemCount}
+              valueClassName="text-[var(--color-warning)]"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// =============================================================================
+// STREAM ACTIONS TAB
+// =============================================================================
+
+function StreamActionsTab({
+  streamData,
+  userWealth,
+  setUserWealth,
+  onRefresh,
+}: {
+  streamData: StreamActionsData | null
+  userWealth: number
+  setUserWealth: (v: number) => void
+  onRefresh: () => void
+}) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [ttsText, setTtsText] = useState<Record<string, string>>({})
+
+  async function handleTrigger(actionId: string, cost: number, payload?: { text?: string }) {
+    if (userWealth < cost) {
+      setMessage({ type: 'error', text: `INSUFFICIENT FUNDS - NEED $${cost.toLocaleString()}` })
+      return
+    }
+
+    setActionLoading(actionId)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/shop/stream-actions/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId, payload }),
+      })
+
+      const json = await res.json()
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: json.data.message.toUpperCase() })
+        setUserWealth(userWealth - cost)
+        setTtsText(prev => ({ ...prev, [actionId]: '' }))
+        await onRefresh()
+      } else {
+        setMessage({ type: 'error', text: json.error.toUpperCase() })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'TRIGGER FAILED' })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  if (!streamData) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <InitializingText text="LOADING STREAM CONTROL" className="text-lg" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Status Banner */}
+      <Card
+        variant="solid"
+        className={cn(
+          'p-4 border-2',
+          streamData.streamLive && streamData.lumiaOnline
+            ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+            : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5'
+        )}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'w-3 h-3 rounded-full',
+                  streamData.streamLive ? 'bg-[var(--color-success)] animate-pulse' : 'bg-[var(--color-destructive)]'
+                )}
+              />
+              <span className="font-mono text-sm">
+                STREAM: {streamData.streamLive ? 'LIVE' : 'OFFLINE'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'w-3 h-3 rounded-full',
+                  streamData.lumiaOnline ? 'bg-[var(--color-success)]' : 'bg-[var(--color-destructive)]'
+                )}
+              />
+              <span className="font-mono text-sm">
+                LUMIA: {streamData.lumiaOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
+          </div>
+          {streamData.audioQueue.length > 0 && (
+            <div className="font-mono text-sm text-[var(--color-warning)]">
+              📢 AUDIO QUEUE: {streamData.audioQueue.length} pending
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Message */}
+      {message && <MessageCard message={message} />}
+
+      {/* Stream Offline Warning */}
+      {!streamData.streamLive && (
+        <Card variant="outlined" className="border-[var(--color-warning)] p-6 text-center">
+          <p className="font-display text-lg uppercase tracking-wider text-[var(--color-warning)]">
+            STREAM IS OFFLINE
+          </p>
+          <p className="font-mono text-sm text-[var(--color-muted)] mt-2">
+            {'// STREAM ACTIONS REQUIRE AN ACTIVE STREAM'}
+          </p>
+        </Card>
+      )}
+
+      {/* Actions by Category */}
+      {streamData.categoryOrder.map((category) => {
+        const categoryActions = streamData.categories[category]
+        if (!categoryActions || categoryActions.length === 0) return null
+
+        return (
+          <Card key={category} variant="solid" className="p-6">
+            <CardHeader className="p-0 pb-4 border-none">
+              <CardTitle>
+                <span className="mr-2">{CATEGORY_ICONS[category] || '🎬'}</span>
+                {category.toUpperCase()} ACTIONS
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categoryActions.map((action) => {
+                  const status = streamData.actionStatus[action.id]
+                  return (
+                    <StreamActionCard
+                      key={action.id}
+                      action={action}
+                      status={status}
+                      userWealth={userWealth}
+                      streamLive={streamData.streamLive}
+                      lumiaOnline={streamData.lumiaOnline}
+                      ttsText={ttsText[action.id] || ''}
+                      onTtsTextChange={(text) => setTtsText(prev => ({ ...prev, [action.id]: text }))}
+                      onTrigger={(payload) => handleTrigger(action.id, action.cost, payload)}
+                      isLoading={actionLoading === action.id}
+                    />
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
+// =============================================================================
+// COMPONENT CARDS
+// =============================================================================
+
+function MessageCard({ message }: { message: { type: 'success' | 'error'; text: string } }) {
+  return (
+    <Card
+      variant="outlined"
+      className={cn(
+        'p-4',
+        message.type === 'success'
+          ? 'border-[var(--color-success)] bg-[var(--color-success)]/5'
+          : 'border-[var(--color-destructive)] bg-[var(--color-destructive)]/5 error-state'
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'font-display uppercase text-sm',
+            message.type === 'success'
+              ? 'text-[var(--color-success)]'
+              : 'text-[var(--color-destructive)]'
+          )}
+        >
+          {message.type === 'success' ? '✓ SUCCESS' : '✗ ERROR'}
+        </span>
+        <span className="font-mono text-sm">{message.text}</span>
+      </div>
+    </Card>
+  )
+}
 
 function ShopItemCard({
   item,
@@ -343,7 +957,6 @@ function ShopItemCard({
       )}
       onClick={onSelect}
     >
-      {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <span
           className="font-display text-xs uppercase tracking-wider"
@@ -355,13 +968,9 @@ function ShopItemCard({
           {item.type}
         </span>
       </div>
-
-      {/* Name */}
       <h3 className="font-display text-sm uppercase tracking-wider mb-3 line-clamp-1">
         {item.itemName}
       </h3>
-
-      {/* Stats */}
       <div className="space-y-1 text-xs font-mono mb-4 min-h-[48px]">
         {item.rob_bonus && (
           <p className="text-[var(--color-destructive)]">+{item.rob_bonus}% ROB</p>
@@ -378,8 +987,6 @@ function ShopItemCard({
           </p>
         )}
       </div>
-
-      {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-current/20">
         <span
           className={cn(
@@ -399,6 +1006,205 @@ function ShopItemCard({
           size="sm"
         >
           {isLoading ? '...' : 'BUY'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function ConsumableCard({
+  consumable,
+  userWealth,
+  ownedQuantity,
+  onPurchase,
+  isLoading,
+}: {
+  consumable: ConsumableType
+  userWealth: number
+  ownedQuantity?: number
+  onPurchase: () => void
+  isLoading: boolean
+}) {
+  const canAfford = userWealth >= consumable.cost
+  const atMax = consumable.maxOwned !== null && (ownedQuantity ?? 0) >= consumable.maxOwned
+
+  return (
+    <div
+      className={cn(
+        'p-4 border-2 transition-all duration-150',
+        'border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5',
+        'hover:border-[var(--color-primary)]/60'
+      )}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-2xl">{consumable.icon || CATEGORY_ICONS[consumable.category] || '📦'}</span>
+        {consumable.durationHours && (
+          <span className="font-mono text-xs text-[var(--color-muted)]">
+            {consumable.durationHours}h
+          </span>
+        )}
+        {ownedQuantity !== undefined && ownedQuantity > 0 && (
+          <span className="font-display text-xs text-[var(--color-warning)]">
+            OWNED: {ownedQuantity}{consumable.maxOwned && `/${consumable.maxOwned}`}
+          </span>
+        )}
+      </div>
+      <h3 className="font-display text-sm uppercase tracking-wider mb-2">
+        {consumable.name}
+      </h3>
+      {consumable.description && (
+        <p className="font-mono text-xs text-[var(--color-muted)] mb-3 line-clamp-2">
+          {consumable.description}
+        </p>
+      )}
+      {consumable.buffValue && (
+        <p className="font-mono text-sm text-[var(--color-success)] mb-3">
+          {consumable.buffValue}x MULTIPLIER
+        </p>
+      )}
+      <div className="flex items-center justify-between pt-3 border-t border-[var(--color-primary)]/20">
+        <span
+          className={cn(
+            'font-mono font-bold',
+            canAfford ? 'text-[var(--color-success)]' : 'text-[var(--color-destructive)]'
+          )}
+        >
+          $<KineticNumber value={consumable.cost} />
+        </span>
+        <Button
+          onClick={onPurchase}
+          disabled={isLoading || !canAfford || atMax}
+          variant={canAfford && !atMax ? 'default' : 'ghost'}
+          size="sm"
+        >
+          {isLoading ? '...' : atMax ? 'MAX' : 'BUY'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function StreamActionCard({
+  action,
+  status,
+  userWealth,
+  streamLive,
+  lumiaOnline,
+  ttsText,
+  onTtsTextChange,
+  onTrigger,
+  isLoading,
+}: {
+  action: StreamActionType
+  status: ActionAvailability
+  userWealth: number
+  streamLive: boolean
+  lumiaOnline: boolean
+  ttsText: string
+  onTtsTextChange: (text: string) => void
+  onTrigger: (payload?: { text?: string }) => void
+  isLoading: boolean
+}) {
+  const canAfford = userWealth >= action.cost
+  const isAvailable = status?.available && streamLive && lumiaOnline
+  const isTTS = action.category === 'tts'
+
+  let unavailableReason = ''
+  if (!streamLive) {
+    unavailableReason = 'STREAM OFFLINE'
+  } else if (!lumiaOnline) {
+    unavailableReason = 'LUMIA OFFLINE'
+  } else if (status?.reason === 'cooldown') {
+    unavailableReason = `COOLDOWN: ${status.cooldownRemaining}s`
+  } else if (status?.reason === 'limit_reached') {
+    unavailableReason = `LIMIT: ${status.usedThisStream}/${status.limitPerStream}`
+  } else if (!canAfford) {
+    unavailableReason = 'INSUFFICIENT FUNDS'
+  }
+
+  function handleTrigger() {
+    if (isTTS) {
+      if (!ttsText.trim()) return
+      onTrigger({ text: ttsText })
+    } else {
+      onTrigger()
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'p-4 border-2 transition-all duration-150',
+        isAvailable && canAfford
+          ? 'border-[var(--color-secondary)]/50 bg-[var(--color-secondary)]/5'
+          : 'border-[var(--color-muted)]/30 bg-[var(--color-muted)]/5 opacity-60'
+      )}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-2xl">{CATEGORY_ICONS[action.category] || '🎬'}</span>
+        {action.limitPerStream && status && (
+          <span className="font-mono text-xs text-[var(--color-muted)]">
+            {status.usedThisStream ?? 0}/{action.limitPerStream}
+          </span>
+        )}
+      </div>
+      <h3 className="font-display text-sm uppercase tracking-wider mb-2">
+        {action.name}
+      </h3>
+      {action.description && (
+        <p className="font-mono text-xs text-[var(--color-muted)] mb-3 line-clamp-2">
+          {action.description}
+        </p>
+      )}
+
+      {/* TTS Input */}
+      {isTTS && (
+        <div className="mb-3">
+          <input
+            type="text"
+            value={ttsText}
+            onChange={(e) => onTtsTextChange(e.target.value)}
+            maxLength={action.maxCharacters ?? 200}
+            placeholder="Enter your message..."
+            className={cn(
+              'w-full px-3 py-2 font-mono text-sm',
+              'bg-transparent border-2 border-[var(--color-primary)]/30',
+              'focus:border-[var(--color-primary)] focus:outline-none',
+              'placeholder:text-[var(--color-muted)]/50'
+            )}
+            disabled={!isAvailable || !canAfford}
+          />
+          {action.maxCharacters && (
+            <p className="font-mono text-xs text-[var(--color-muted)] mt-1 text-right">
+              {ttsText.length}/{action.maxCharacters}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Unavailable Reason */}
+      {unavailableReason && (
+        <p className="font-mono text-xs text-[var(--color-destructive)] mb-3">
+          {'> '}{unavailableReason}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between pt-3 border-t border-current/20">
+        <span
+          className={cn(
+            'font-mono font-bold',
+            canAfford ? 'text-[var(--color-success)]' : 'text-[var(--color-destructive)]'
+          )}
+        >
+          $<KineticNumber value={action.cost} />
+        </span>
+        <Button
+          onClick={handleTrigger}
+          disabled={isLoading || !isAvailable || !canAfford || (isTTS && !ttsText.trim())}
+          variant={isAvailable && canAfford ? 'default' : 'ghost'}
+          size="sm"
+        >
+          {isLoading ? '...' : action.queueBehavior === 'queue' ? 'QUEUE' : 'TRIGGER'}
         </Button>
       </div>
     </div>
@@ -435,7 +1241,6 @@ function ItemDetailModal({
         className={cn('max-w-md w-full p-6 border-2', tierStyle.border)}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>
             <span
@@ -456,7 +1261,6 @@ function ItemDetailModal({
           </button>
         </div>
 
-        {/* Description */}
         {item.description && (
           <p className="font-mono text-sm text-[var(--color-foreground)] mb-2">
             {item.description}
@@ -464,11 +1268,10 @@ function ItemDetailModal({
         )}
         {item.flavor_text && (
           <p className="font-mono text-xs text-[var(--color-muted)] italic mb-4">
-            "{item.flavor_text}"
+            &quot;{item.flavor_text}&quot;
           </p>
         )}
 
-        {/* Stats */}
         <div className="space-y-2 font-mono text-sm mb-6">
           {item.rob_bonus && (
             <div className="flex justify-between">
@@ -498,7 +1301,6 @@ function ItemDetailModal({
           )}
         </div>
 
-        {/* Purchase Section */}
         <div className="border-t border-[var(--color-primary)]/20 pt-4">
           <div className="flex items-center justify-between mb-4">
             <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
