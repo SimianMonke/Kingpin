@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Orbitron, Space_Mono } from "next/font/google";
 import { SessionProvider } from "@/components/providers/session-provider";
+import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
 
 const orbitron = Orbitron({
@@ -39,7 +40,9 @@ export default function RootLayout({
       <body
         className={`${orbitron.variable} ${spaceMono.variable} antialiased min-h-screen`}
       >
-        <SessionProvider>{children}</SessionProvider>
+        <QueryProvider>
+          <SessionProvider>{children}</SessionProvider>
+        </QueryProvider>
       </body>
     </html>
   );

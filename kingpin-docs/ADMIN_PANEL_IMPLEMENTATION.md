@@ -1,9 +1,10 @@
 # Admin Panel Implementation Specification
 
 > Complete implementation guide for the Kingpin Admin Control Panel.
-> **Version:** 1.0
-> **Status:** Approved for Implementation
+> **Version:** 1.1
+> **Status:** Phase 1 Complete - Ready for Phase 2
 > **Created:** December 18, 2024
+> **Last Updated:** December 18, 2024
 
 ---
 
@@ -19,6 +20,60 @@
 8. [API Route Reference](#8-api-route-reference)
 9. [UI Component Specifications](#9-ui-component-specifications)
 10. [Testing Requirements](#10-testing-requirements)
+11. [Change Log](#11-change-log)
+
+---
+
+## Change Log
+
+### v1.1 - Phase 1 Complete (December 18, 2024)
+
+**Database:**
+- Added 4 new tables to `web/prisma/schema.prisma`:
+  - `admin_settings` - 19 initial settings across 4 categories
+  - `admin_audit_log` - Immutable action history with full indexing
+  - `admin_users` - Role assignments with user relation
+  - `player_bans` - Ban history with active/inactive tracking
+- Added relations to `users` model (`admin_user`, `player_bans`)
+- Pushed schema to Neon database via `prisma db push`
+
+**Library Files Created (`web/src/lib/admin/`):**
+- `auth.ts` - `getAdminSession()`, `requireAdmin()`, `canPerform()`, `withAdminAuth()` wrapper
+- `audit.ts` - `createAuditLog()`, `queryAuditLogs()`, `extractChangedFields()`
+- `settings.ts` - `getSetting()`, `isFeatureEnabled()`, `getWealthMultiplier()` with 30s cache
+- `constants.ts` - Nav items, role definitions, permission matrix, UI constants
+- `index.ts` - Barrel export
+
+**API Routes Created (`web/src/app/api/admin/`):**
+- `GET /api/admin/status` - Check admin status
+- `GET /api/admin/dashboard` - Dashboard stats (users, economy, stream, top players)
+- `GET /api/admin/players` - Player search with pagination
+- `GET/PATCH /api/admin/players/[id]` - Player detail and edit
+- `POST /api/admin/players/[id]/ban` - Ban player
+- `DELETE /api/admin/players/[id]/ban` - Unban player
+- `POST /api/admin/players/[id]/clear-cooldowns` - Clear all cooldowns
+- `GET/PATCH /api/admin/settings` - Settings management (owner only)
+- `GET /api/admin/logs` - Audit log viewer with filters
+
+**UI Components (`web/src/components/admin/`):**
+- `admin-sidebar.tsx` - Navigation with role-based visibility
+- `admin-header.tsx` - Header with admin role badge
+
+**Pages Created (`web/src/app/admin/`):**
+- `layout.tsx` - Admin layout with auth check, sidebar, header
+- `page.tsx` - Dashboard with stat cards, top players, recent actions
+- `players/page.tsx` - Player search with platform badges, status
+- `players/[id]/page.tsx` - Full player editor with ban/unban, cooldowns, stat editing
+- `settings/page.tsx` - Settings panel grouped by category
+- `logs/page.tsx` - Audit log viewer with expandable details
+
+**Scripts:**
+- `web/prisma/seed-admin.ts` - Seeds 19 initial settings (uses PrismaNeon adapter)
+- `web/scripts/grant-admin.ts` - Grant admin access by username or `id:NUMBER`
+
+**Admin Users Configured:**
+- User ID 1 (SimianMonke) - Owner
+- User ID 3 (SimianMonke) - Owner
 
 ---
 
@@ -1249,23 +1304,23 @@ Follow existing Kingpin dark theme:
 
 ## Implementation Checklist
 
-### Phase 1 (MVP)
+### Phase 1 (MVP) - COMPLETE
 
-- [ ] Database migration (admin tables)
-- [ ] Seed initial settings
-- [ ] Admin auth middleware
-- [ ] `/api/admin/status` endpoint
-- [ ] `/api/admin/dashboard` endpoint
-- [ ] `/api/admin/players/*` endpoints
-- [ ] `/api/admin/settings` endpoints
-- [ ] `/api/admin/logs` endpoint
-- [ ] Admin layout component
-- [ ] Dashboard page
-- [ ] Player search page
-- [ ] Player editor page
-- [ ] Settings page
-- [ ] Audit logs page
-- [ ] Confirmation dialog component
+- [x] Database migration (admin tables)
+- [x] Seed initial settings
+- [x] Admin auth middleware
+- [x] `/api/admin/status` endpoint
+- [x] `/api/admin/dashboard` endpoint
+- [x] `/api/admin/players/*` endpoints
+- [x] `/api/admin/settings` endpoints
+- [x] `/api/admin/logs` endpoint
+- [x] Admin layout component
+- [x] Dashboard page
+- [x] Player search page
+- [x] Player editor page
+- [x] Settings page
+- [x] Audit logs page
+- [ ] Confirmation dialog component (deferred - basic confirm() used)
 
 ### Phase 2
 
@@ -1286,20 +1341,141 @@ Follow existing Kingpin dark theme:
 
 ---
 
+## Phase 2 Getting Started
+
+Phase 2 focuses on **Economy Controls** and **Content Management**. Here's the recommended order:
+
+### Step 1: Economy Stats Page
+
+Create `/admin/economy` with:
+
+1. **API Route:** `web/src/app/api/admin/economy/stats/route.ts`
+   ```typescript
+   // Aggregate queries needed:
+   // - Total wealth across all users
+   // - Wealth distribution (percentiles)
+   // - 24h wealth change
+   // - Current jackpot pool (from slot_jackpots table)
+   // - Active lottery entries
+   ```
+
+2. **Page:** `web/src/app/admin/economy/page.tsx`
+   - Wealth distribution chart (use existing chart patterns)
+   - Jackpot status card
+   - Lottery status card
+   - Manual adjustment form
+
+### Step 2: Manual Wealth Adjustment
+
+Create adjustment endpoint:
+
+1. **API Route:** `web/src/app/api/admin/economy/adjust/route.ts`
+   - Accept: `{ userId, amount, reason }`
+   - Validate owner permissions for amounts > $10,000
+   - Use `prisma.$transaction` for atomic updates
+   - Create audit log entry
+
+2. **UI:** Add adjustment form to economy page
+   - Player selector (search)
+   - Amount input (positive/negative)
+   - Reason textarea (required)
+   - Confirmation dialog for large amounts
+
+### Step 3: Jackpot Management
+
+1. **API Route:** `web/src/app/api/admin/economy/jackpot/route.ts`
+   - `GET` - Current jackpot amount from `slot_jackpots`
+   - `POST /reset` - Reset to seed amount (with confirmation)
+
+2. **UI:** Jackpot card with reset button
+
+### Step 4: Lottery Administration
+
+1. **API Route:** `web/src/app/api/admin/economy/lottery/route.ts`
+   - `GET` - Current draw info from `lottery_draws`, entry count
+   - `POST /draw` - Force manual draw (owner only)
+
+2. **UI:** Lottery status card with draw button
+
+### Step 5: Heist Content CRUD
+
+1. **API Routes:** `web/src/app/api/admin/content/heists/`
+   - `trivia/route.ts` - CRUD for `heist_trivia` table
+   - `riddles/route.ts` - CRUD for `heist_riddles` table
+   - `quickgrab/route.ts` - CRUD for `heist_quick_grab` table
+
+2. **Page:** `web/src/app/admin/content/page.tsx`
+   - Tab interface for trivia/riddles/quick-grab
+   - Add/Edit modal forms
+   - Enable/disable toggles
+   - Bulk import from CSV (optional)
+
+### Files to Create for Phase 2
+
+```
+web/src/app/
+├── admin/
+│   ├── economy/
+│   │   └── page.tsx               # Economy overview
+│   └── content/
+│       ├── page.tsx               # Content hub
+│       └── heists/
+│           └── page.tsx           # Heist content management
+└── api/
+    └── admin/
+        ├── economy/
+        │   ├── stats/
+        │   │   └── route.ts       # GET economy stats
+        │   ├── adjust/
+        │   │   └── route.ts       # POST manual adjustment
+        │   ├── jackpot/
+        │   │   └── route.ts       # GET jackpot, POST reset
+        │   └── lottery/
+        │       └── route.ts       # GET lottery, POST draw
+        └── content/
+            └── heists/
+                ├── trivia/
+                │   └── route.ts   # CRUD trivia
+                ├── riddles/
+                │   └── route.ts   # CRUD riddles
+                └── quickgrab/
+                    └── route.ts   # CRUD quick-grab
+```
+
+### Quick Start Command
+
+```bash
+# Navigate to web directory
+cd web
+
+# Create economy route directories
+mkdir -p src/app/api/admin/economy/stats src/app/api/admin/economy/adjust
+mkdir -p src/app/api/admin/economy/jackpot src/app/api/admin/economy/lottery
+mkdir -p src/app/admin/economy
+
+# Create content route directories
+mkdir -p src/app/api/admin/content/heists/trivia
+mkdir -p src/app/api/admin/content/heists/riddles
+mkdir -p src/app/api/admin/content/heists/quickgrab
+mkdir -p src/app/admin/content/heists
+```
+
+---
+
 ## Security Checklist
 
-- [ ] All admin routes use `withAdminAuth` wrapper
-- [ ] Permission checks before every write operation
-- [ ] Audit log for every state change
-- [ ] Rate limiting on admin endpoints
-- [ ] Input validation on all payloads
-- [ ] SQL injection prevention (Prisma parameterized queries)
-- [ ] XSS prevention (React auto-escaping)
-- [ ] CSRF protection (NextAuth handles)
+- [x] All admin routes use `withAdminAuth` wrapper
+- [x] Permission checks before every write operation
+- [x] Audit log for every state change
+- [ ] Rate limiting on admin endpoints (use existing middleware)
+- [x] Input validation on all payloads
+- [x] SQL injection prevention (Prisma parameterized queries)
+- [x] XSS prevention (React auto-escaping)
+- [x] CSRF protection (NextAuth handles)
 - [ ] Sensitive data masked in audit logs
 - [ ] Admin session timeout (8 hours)
 
 ---
 
 *Document generated for Kingpin Admin Panel implementation*
-*Last updated: December 18, 2024*
+*Last updated: December 18, 2024 - Phase 1 Complete*
