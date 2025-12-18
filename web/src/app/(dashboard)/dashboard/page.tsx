@@ -345,7 +345,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Daily Mission Progress (1x1) */}
-        <Card variant="solid" className="p-4 flex flex-col card-glitch-2 hover-card-glitch">
+        <Card variant="solid" className="p-4 flex flex-col hover-card-glitch">
           <div className="flex items-center gap-2 mb-3">
             <TargetIcon className="w-5 h-5 text-[var(--color-success)]" />
             <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] hover-text-glitch">
@@ -356,7 +356,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Weekly Mission Progress (1x1) */}
-        <Card variant="solid" className="p-4 flex flex-col card-glitch-3 hover-card-glitch">
+        <Card variant="solid" className="p-4 flex flex-col hover-card-glitch">
           <div className="flex items-center gap-2 mb-3">
             <CalendarIcon className="w-5 h-5 text-[var(--color-secondary)]" />
             <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] hover-text-glitch">
@@ -367,7 +367,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Active Buffs (2x1) */}
-        <Card variant="solid" className="col-span-2 p-4 card-glitch-4 hover-card-glitch">
+        <Card variant="solid" className="col-span-2 p-4 hover-card-glitch">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <ZapIcon className="w-5 h-5 text-[var(--color-primary)]" />
@@ -418,7 +418,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Progress (2x1) */}
-        <Card variant="default" className="col-span-2 lg:col-span-2 p-4 card-glitch-6 hover-card-glitch">
+        <Card variant="default" className="col-span-2 lg:col-span-2 p-4 hover-card-glitch">
           <CardHeader className="p-0 pb-3 border-none">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm hover-text-glitch">PROGRESS</CardTitle>
