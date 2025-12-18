@@ -177,7 +177,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="font-display text-2xl sm:text-3xl uppercase tracking-wider text-[var(--color-foreground)]">
             Welcome back,{' '}
-            <span className="text-gradient-primary">
+            <span className="text-gradient-primary hover-text-glitch idle-glitch-text">
               {profile?.kingpin_name || session?.user?.name || 'OPERATOR'}
             </span>
           </h1>
@@ -250,7 +250,7 @@ export default function DashboardPage() {
           variant="default"
           glow="primary"
           scanlines
-          className="col-span-2 row-span-2 p-6"
+          className="col-span-2 row-span-2 p-6 card-glitch"
         >
           <div className="h-full flex flex-col">
             {/* Player Identity */}
@@ -345,10 +345,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* Daily Mission Progress (1x1) */}
-        <Card variant="solid" className="p-4 flex flex-col">
+        <Card variant="solid" className="p-4 flex flex-col card-glitch card-glitch-delay-1 hover-card-glitch">
           <div className="flex items-center gap-2 mb-3">
             <TargetIcon className="w-5 h-5 text-[var(--color-success)]" />
-            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] hover-text-glitch">
               DAILY MISSIONS
             </span>
           </div>
@@ -356,10 +356,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* Weekly Mission Progress (1x1) */}
-        <Card variant="solid" className="p-4 flex flex-col">
+        <Card variant="solid" className="p-4 flex flex-col card-glitch card-glitch-delay-2 hover-card-glitch">
           <div className="flex items-center gap-2 mb-3">
             <CalendarIcon className="w-5 h-5 text-[var(--color-secondary)]" />
-            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] hover-text-glitch">
               WEEKLY MISSIONS
             </span>
           </div>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Active Buffs (2x1) */}
-        <Card variant="solid" className="col-span-2 p-4">
+        <Card variant="solid" className="col-span-2 p-4 card-glitch card-glitch-delay-3 hover-card-glitch">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <ZapIcon className="w-5 h-5 text-[var(--color-primary)]" />
@@ -386,9 +386,9 @@ export default function DashboardPage() {
         </Card>
 
         {/* Criminal Record (2x1) */}
-        <Card variant="default" className="col-span-2 lg:col-span-2 p-4">
+        <Card variant="default" className="col-span-2 lg:col-span-2 p-4 card-glitch card-glitch-delay-4 hover-card-glitch">
           <CardHeader className="p-0 pb-3 border-none">
-            <CardTitle className="text-sm">CRIMINAL RECORD</CardTitle>
+            <CardTitle className="text-sm hover-text-glitch">CRIMINAL RECORD</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -418,10 +418,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* Progress (2x1) */}
-        <Card variant="default" className="col-span-2 lg:col-span-2 p-4">
+        <Card variant="default" className="col-span-2 lg:col-span-2 p-4 card-glitch-fast hover-card-glitch">
           <CardHeader className="p-0 pb-3 border-none">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">PROGRESS</CardTitle>
+              <CardTitle className="text-sm hover-text-glitch">PROGRESS</CardTitle>
               <Link
                 href="/achievements"
                 className="font-mono text-xs text-[var(--color-primary)] hover:underline"
@@ -459,9 +459,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <Card variant="solid" className="p-4">
+      <Card variant="solid" className="p-4 card-glitch card-glitch-delay-2">
         <CardHeader className="p-0 pb-4 border-none">
-          <CardTitle className="text-sm">QUICK ACTIONS</CardTitle>
+          <CardTitle className="text-sm hover-text-glitch">QUICK ACTIONS</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -546,11 +546,12 @@ function QuickActionLink({
         'bg-[var(--color-surface)] border-2 border-[var(--color-primary)]/20',
         'hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5',
         'transition-all duration-150',
-        'touch-target'
+        'touch-target',
+        'hover-card-glitch'
       )}
     >
       <span className="text-[var(--color-primary)]">{icon}</span>
-      <span className="font-display text-xs uppercase tracking-wider">{label}</span>
+      <span className="font-display text-xs uppercase tracking-wider hover-text-glitch">{label}</span>
     </Link>
   )
 }
