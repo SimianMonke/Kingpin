@@ -355,9 +355,16 @@ export default function AchievementsPage() {
         const res = await fetch('/api/achievements')
         if (res.ok) {
           const data = await res.json()
-          setCategories(data.data.categories)
-          setStats(data.data.stats)
-          setRecentUnlocks(data.data.recentUnlocks)
+          console.log('Achievements API response:', data)
+          if (data.data?.categories) {
+            setCategories(data.data.categories)
+            setStats(data.data.stats)
+            setRecentUnlocks(data.data.recentUnlocks || [])
+          } else {
+            console.error('Unexpected API response structure:', data)
+          }
+        } else {
+          console.error('Achievements API error:', res.status, res.statusText)
         }
       } catch (error) {
         console.error('Failed to fetch achievements:', error)
