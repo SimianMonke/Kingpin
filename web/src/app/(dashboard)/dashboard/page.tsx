@@ -41,6 +41,41 @@ interface UserStats {
   juicernautWins: number
 }
 
+interface Mission {
+  id: number
+  current_progress: number
+  objective_value: number
+  is_completed: boolean
+  template: {
+    name: string
+    description: string
+    difficulty: string
+  } | null
+}
+
+interface MissionsData {
+  daily: Mission[]
+  weekly: Mission[]
+  dailyExpiresAt: string | null
+  weeklyExpiresAt: string | null
+}
+
+interface ActiveBuff {
+  id: number
+  buffType: string
+  category: string | null
+  multiplier: number
+  source: string
+  description: string | null
+  remainingMinutes: number | null
+  expiresAt: string | null
+}
+
+interface BuffsData {
+  buffs: ActiveBuff[]
+  totalActive: number
+}
+
 // =============================================================================
 // DASHBOARD PAGE
 // Bento Grid Layout with Cyberpunk Diegetic Interface
@@ -50,6 +85,8 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
+  const [missions, setMissions] = useState<MissionsData | null>(null)
+  const [buffs, setBuffs] = useState<BuffsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [checkingIn, setCheckingIn] = useState(false)
   const [checkInResult, setCheckInResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -57,9 +94,11 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [profileRes, statsRes] = await Promise.all([
+        const [profileRes, statsRes, missionsRes, buffsRes] = await Promise.all([
           fetch('/api/users/me'),
           fetch('/api/users/me/stats'),
+          fetch('/api/missions'),
+          fetch('/api/users/me/buffs'),
         ])
 
         if (profileRes.ok) {
@@ -70,6 +109,16 @@ export default function DashboardPage() {
         if (statsRes.ok) {
           const data = await statsRes.json()
           setStats(data.data)
+        }
+
+        if (missionsRes.ok) {
+          const data = await missionsRes.json()
+          setMissions(data.data)
+        }
+
+        if (buffsRes.ok) {
+          const data = await buffsRes.json()
+          setBuffs(data.data)
         }
       } catch (error) {
         console.error('Failed to fetch user data:', error)
@@ -189,7 +238,7 @@ export default function DashboardPage() {
 
       {/* ===== BENTO GRID LAYOUT ===== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Hero Cell: Avatar/Identity (2x2) */}
+        {/* Hero Cell: Player Summary (2x2) */}
         <Card
           variant="default"
           glow="primary"
@@ -198,28 +247,33 @@ export default function DashboardPage() {
         >
           <div className="h-full flex flex-col">
             {/* Player Identity */}
-            <div className="flex items-start gap-4 mb-6">
+            <div className="flex items-start gap-4 mb-4">
               {/* Avatar Placeholder */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-[var(--color-primary)] bg-[var(--color-surface)] flex items-center justify-center">
-                <span className="font-display text-3xl sm:text-4xl text-[var(--color-primary)]">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-[var(--color-primary)] bg-[var(--color-surface)] flex items-center justify-center shrink-0">
+                <span className="font-display text-2xl sm:text-3xl text-[var(--color-primary)]">
                   {(profile?.kingpin_name || 'K')[0].toUpperCase()}
                 </span>
               </div>
-              <div className="flex-1">
-                <h2 className="font-display text-lg sm:text-xl uppercase tracking-wider text-[var(--color-primary)]">
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-base sm:text-lg uppercase tracking-wider text-[var(--color-primary)] truncate">
                   {profile?.kingpin_name || 'UNKNOWN'}
                 </h2>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <TierBadge tier={profile?.tier || 'Rookie'} />
                   <span className="font-mono text-sm text-[var(--color-muted)]">
                     LVL {profile?.level || 1}
                   </span>
                 </div>
+                {/* Wealth in header area */}
+                <div className="mt-2 flex items-center gap-2">
+                  <DollarIcon className="w-4 h-4 text-[var(--color-warning)]" />
+                  <CurrencyDisplay value={profile?.wealth || 0} size="sm" />
+                </div>
               </div>
             </div>
 
             {/* XP Progress Bar */}
-            <div className="mb-6">
+            <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
                   EXPERIENCE
@@ -237,74 +291,91 @@ export default function DashboardPage() {
             </div>
 
             {/* Check-in Streak */}
-            <div className="mt-auto flex items-center gap-3 p-3 bg-[var(--color-surface)]/50 border border-[var(--color-warning)]/30">
-              <FlameIcon className="w-6 h-6 text-[var(--color-warning)]" />
-              <div>
-                <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)] block">
+            <div className="flex items-center gap-3 p-2 bg-[var(--color-surface)]/50 border border-[var(--color-warning)]/30 mb-4">
+              <FlameIcon className="w-5 h-5 text-[var(--color-warning)]" />
+              <div className="flex-1">
+                <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
                   STREAK
                 </span>
-                <span className="font-mono text-lg text-[var(--color-warning)]">
+                <span className="font-mono text-base text-[var(--color-warning)] ml-2">
                   <KineticNumber value={profile?.checkInStreak || 0} suffix=" DAYS" />
                 </span>
+              </div>
+            </div>
+
+            {/* Linked Systems */}
+            <div className="mt-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+                  LINKED SYSTEMS
+                </span>
+                <Link
+                  href="/profile"
+                  className="font-mono text-xs text-[var(--color-primary)] hover:underline"
+                >
+                  MANAGE
+                </Link>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <AccountIndicator
+                  platform="KICK"
+                  connected={!!profile?.linkedAccounts?.kick}
+                  color="#53fc18"
+                />
+                <AccountIndicator
+                  platform="TWITCH"
+                  connected={!!profile?.linkedAccounts?.twitch}
+                  color="#9146FF"
+                />
+                <AccountIndicator
+                  platform="DISCORD"
+                  connected={!!profile?.linkedAccounts?.discord}
+                  color="#5865F2"
+                />
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Cash Cell (1x1) */}
-        <Card variant="solid" className="p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarIcon className="w-5 h-5 text-[var(--color-warning)]" />
+        {/* Daily Mission Progress (1x1) */}
+        <Card variant="solid" className="p-4 flex flex-col">
+          <div className="flex items-center gap-2 mb-3">
+            <TargetIcon className="w-5 h-5 text-[var(--color-success)]" />
             <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
-              WEALTH
+              DAILY MISSIONS
             </span>
           </div>
-          <CurrencyDisplay value={profile?.wealth || 0} size="lg" />
+          <MissionProgressDisplay missions={missions?.daily || []} type="daily" />
         </Card>
 
-        {/* Level Cell (1x1) */}
-        <Card variant="solid" className="p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 mb-2">
-            <StarIcon className="w-5 h-5 text-[var(--color-primary)]" />
+        {/* Weekly Mission Progress (1x1) */}
+        <Card variant="solid" className="p-4 flex flex-col">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarIcon className="w-5 h-5 text-[var(--color-secondary)]" />
             <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
-              LEVEL
+              WEEKLY MISSIONS
             </span>
           </div>
-          <span className="font-mono text-3xl font-bold text-[var(--color-primary)]">
-            <KineticNumber value={profile?.level || 1} />
-          </span>
+          <MissionProgressDisplay missions={missions?.weekly || []} type="weekly" />
         </Card>
 
-        {/* Linked Accounts (2x1) */}
+        {/* Active Buffs (2x1) */}
         <Card variant="solid" className="col-span-2 p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
-              LINKED SYSTEMS
-            </span>
+            <div className="flex items-center gap-2">
+              <ZapIcon className="w-5 h-5 text-[var(--color-primary)]" />
+              <span className="font-display text-xs uppercase tracking-wider text-[var(--color-muted)]">
+                ACTIVE BUFFS
+              </span>
+            </div>
             <Link
-              href="/profile"
+              href="/shop"
               className="font-mono text-xs text-[var(--color-primary)] hover:underline"
             >
-              MANAGE →
+              SHOP →
             </Link>
           </div>
-          <div className="flex gap-2">
-            <AccountIndicator
-              platform="KICK"
-              connected={!!profile?.linkedAccounts?.kick}
-              color="#53fc18"
-            />
-            <AccountIndicator
-              platform="TWITCH"
-              connected={!!profile?.linkedAccounts?.twitch}
-              color="#9146FF"
-            />
-            <AccountIndicator
-              platform="DISCORD"
-              connected={!!profile?.linkedAccounts?.discord}
-              color="#5865F2"
-            />
-          </div>
+          <ActiveBuffsDisplay buffs={buffs?.buffs || []} />
         </Card>
 
         {/* Criminal Record (2x1) */}
@@ -389,7 +460,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <QuickActionLink href="/inventory" icon={<BackpackIcon />} label="INVENTORY" />
             <QuickActionLink href="/shop" icon={<StoreIcon />} label="SHOP" />
-            <QuickActionLink href="/missions" icon={<TargetIcon />} label="MISSIONS" />
+            <QuickActionLink href="/shop#stream-actions" icon={<BroadcastIcon />} label="STREAM ACTIONS" />
             <QuickActionLink href="/crates" icon={<BoxIcon />} label="CRATES" />
           </div>
         </CardContent>
@@ -522,9 +593,9 @@ function StoreIcon() {
   )
 }
 
-function TargetIcon() {
+function TargetIcon({ className }: { className?: string }) {
   return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={className || "w-6 h-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <circle cx="12" cy="12" r="10" />
       <circle cx="12" cy="12" r="6" />
       <circle cx="12" cy="12" r="2" />
@@ -537,5 +608,172 @@ function BoxIcon() {
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
     </svg>
+  )
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-6 h-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  )
+}
+
+function ZapIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className || "w-6 h-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  )
+}
+
+function BroadcastIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+    </svg>
+  )
+}
+
+// =============================================================================
+// MISSION PROGRESS DISPLAY
+// =============================================================================
+
+function MissionProgressDisplay({
+  missions,
+  type,
+}: {
+  missions: Mission[]
+  type: 'daily' | 'weekly'
+}) {
+  if (missions.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center py-2">
+        <span className="font-mono text-xs text-[var(--color-muted)]">
+          NO {type.toUpperCase()} MISSIONS
+        </span>
+        <Link
+          href="/missions"
+          className="font-mono text-xs text-[var(--color-primary)] hover:underline mt-1"
+        >
+          VIEW MISSIONS →
+        </Link>
+      </div>
+    )
+  }
+
+  const completed = missions.filter((m) => m.is_completed).length
+  const total = missions.length
+  const progress = (completed / total) * 100
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Progress Ring */}
+      <div className="flex items-center justify-center mb-2">
+        <div className="relative w-16 h-16">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+            <circle
+              className="text-[var(--color-surface)]"
+              strokeWidth="3"
+              stroke="currentColor"
+              fill="none"
+              r="15.9"
+              cx="18"
+              cy="18"
+            />
+            <circle
+              className={type === 'daily' ? "text-[var(--color-success)]" : "text-[var(--color-secondary)]"}
+              strokeWidth="3"
+              strokeLinecap="round"
+              stroke="currentColor"
+              fill="none"
+              r="15.9"
+              cx="18"
+              cy="18"
+              strokeDasharray={`${progress}, 100`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-mono text-sm font-bold">
+              {completed}/{total}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Text */}
+      <div className="text-center">
+        <span className={cn(
+          "font-display text-xs uppercase tracking-wider",
+          completed === total
+            ? "text-[var(--color-success)]"
+            : "text-[var(--color-muted)]"
+        )}>
+          {completed === total ? 'COMPLETE' : `${total - completed} REMAINING`}
+        </span>
+      </div>
+
+      {/* View Link */}
+      <Link
+        href="/missions"
+        className="font-mono text-xs text-[var(--color-primary)] hover:underline text-center mt-auto pt-2"
+      >
+        VIEW →
+      </Link>
+    </div>
+  )
+}
+
+// =============================================================================
+// ACTIVE BUFFS DISPLAY
+// =============================================================================
+
+function ActiveBuffsDisplay({ buffs }: { buffs: ActiveBuff[] }) {
+  if (buffs.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-2">
+        <span className="font-mono text-xs text-[var(--color-muted)]">
+          NO ACTIVE BUFFS
+        </span>
+      </div>
+    )
+  }
+
+  // Show up to 4 buffs
+  const displayBuffs = buffs.slice(0, 4)
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {displayBuffs.map((buff) => (
+        <div
+          key={buff.id}
+          className="flex flex-col items-center p-2 bg-[var(--color-surface)] border border-[var(--color-primary)]/30"
+        >
+          <div className="flex items-center gap-1 mb-1">
+            <ZapIcon className="w-3 h-3 text-[var(--color-primary)]" />
+            <span className="font-mono text-xs font-bold text-[var(--color-primary)]">
+              {buff.multiplier > 1 ? `+${Math.round((buff.multiplier - 1) * 100)}%` : `${Math.round(buff.multiplier * 100)}%`}
+            </span>
+          </div>
+          <span className="font-display text-[10px] uppercase tracking-wider text-[var(--color-muted)] text-center truncate w-full">
+            {buff.category || buff.buffType}
+          </span>
+          {buff.remainingMinutes !== null && (
+            <span className="font-mono text-[10px] text-[var(--color-warning)]">
+              {buff.remainingMinutes < 60
+                ? `${buff.remainingMinutes}m`
+                : `${Math.floor(buff.remainingMinutes / 60)}h`}
+            </span>
+          )}
+        </div>
+      ))}
+      {buffs.length > 4 && (
+        <div className="flex items-center justify-center p-2 bg-[var(--color-surface)] border border-[var(--color-primary)]/30">
+          <span className="font-mono text-xs text-[var(--color-primary)]">
+            +{buffs.length - 4} MORE
+          </span>
+        </div>
+      )}
+    </div>
   )
 }
