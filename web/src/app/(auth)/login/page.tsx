@@ -25,12 +25,22 @@ function LoginPageContent() {
   useEffect(() => {
     // Handle error from NextAuth
     if (errorParam) {
+      const username = searchParams.get('username')
+      const platform = searchParams.get('platform')
+
       switch (errorParam) {
         case 'OAuthAccountNotLinked':
           setError('This account is already linked to another user.')
           break
         case 'DiscordAccountNotLinked':
           setError('Please create an account using Kick or Twitch first, then link Discord from your profile.')
+          break
+        case 'DuplicateUsername':
+          setError(
+            `An account with username "${username}" already exists on ${platform}. ` +
+            `If this is your account, sign in with ${platform} first, then use "Merge Account" ` +
+            `in your profile settings to combine the accounts.`
+          )
           break
         case 'OAuthSignin':
           setError('Error during sign in. Please try again.')
@@ -42,7 +52,7 @@ function LoginPageContent() {
           setError('An error occurred. Please try again.')
       }
     }
-  }, [errorParam])
+  }, [errorParam, searchParams])
 
   const handleSignIn = async (provider: string) => {
     setIsLoading(provider)

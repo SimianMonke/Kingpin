@@ -790,6 +790,13 @@ model users {
   bonds                                                               Int?                       @default(0)
   last_bond_conversion                                                DateTime?                  @db.Timestamp(6)
   bond_transactions                                                   bond_transactions[]
+
+  // Account merge system
+  merged_into_user_id                                                 Int?
+  merged_at                                                           DateTime?                  @db.Timestamp(6)
+  merge_audit_log                                                     Json?                      // Stores pre-merge snapshot for audit
+
+  @@index([merged_into_user_id])
 }
 
 model business_revenue_history {

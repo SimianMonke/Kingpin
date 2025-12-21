@@ -41,9 +41,55 @@ const LINK_MESSAGES: Record<string, { type: 'success' | 'error'; message: string
   invalid_state: { type: 'error', message: 'SESSION EXPIRED - RETRY REQUIRED' },
   invalid_callback: { type: 'error', message: 'OAUTH CALLBACK INVALID' },
   platform_mismatch: { type: 'error', message: 'PLATFORM MISMATCH DETECTED' },
-  already_linked_other: { type: 'error', message: 'SYSTEM LINKED TO ANOTHER USER' },
+  already_linked_other: { type: 'error', message: 'ACCOUNT LINKED TO ANOTHER USER - USE MERGE' },
   oauth_denied: { type: 'error', message: 'AUTHORIZATION DENIED' },
   link_failed: { type: 'error', message: 'LINK OPERATION FAILED' },
+  // Merge-specific messages
+  no_account_to_merge: { type: 'error', message: 'NO ACCOUNT FOUND TO MERGE' },
+  cannot_merge_self: { type: 'error', message: 'CANNOT MERGE ACCOUNT WITH ITSELF' },
+  already_merged: { type: 'error', message: 'ACCOUNT ALREADY MERGED' },
+  merge_complete: { type: 'success', message: 'ACCOUNTS MERGED SUCCESSFULLY' },
+}
+
+interface MergePreview {
+  primary: {
+    id: number
+    username: string
+    platforms: string[]
+    wealth: string
+    xp: string
+    level: number
+    tier: string
+    tokens: number
+    bonds: number
+    inventory_count: number
+    crate_count: number
+  }
+  secondary: {
+    id: number
+    username: string
+    platforms: string[]
+    wealth: string
+    xp: string
+    level: number
+    tier: string
+    tokens: number
+    bonds: number
+    inventory_count: number
+    crate_count: number
+  }
+  result: {
+    wealth: string
+    xp: string
+    level: number
+    tier: string
+    tokens: number
+    bonds: number
+    inventory_count: number
+    crate_count: number
+    platforms: string[]
+  }
+  warnings: string[]
 }
 
 // =============================================================================
@@ -64,11 +110,23 @@ export default function ProfilePage() {
   const [unlinkingPlatform, setUnlinkingPlatform] = useState<Platform | null>(null)
   const [linkMessage, setLinkMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
+  // Merge state
+  const [showMergeModal, setShowMergeModal] = useState(false)
+  const [mergePreview, setMergePreview] = useState<MergePreview | null>(null)
+  const [mergeLoading, setMergeLoading] = useState(false)
+  const [mergeExecuting, setMergeExecuting] = useState(false)
+  const [mergingPlatform, setMergingPlatform] = useState<Platform | null>(null)
+
   useEffect(() => {
     const success = searchParams.get('success')
     const error = searchParams.get('error')
+    const mergePending = searchParams.get('merge_pending')
 
-    if (success && LINK_MESSAGES[success]) {
+    if (mergePending === 'true') {
+      // Load merge preview
+      loadMergePreview()
+      window.history.replaceState({}, '', '/profile')
+    } else if (success && LINK_MESSAGES[success]) {
       setLinkMessage(LINK_MESSAGES[success])
       window.history.replaceState({}, '', '/profile')
     } else if (error && LINK_MESSAGES[error]) {
@@ -76,6 +134,80 @@ export default function ProfilePage() {
       window.history.replaceState({}, '', '/profile')
     }
   }, [searchParams])
+
+  const loadMergePreview = async () => {
+    setMergeLoading(true)
+    try {
+      const res = await fetch('/api/users/me/merge/preview')
+      const data = await res.json()
+      if (data.success) {
+        setMergePreview(data.data)
+        setShowMergeModal(true)
+      } else {
+        setLinkMessage({ type: 'error', message: data.error || 'FAILED TO LOAD MERGE PREVIEW' })
+      }
+    } catch {
+      setLinkMessage({ type: 'error', message: 'NETWORK ERROR LOADING MERGE PREVIEW' })
+    } finally {
+      setMergeLoading(false)
+    }
+  }
+
+  const handleMergeAccount = async (platform: Platform) => {
+    setMergingPlatform(platform)
+    setLinkMessage(null)
+    try {
+      const res = await fetch('/api/users/me/merge/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        window.location.href = data.signInUrl
+      } else {
+        setLinkMessage({ type: 'error', message: data.error || 'FAILED TO INITIATE MERGE' })
+        setMergingPlatform(null)
+      }
+    } catch {
+      setLinkMessage({ type: 'error', message: 'NETWORK ERROR' })
+      setMergingPlatform(null)
+    }
+  }
+
+  const handleExecuteMerge = async () => {
+    setMergeExecuting(true)
+    try {
+      const res = await fetch('/api/users/me/merge/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'MERGE' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setShowMergeModal(false)
+        setMergePreview(null)
+        setLinkMessage(LINK_MESSAGES.merge_complete)
+        fetchProfile() // Reload profile
+      } else {
+        setLinkMessage({ type: 'error', message: data.error || 'MERGE FAILED' })
+      }
+    } catch {
+      setLinkMessage({ type: 'error', message: 'NETWORK ERROR DURING MERGE' })
+    } finally {
+      setMergeExecuting(false)
+    }
+  }
+
+  const handleCancelMerge = async () => {
+    try {
+      await fetch('/api/users/me/merge/cancel', { method: 'POST' })
+    } catch {
+      // Ignore errors
+    }
+    setShowMergeModal(false)
+    setMergePreview(null)
+  }
 
   useEffect(() => {
     fetchProfile()
@@ -410,8 +542,10 @@ export default function ProfilePage() {
             account={profile?.linkedAccounts?.kick}
             onLink={() => handleLinkAccount('kick')}
             onUnlink={() => handleUnlinkAccount('kick')}
+            onMerge={() => handleMergeAccount('kick')}
             isLinking={linkingPlatform === 'kick'}
             isUnlinking={unlinkingPlatform === 'kick'}
+            isMerging={mergingPlatform === 'kick'}
             icon={<KickIcon />}
           />
           <AccountRow
@@ -421,8 +555,10 @@ export default function ProfilePage() {
             account={profile?.linkedAccounts?.twitch}
             onLink={() => handleLinkAccount('twitch')}
             onUnlink={() => handleUnlinkAccount('twitch')}
+            onMerge={() => handleMergeAccount('twitch')}
             isLinking={linkingPlatform === 'twitch'}
             isUnlinking={unlinkingPlatform === 'twitch'}
+            isMerging={mergingPlatform === 'twitch'}
             icon={<TwitchIcon />}
           />
           <AccountRow
@@ -432,12 +568,24 @@ export default function ProfilePage() {
             account={profile?.linkedAccounts?.discord}
             onLink={() => handleLinkAccount('discord')}
             onUnlink={() => handleUnlinkAccount('discord')}
+            onMerge={() => handleMergeAccount('discord')}
             isLinking={linkingPlatform === 'discord'}
             isUnlinking={unlinkingPlatform === 'discord'}
+            isMerging={mergingPlatform === 'discord'}
             icon={<DiscordIcon />}
           />
         </CardContent>
       </Card>
+
+      {/* Merge Preview Modal */}
+      {showMergeModal && mergePreview && (
+        <MergePreviewModal
+          preview={mergePreview}
+          onConfirm={handleExecuteMerge}
+          onCancel={handleCancelMerge}
+          isExecuting={mergeExecuting}
+        />
+      )}
 
       {/* Danger Zone */}
       <Card variant="outlined" className="border-[var(--color-destructive)]/50 p-6">
@@ -490,8 +638,10 @@ function AccountRow({
   account,
   onLink,
   onUnlink,
+  onMerge,
   isLinking,
   isUnlinking,
+  isMerging,
   icon,
 }: {
   platform: string
@@ -500,8 +650,10 @@ function AccountRow({
   account: { username: string; id: string } | null | undefined
   onLink: () => void
   onUnlink: () => void
+  onMerge: () => void
   isLinking: boolean
   isUnlinking: boolean
+  isMerging: boolean
   icon: React.ReactNode
 }) {
   const isLinked = !!account
@@ -535,26 +687,152 @@ function AccountRow({
           )}
         </div>
       </div>
-      {isLinked ? (
-        <Button
-          onClick={onUnlink}
-          disabled={isUnlinking}
-          variant="ghost"
-          size="sm"
-        >
-          {isUnlinking ? <InitializingText text="..." className="text-xs" /> : 'UNLINK'}
-        </Button>
-      ) : (
-        <Button
-          onClick={onLink}
-          disabled={isLinking}
-          variant="outline"
-          size="sm"
-          style={{ borderColor: color, color }}
-        >
-          {isLinking ? <InitializingText text="..." className="text-xs" /> : 'LINK'}
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        {isLinked ? (
+          <Button
+            onClick={onUnlink}
+            disabled={isUnlinking}
+            variant="ghost"
+            size="sm"
+          >
+            {isUnlinking ? <InitializingText text="..." className="text-xs" /> : 'UNLINK'}
+          </Button>
+        ) : (
+          <>
+            <Button
+              onClick={onMerge}
+              disabled={isMerging || isLinking}
+              variant="ghost"
+              size="sm"
+              title="Merge existing account"
+            >
+              {isMerging ? <InitializingText text="..." className="text-xs" /> : 'MERGE'}
+            </Button>
+            <Button
+              onClick={onLink}
+              disabled={isLinking || isMerging}
+              variant="outline"
+              size="sm"
+              style={{ borderColor: color, color }}
+            >
+              {isLinking ? <InitializingText text="..." className="text-xs" /> : 'LINK'}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MergePreviewModal({
+  preview,
+  onConfirm,
+  onCancel,
+  isExecuting,
+}: {
+  preview: MergePreview
+  onConfirm: () => void
+  onCancel: () => void
+  isExecuting: boolean
+}) {
+  const formatNumber = (n: string | number) => {
+    const num = typeof n === 'string' ? parseInt(n, 10) : n
+    return num.toLocaleString()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <Card variant="default" glow="warning" className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <CardHeader className="p-6 border-b border-[var(--color-warning)]/30">
+          <CardTitle className="text-[var(--color-warning)]">ACCOUNT MERGE PREVIEW</CardTitle>
+          <p className="font-mono text-xs text-[var(--color-muted)] mt-2">
+            {'// REVIEW CHANGES BEFORE CONFIRMING'}
+          </p>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {/* Warnings */}
+          {preview.warnings.length > 0 && (
+            <div className="p-4 bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30">
+              <p className="font-display text-sm text-[var(--color-warning)] mb-2">WARNINGS</p>
+              {preview.warnings.map((w, i) => (
+                <p key={i} className="font-mono text-xs text-[var(--color-muted)]">• {w}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Accounts comparison */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-primary)]/30">
+              <p className="font-display text-sm text-[var(--color-primary)] mb-3">
+                PRIMARY (KEEPS)
+              </p>
+              <p className="font-mono text-lg mb-2">@{preview.primary.username}</p>
+              <div className="space-y-1 font-mono text-xs text-[var(--color-muted)]">
+                <p>Wealth: {formatNumber(preview.primary.wealth)}</p>
+                <p>Level: {preview.primary.level} ({preview.primary.tier})</p>
+                <p>Items: {preview.primary.inventory_count}</p>
+                <p>Platforms: {preview.primary.platforms.join(', ').toUpperCase()}</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-destructive)]/30">
+              <p className="font-display text-sm text-[var(--color-destructive)] mb-3">
+                SECONDARY (MERGES)
+              </p>
+              <p className="font-mono text-lg mb-2">@{preview.secondary.username}</p>
+              <div className="space-y-1 font-mono text-xs text-[var(--color-muted)]">
+                <p>Wealth: {formatNumber(preview.secondary.wealth)}</p>
+                <p>Level: {preview.secondary.level} ({preview.secondary.tier})</p>
+                <p>Items: {preview.secondary.inventory_count}</p>
+                <p>Platforms: {preview.secondary.platforms.join(', ').toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Result */}
+          <div className="p-4 bg-[var(--color-success)]/10 border border-[var(--color-success)]/30">
+            <p className="font-display text-sm text-[var(--color-success)] mb-3">
+              MERGED RESULT
+            </p>
+            <div className="grid grid-cols-2 gap-4 font-mono text-sm">
+              <div>
+                <p>Wealth: <span className="text-[var(--color-success)]">{formatNumber(preview.result.wealth)}</span></p>
+                <p>Level: <span className="text-[var(--color-success)]">{preview.result.level}</span> ({preview.result.tier})</p>
+              </div>
+              <div>
+                <p>Items: <span className="text-[var(--color-success)]">{preview.result.inventory_count}</span></p>
+                <p>Platforms: <span className="text-[var(--color-success)]">{preview.result.platforms.join(', ').toUpperCase()}</span></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className="p-4 bg-[var(--color-destructive)]/10 border border-[var(--color-destructive)]/30">
+            <p className="font-mono text-xs text-[var(--color-destructive)]">
+              ⚠ THE SECONDARY ACCOUNT WILL BE PERMANENTLY DELETED AFTER MERGE.
+              THIS ACTION CANNOT BE UNDONE.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-4">
+            <Button
+              onClick={onCancel}
+              variant="ghost"
+              disabled={isExecuting}
+            >
+              CANCEL
+            </Button>
+            <Button
+              onClick={onConfirm}
+              variant="destructive"
+              disabled={isExecuting}
+            >
+              {isExecuting ? <InitializingText text="MERGING" /> : 'CONFIRM MERGE'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

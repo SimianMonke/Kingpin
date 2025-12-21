@@ -5,11 +5,19 @@ import TwitchProvider from 'next-auth/providers/twitch'
 import { cookies } from 'next/headers'
 import { prisma } from './db'
 
-// Cookie name for linking intent (must match route.ts)
+// Cookie names (must match route.ts files)
 const LINK_INTENT_COOKIE = 'kingpin_link_intent'
+const MERGE_INTENT_COOKIE = 'kingpin_merge_intent'
+const MERGE_PENDING_COOKIE = 'kingpin_merge_pending'
 
 interface LinkIntent {
   user_id: number
+  platform: string
+  expires: number
+}
+
+interface MergeIntent {
+  primary_user_id: number
   platform: string
   expires: number
 }
@@ -141,7 +149,75 @@ export const authOptions: NextAuthOptions = {
           return '/profile?success=linked&platform=' + account.provider
         }
 
-        // Normal sign-in flow (not linking)
+        // Check for merge intent cookie
+        let mergeIntent: MergeIntent | null = null
+        try {
+          const cookieStore = await cookies()
+          const mergeCookie = cookieStore.get(MERGE_INTENT_COOKIE)
+          if (mergeCookie?.value) {
+            mergeIntent = JSON.parse(mergeCookie.value) as MergeIntent
+
+            // Validate the cookie
+            if (
+              mergeIntent.platform !== account.provider ||
+              Date.now() > mergeIntent.expires
+            ) {
+              mergeIntent = null
+            }
+
+            // Clear the merge intent cookie
+            cookieStore.delete(MERGE_INTENT_COOKIE)
+          }
+        } catch {
+          // Cookie parsing failed
+        }
+
+        // If this is a merge operation
+        if (mergeIntent) {
+          console.log(`Merge attempt: ${account.provider} account ${account.providerAccountId} into user ${mergeIntent.primary_user_id}`)
+
+          // Find the user who owns this platform account
+          const secondaryUser = await prisma.users.findFirst({
+            where: { [platformField]: account.providerAccountId },
+          })
+
+          if (!secondaryUser) {
+            // No account found with this platform ID - can't merge, offer to link instead
+            return '/profile?error=no_account_to_merge&platform=' + account.provider
+          }
+
+          if (secondaryUser.id === mergeIntent.primary_user_id) {
+            // Trying to merge with themselves
+            return '/profile?error=cannot_merge_self&platform=' + account.provider
+          }
+
+          if (secondaryUser.merged_into_user_id) {
+            // Account was already merged
+            return '/profile?error=already_merged&platform=' + account.provider
+          }
+
+          // Store pending merge info in a cookie for the preview page
+          const cookieStore = await cookies()
+          const pendingMerge = JSON.stringify({
+            primary_user_id: mergeIntent.primary_user_id,
+            secondary_user_id: secondaryUser.id,
+            platform: account.provider,
+            expires: Date.now() + 30 * 60 * 1000, // 30 minutes to complete
+          })
+
+          cookieStore.set(MERGE_PENDING_COOKIE, pendingMerge, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 1800, // 30 minutes
+            path: '/',
+          })
+
+          console.log(`Merge pending: User ${secondaryUser.id} -> User ${mergeIntent.primary_user_id}`)
+          return '/profile?merge_pending=true'
+        }
+
+        // Normal sign-in flow (not linking or merging)
         // Check if user exists with this platform ID
         let dbUser = await prisma.users.findFirst({
           where: { [platformField]: account.providerAccountId },
@@ -153,6 +229,26 @@ export const authOptions: NextAuthOptions = {
           if (account.provider === 'discord') {
             console.log(`Discord sign-in rejected: No existing account for Discord ID ${account.providerAccountId}`)
             return '/login?error=DiscordAccountNotLinked'
+          }
+
+          // Check if a user with the same username exists on another platform
+          // This prevents accidental duplicate accounts
+          const existingUserWithSameName = await prisma.users.findFirst({
+            where: {
+              username: { equals: user.name || '', mode: 'insensitive' },
+              merged_into_user_id: null, // Not already merged
+            },
+          })
+
+          if (existingUserWithSameName) {
+            // A user with this username exists - prompt to merge instead
+            console.log(`Duplicate username detected: ${user.name} already exists as user ${existingUserWithSameName.id}`)
+            const otherPlatform = existingUserWithSameName.kick_user_id
+              ? 'Kick'
+              : existingUserWithSameName.twitch_user_id
+                ? 'Twitch'
+                : 'another platform'
+            return `/login?error=DuplicateUsername&username=${encodeURIComponent(user.name || '')}&platform=${otherPlatform}`
           }
 
           // Create new user (only for Kick/Twitch)
