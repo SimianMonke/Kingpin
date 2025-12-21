@@ -163,8 +163,29 @@ export default function DashboardPage() {
     return lastCheckIn.toDateString() !== now.toDateString()
   }
 
-  const xpForNextLevel = (level: number) => Math.floor(100 * Math.pow(1.25, level - 1))
-  const xpProgress = profile ? (profile.xp / xpForNextLevel(profile.level + 1)) * 100 : 0
+  // XP calculation helpers (matching formulas.ts)
+  const xpForLevel = (level: number) => Math.floor(100 * Math.pow(1.25, level - 1))
+  const totalXpForLevel = (level: number) => {
+    let total = 0
+    for (let i = 1; i <= level; i++) {
+      total += xpForLevel(i)
+    }
+    return total
+  }
+
+  // Calculate XP progress within current level
+  const getXpProgress = () => {
+    if (!profile) return { current: 0, required: 100, percentage: 0 }
+    const xpToReachCurrentLevel = totalXpForLevel(profile.level - 1)
+    const xpNeededForThisLevel = xpForLevel(profile.level)
+    const progressInLevel = profile.xp - xpToReachCurrentLevel
+    return {
+      current: Math.max(0, progressInLevel),
+      required: xpNeededForThisLevel,
+      percentage: Math.min(100, (progressInLevel / xpNeededForThisLevel) * 100),
+    }
+  }
+  const xpProgressData = getXpProgress()
 
   if (loading) {
     return <PageLoader message="LOADING EMPIRE DATA" />
@@ -286,13 +307,13 @@ export default function DashboardPage() {
                   EXPERIENCE
                 </span>
                 <span className="font-mono text-xs text-[var(--color-primary)]">
-                  <KineticNumber value={profile?.xp || 0} /> / {xpForNextLevel((profile?.level || 0) + 1)}
+                  <KineticNumber value={xpProgressData.current} /> / {xpProgressData.required}
                 </span>
               </div>
               <div className="h-2 bg-[var(--color-surface)] border border-[var(--color-primary)]/30">
                 <div
                   className="h-full bg-[var(--color-primary)] transition-all duration-500"
-                  style={{ width: `${Math.min(xpProgress, 100)}%` }}
+                  style={{ width: `${xpProgressData.percentage}%` }}
                 />
               </div>
             </div>
