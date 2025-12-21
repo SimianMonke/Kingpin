@@ -2,7 +2,17 @@ import { NextAuthOptions } from 'next-auth'
 import type { OAuthConfig } from 'next-auth/providers/oauth'
 import DiscordProvider from 'next-auth/providers/discord'
 import TwitchProvider from 'next-auth/providers/twitch'
+import { cookies } from 'next/headers'
 import { prisma } from './db'
+
+// Cookie name for linking intent (must match route.ts)
+const LINK_INTENT_COOKIE = 'kingpin_link_intent'
+
+interface LinkIntent {
+  user_id: number
+  platform: string
+  expires: number
+}
 
 // Kick API response structure: { message: string, data: [{ user_id, name, email, profile_picture }] }
 interface KickApiResponse {
@@ -75,10 +85,63 @@ export const authOptions: NextAuthOptions = {
       if (!account || !user) return false
 
       try {
-        // Find or create user based on platform
         const platformField = getPlatformField(account.provider)
         if (!platformField) return false
 
+        // Check for linking intent cookie (for single-redirect platforms like Kick)
+        let linkIntent: LinkIntent | null = null
+        try {
+          const cookieStore = await cookies()
+          const linkCookie = cookieStore.get(LINK_INTENT_COOKIE)
+          if (linkCookie?.value) {
+            linkIntent = JSON.parse(linkCookie.value) as LinkIntent
+
+            // Validate the cookie
+            if (
+              linkIntent.platform !== account.provider ||
+              Date.now() > linkIntent.expires
+            ) {
+              linkIntent = null // Invalid or expired
+            }
+
+            // Clear the cookie regardless
+            cookieStore.delete(LINK_INTENT_COOKIE)
+          }
+        } catch {
+          // Cookie parsing failed, continue with normal sign-in
+        }
+
+        // If this is a linking operation
+        if (linkIntent) {
+          console.log(`Linking ${account.provider} account ${account.providerAccountId} to user ${linkIntent.user_id}`)
+
+          // Check if this platform ID is already linked to someone
+          const existingUser = await prisma.users.findFirst({
+            where: { [platformField]: account.providerAccountId },
+          })
+
+          if (existingUser) {
+            if (existingUser.id === linkIntent.user_id) {
+              // Already linked to this user - success
+              return '/profile?success=already_linked&platform=' + account.provider
+            } else {
+              // Linked to a different user - error
+              console.log(`${account.provider} ID ${account.providerAccountId} already linked to user ${existingUser.id}`)
+              return '/profile?error=already_linked_other&platform=' + account.provider
+            }
+          }
+
+          // Link the platform to the user
+          await prisma.users.update({
+            where: { id: linkIntent.user_id },
+            data: { [platformField]: account.providerAccountId },
+          })
+
+          console.log(`Successfully linked ${account.provider} account ${account.providerAccountId} to user ${linkIntent.user_id}`)
+          return '/profile?success=linked&platform=' + account.provider
+        }
+
+        // Normal sign-in flow (not linking)
         // Check if user exists with this platform ID
         let dbUser = await prisma.users.findFirst({
           where: { [platformField]: account.providerAccountId },
@@ -89,7 +152,6 @@ export const authOptions: NextAuthOptions = {
           // Users must first create an account via Kick or Twitch, then link Discord from profile
           if (account.provider === 'discord') {
             console.log(`Discord sign-in rejected: No existing account for Discord ID ${account.providerAccountId}`)
-            // Redirect to login page with custom error
             return '/login?error=DiscordAccountNotLinked'
           }
 
@@ -108,7 +170,6 @@ export const authOptions: NextAuthOptions = {
           // For Discord logins, verify the user has Kick or Twitch linked (security check)
           if (account.provider === 'discord') {
             if (!dbUser.kick_user_id && !dbUser.twitch_user_id) {
-              // This shouldn't happen in normal flow, but prevents orphaned Discord-only accounts
               console.log(`Discord sign-in rejected: User ${dbUser.id} has no Kick/Twitch linked`)
               return '/login?error=DiscordAccountNotLinked'
             }

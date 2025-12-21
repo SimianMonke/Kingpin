@@ -37,9 +37,15 @@ export const GET = withErrorHandling(async () => {
     lastCheckIn: profile.last_checkin_date?.toISOString() || null,
     created_at: profile.created_at.toISOString(),
     linkedAccounts: {
-      kick: profile.linkedPlatforms.includes('kick') ? { username: profile.username } : null,
-      twitch: profile.linkedPlatforms.includes('twitch') ? { username: profile.username } : null,
-      discord: profile.linkedPlatforms.includes('discord') ? { username: profile.username } : null,
+      kick: profile.kick_user_id
+        ? { id: profile.kick_user_id, username: profile.username }
+        : null,
+      twitch: profile.twitch_user_id
+        ? { id: profile.twitch_user_id, username: profile.username }
+        : null,
+      discord: profile.discord_user_id
+        ? { id: profile.discord_user_id, username: profile.discord_username || profile.username }
+        : null,
     },
   }
 
@@ -86,9 +92,15 @@ export const PATCH = withErrorHandling(async (request: NextRequest) => {
     lastCheckIn: profile.last_checkin_date?.toISOString() || null,
     created_at: profile.created_at.toISOString(),
     linkedAccounts: {
-      kick: profile.linkedPlatforms.includes('kick') ? { username: profile.username } : null,
-      twitch: profile.linkedPlatforms.includes('twitch') ? { username: profile.username } : null,
-      discord: profile.linkedPlatforms.includes('discord') ? { username: profile.username } : null,
+      kick: profile.kick_user_id
+        ? { id: profile.kick_user_id, username: profile.username }
+        : null,
+      twitch: profile.twitch_user_id
+        ? { id: profile.twitch_user_id, username: profile.username }
+        : null,
+      discord: profile.discord_user_id
+        ? { id: profile.discord_user_id, username: profile.discord_username || profile.username }
+        : null,
     },
   }
 

@@ -109,12 +109,21 @@ export class OAuthLinkService {
 
   /**
    * Build OAuth authorization URL for a platform
+   *
+   * For platforms that only allow one redirect URI (like Kick), we use
+   * NextAuth's callback URL and detect linking via stored state.
+   * For platforms with multiple URIs allowed, we use a dedicated link callback.
    */
   static buildAuthUrl(platform: LinkPlatform, state: string): string {
     const config = OAUTH_CONFIG[platform]
     const clientId = process.env[config.clientIdEnv]
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const callbackUrl = `${baseUrl}/api/auth/link/${platform}/callback`
+
+    // Kick only allows one redirect URI, so we reuse NextAuth's callback
+    // and detect linking via the oauth_link_states table in the signIn callback
+    const callbackUrl = platform === 'kick'
+      ? `${baseUrl}/api/auth/callback/kick`
+      : `${baseUrl}/api/auth/link/${platform}/callback`
 
     const params = new URLSearchParams({
       client_id: clientId!,
@@ -255,10 +264,10 @@ export class OAuthLinkService {
       [fieldName]: platformId,
     }
 
-    // Add platform-specific fields
+    // Add platform-specific fields (snake_case to match Prisma schema)
     if (platform === 'discord' && platformUsername) {
-      updateData.discordUsername = platformUsername
-      updateData.discordLinkedAt = new Date()
+      updateData.discord_username = platformUsername
+      updateData.discord_linked_at = new Date()
     }
 
     await prisma.users.update({
@@ -266,7 +275,7 @@ export class OAuthLinkService {
       data: updateData,
     })
 
-    console.log(`Linked ${platform} account ${platformId} to user ${user_id}`)
+    console.log(`Linked ${platform} account ${platformId} (${platformUsername}) to user ${user_id}`)
   }
 
   /**

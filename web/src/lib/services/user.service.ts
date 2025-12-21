@@ -50,6 +50,11 @@ export interface UserProfile {
   created_at: Date
   last_seen: Date
   linkedPlatforms: Platform[]
+  // Platform-specific IDs for linked accounts
+  kick_user_id: string | null
+  twitch_user_id: string | null
+  discord_user_id: string | null
+  discord_username: string | null
 }
 
 export interface CheckinResult {
@@ -173,7 +178,7 @@ export const UserService = {
 
     if (!user) return null
 
-    // Determine linked platforms
+    // Determine linked platforms with their IDs
     const linkedPlatforms: Platform[] = []
     if (user.kick_user_id) linkedPlatforms.push('kick')
     if (user.twitch_user_id) linkedPlatforms.push('twitch')
@@ -200,6 +205,11 @@ export const UserService = {
       created_at: user.created_at ?? new Date(),
       last_seen: user.last_seen ?? new Date(),
       linkedPlatforms,
+      // Platform-specific IDs for linked accounts display
+      kick_user_id: user.kick_user_id,
+      twitch_user_id: user.twitch_user_id,
+      discord_user_id: user.discord_user_id,
+      discord_username: user.discord_username,
     }
   },
 
