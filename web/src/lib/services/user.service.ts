@@ -323,6 +323,49 @@ export const UserService = {
   },
 
   /**
+   * Add XP to user within a transaction (for atomic operations)
+   * Use this when you need to increment XP as part of a larger transaction.
+   * This ensures level and tier are always recalculated when XP changes.
+   */
+  async addXpInTransaction(
+    user_id: number,
+    amount: number,
+    tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+  ): Promise<{ levelUp: boolean; newLevel: number; tierPromotion: boolean; newTier: string }> {
+    // Fetch current user within transaction for consistency
+    const user = await tx.users.findUnique({
+      where: { id: user_id },
+      select: { xp: true, level: true, status_tier: true },
+    })
+
+    if (!user) throw new Error('User not found')
+
+    const currentXp = user.xp ?? BigInt(0)
+    const newXp = currentXp + BigInt(amount)
+    const newLevel = levelFromXp(Number(newXp))
+    const newTier = getTierFromLevel(newLevel)
+
+    const levelUp = newLevel > (user.level ?? 1)
+    const tierPromotion = newTier !== user.status_tier
+
+    await tx.users.update({
+      where: { id: user_id },
+      data: {
+        xp: newXp,
+        level: newLevel,
+        status_tier: newTier,
+      },
+    })
+
+    return {
+      levelUp,
+      newLevel,
+      tierPromotion,
+      newTier,
+    }
+  },
+
+  /**
    * Process daily check-in
    */
   async processCheckin(user_id: number): Promise<CheckinResult> {

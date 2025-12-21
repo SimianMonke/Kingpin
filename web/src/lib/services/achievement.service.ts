@@ -1,6 +1,7 @@
 import { prisma } from '../db'
 import { ACHIEVEMENT_CATEGORIES, ACHIEVEMENT_TIERS, BOND_CONFIG } from '../game'
 import { TitleService } from './title.service'
+import { UserService } from './user.service'
 
 // =============================================================================
 // ACHIEVEMENT SERVICE TYPES
@@ -391,13 +392,15 @@ export const AchievementService = {
       })
 
       // Award rewards
-      await tx.users.update({
-        where: { id: user_id },
-        data: {
-          wealth: { increment: achievement.reward_wealth ?? 0 },
-          xp: { increment: achievement.reward_xp ?? 0 },
-        },
-      })
+      if (achievement.reward_wealth && achievement.reward_wealth > 0) {
+        await tx.users.update({
+          where: { id: user_id },
+          data: { wealth: { increment: achievement.reward_wealth } },
+        })
+      }
+      if (achievement.reward_xp && achievement.reward_xp > 0) {
+        await UserService.addXpInTransaction(user_id, achievement.reward_xp, tx)
+      }
 
       // Unlock title if applicable
       if (achievement.reward_title) {

@@ -12,6 +12,7 @@ import { NotificationService } from './notification.service'
 import { DiscordService } from './discord.service'
 import { BuffService } from './buff.service'
 import { InsuranceService } from './insurance.service'
+import { UserService } from './user.service'
 
 // =============================================================================
 // ROB SERVICE TYPES
@@ -313,11 +314,8 @@ export const RobService = {
         })
       }
 
-      // 2. Add XP to attacker
-      await tx.users.update({
-        where: { id: attackerId },
-        data: { xp: { increment: xpGained } },
-      })
+      // 2. Add XP to attacker (with level recalculation)
+      await UserService.addXpInTransaction(attackerId, xpGained, tx)
 
       // 3. Degrade equipment (NOW INSIDE transaction)
       const [weaponDamage, armorDamage] = await Promise.all([

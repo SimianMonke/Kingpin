@@ -27,6 +27,7 @@ import {
   getMaxBet,
   BlackjackCard,
 } from '@/lib/game/formulas'
+import { UserService } from './user.service'
 
 // =============================================================================
 // TYPES
@@ -230,9 +231,13 @@ export const GamblingService = {
         where: { id: user_id },
         data: {
           wealth: { increment: netChange },
-          xp: { increment: BigInt(xpGained) },
         },
       })
+
+      // Add XP with level recalculation
+      if (xpGained > 0) {
+        await UserService.addXpInTransaction(user_id, xpGained, tx)
+      }
 
       // Record gambling session
       await tx.gambling_sessions.create({
@@ -558,9 +563,13 @@ export const GamblingService = {
         where: { id: session.user_id },
         data: {
           wealth: { increment: payout },
-          xp: { increment: BigInt(xpGained) },
         },
       })
+
+      // Add XP with level recalculation
+      if (xpGained > 0) {
+        await UserService.addXpInTransaction(session.user_id, xpGained, tx)
+      }
 
       // Update stats
       const existingStats = await tx.player_gambling_stats.findUnique({ where: { user_id: session.user_id } })

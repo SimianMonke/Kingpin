@@ -13,6 +13,7 @@ import {
 import { getTierFromLevel } from '../game/formulas'
 import { CrateService } from './crate.service'
 import { FactionService } from './faction.service'
+import { UserService } from './user.service'
 
 // =============================================================================
 // MISSION SERVICE TYPES
@@ -483,14 +484,19 @@ export const MissionService = {
 
     // Process rewards in transaction
     await prisma.$transaction(async (tx) => {
-      // Award wealth and XP (totalWealth already includes capped base + bonus)
+      // Award wealth (totalWealth already includes capped base + bonus)
       await tx.users.update({
         where: { id: user_id },
         data: {
           wealth: { increment: totalWealth },
-          xp: { increment: totalXp + bonus.xp },
         },
       })
+
+      // Award XP with level recalculation
+      const xpToAward = totalXp + bonus.xp
+      if (xpToAward > 0) {
+        await UserService.addXpInTransaction(user_id, xpToAward, tx)
+      }
 
       // Mark missions as claimed
       await tx.user_missions.updateMany({

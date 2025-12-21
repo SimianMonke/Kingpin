@@ -10,6 +10,7 @@ import {
 } from '../game'
 import { getTierFromLevel } from '../game/formulas'
 import { CrateService } from './crate.service'
+import { UserService } from './user.service'
 
 // =============================================================================
 // FACTION SERVICE TYPES
@@ -620,12 +621,17 @@ export const FactionService = {
         const isTopContributor = topContributors.some(tc => tc.user_id === member.user_id)
         const crateToAward = isTopContributor ? CRATE_TIERS.RARE : null
 
-        await prisma.users.update({
-          where: { id: member.user_id },
-          data: {
-            wealth: { increment: perMemberWealth },
-            xp: { increment: perMemberXp },
-          },
+        // Award wealth and XP (with level recalculation) in transaction
+        await prisma.$transaction(async (tx) => {
+          await tx.users.update({
+            where: { id: member.user_id },
+            data: {
+              wealth: { increment: perMemberWealth },
+            },
+          })
+          if (perMemberXp > 0) {
+            await UserService.addXpInTransaction(member.user_id, perMemberXp, tx)
+          }
         })
 
         // Award crate to top contributors
