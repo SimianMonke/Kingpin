@@ -105,7 +105,16 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
     try {
       return await handler(request, context)
     } catch (error) {
-      console.error('API Error:', error)
+      // Log full error details for debugging
+      console.error('API Error:', {
+        url: request.url,
+        method: request.method,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        } : error,
+      })
 
       if (error instanceof AuthError) {
         return unauthorizedResponse(error.message)
@@ -116,10 +125,11 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
       }
 
       if (error instanceof Error) {
-        // Don't expose internal errors in production
+        // Include error class name in production for debugging
+        // (e.g., "PrismaClientKnownRequestError" helps identify DB issues)
         const message = process.env.NODE_ENV === 'development'
           ? error.message
-          : 'An error occurred'
+          : `An error occurred (${error.name})`
         return serverErrorResponse(message)
       }
 

@@ -259,11 +259,19 @@ export const PlayService = {
 
     // Apply consumable buffs (from Supply Depot purchases)
     let consumableBuffBonuses: { wealthBonus: number; xpBonus: number; crateDropBonus: number; buffsApplied: string[] } | undefined
-    const [xpMultiplier, wealthMultiplier, crateDropMultiplier] = await Promise.all([
-      BuffService.getMultiplier(user_id, 'xp_multiplier'),
-      BuffService.getMultiplier(user_id, 'wealth_gain'),
-      BuffService.getMultiplier(user_id, 'crate_drop'),
-    ])
+    let xpMultiplier = 1
+    let wealthMultiplier = 1
+    let crateDropMultiplier = 1
+    try {
+      [xpMultiplier, wealthMultiplier, crateDropMultiplier] = await Promise.all([
+        BuffService.getMultiplier(user_id, 'xp_multiplier'),
+        BuffService.getMultiplier(user_id, 'wealth_gain'),
+        BuffService.getMultiplier(user_id, 'crate_drop'),
+      ])
+    } catch (error) {
+      // Non-critical: if buff check fails, continue without buffs
+      console.error('BuffService.getMultiplier failed:', error)
+    }
 
     if (xpMultiplier > 1 || wealthMultiplier > 1 || crateDropMultiplier > 1) {
       let consumableWealthBonus = 0
@@ -317,7 +325,13 @@ export const PlayService = {
 
     // Apply faction territory buffs
     let factionBonuses: { wealthBonus: number; xpBonus: number; buffsApplied: string[] } | undefined
-    const factionBuffs = await FactionService.getAggregatedBuffs(user_id)
+    let factionBuffs: Record<string, number> = {}
+    try {
+      factionBuffs = await FactionService.getAggregatedBuffs(user_id)
+    } catch (error) {
+      // Non-critical: if faction buff check fails, continue without buffs
+      console.error('FactionService.getAggregatedBuffs failed:', error)
+    }
     if (Object.keys(factionBuffs).length > 0) {
       let factionWealthBonus = 0
       let factionXpBonus = 0
@@ -385,12 +399,17 @@ export const PlayService = {
 
     // Check for crate_magnet consumable (guarantees 50% drop chance)
     let usedCrateMagnet = false
-    const hasCrateMagnet = await ConsumableService.hasConsumable(user_id, 'crate_magnet')
-    if (hasCrateMagnet && Math.random() < 0.5) {
-      // Magnet triggers on 50% chance - consume and guarantee drop
-      await ConsumableService.useConsumable(user_id, 'crate_magnet')
-      crateDropChance = 1.0  // Guarantee drop
-      usedCrateMagnet = true
+    try {
+      const hasCrateMagnet = await ConsumableService.hasConsumable(user_id, 'crate_magnet')
+      if (hasCrateMagnet && Math.random() < 0.5) {
+        // Magnet triggers on 50% chance - consume and guarantee drop
+        await ConsumableService.useConsumable(user_id, 'crate_magnet')
+        crateDropChance = 1.0  // Guarantee drop
+        usedCrateMagnet = true
+      }
+    } catch (error) {
+      // Non-critical: if consumable check fails, continue without magnet
+      console.error('ConsumableService.hasConsumable failed:', error)
     }
 
     const crateDropped = Math.random() < crateDropChance
