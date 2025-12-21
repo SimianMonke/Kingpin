@@ -210,8 +210,9 @@ export const PlayService = {
       tokenConsumed = true
       currentTokenBalance -= TOKEN_CONFIG.PLAY_TOKEN_COST
     }
-    // Phase 3A: Optional token bonus (only if tokens NOT required, or as additional bonus)
-    else if (useToken && preCheck.tokenBalance >= TOKEN_CONFIG.PLAY_BONUS_COST) {
+    // Phase 3A: Optional token bonus (can stack with required token cost)
+    // Check against currentTokenBalance which accounts for any token already consumed above
+    if (useToken && currentTokenBalance >= TOKEN_CONFIG.PLAY_BONUS_COST) {
       const bonusResult = await TokenService.spendTokenForPlayBonus(user_id)
       if (bonusResult.success) {
         tokenBonusApplied = true
