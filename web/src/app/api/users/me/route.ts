@@ -19,9 +19,12 @@ export const GET = withErrorHandling(async () => {
     return unauthorizedResponse()
   }
 
-  const profile = await UserService.getProfile(session.user.id)
+  const [profile, user] = await Promise.all([
+    UserService.getProfile(session.user.id),
+    UserService.findById(session.user.id),
+  ])
 
-  if (!profile) {
+  if (!profile || !user) {
     return errorResponse('User not found', 404)
   }
 
@@ -30,6 +33,8 @@ export const GET = withErrorHandling(async () => {
     id: String(profile.id),
     kingpin_name: profile.kingpin_name,
     wealth: Number(profile.wealth),
+    tokens: user.tokens ?? 0,
+    bonds: user.bonds ?? 0,
     level: profile.level,
     xp: Number(profile.xp),
     tier: profile.status_tier,
@@ -75,9 +80,12 @@ export const PATCH = withErrorHandling(async (request: NextRequest) => {
   }
 
   // Return updated profile in frontend-expected format
-  const profile = await UserService.getProfile(session.user.id)
+  const [profile, user] = await Promise.all([
+    UserService.getProfile(session.user.id),
+    UserService.findById(session.user.id),
+  ])
 
-  if (!profile) {
+  if (!profile || !user) {
     return errorResponse('User not found', 404)
   }
 
@@ -85,6 +93,8 @@ export const PATCH = withErrorHandling(async (request: NextRequest) => {
     id: String(profile.id),
     kingpin_name: profile.kingpin_name,
     wealth: Number(profile.wealth),
+    tokens: user.tokens ?? 0,
+    bonds: user.bonds ?? 0,
     level: profile.level,
     xp: Number(profile.xp),
     tier: profile.status_tier,
