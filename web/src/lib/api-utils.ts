@@ -125,11 +125,10 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
       }
 
       if (error instanceof Error) {
-        // Include error class name in production for debugging
-        // (e.g., "PrismaClientKnownRequestError" helps identify DB issues)
+        // Include error details in production for debugging
         const message = process.env.NODE_ENV === 'development'
           ? error.message
-          : `An error occurred (${error.name})`
+          : `An error occurred (${error.name}: ${error.message.slice(0, 100)})`
         return serverErrorResponse(message)
       }
 
