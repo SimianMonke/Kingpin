@@ -271,10 +271,15 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
-          // Update last seen
+          // Update last seen and sync username from platform
+          // This keeps the username current if user changes it on the platform
           await prisma.users.update({
             where: { id: dbUser.id },
-            data: { last_seen: new Date() },
+            data: {
+              last_seen: new Date(),
+              username: user.name || dbUser.username,
+              display_name: user.name || dbUser.display_name,
+            },
           })
         }
 
