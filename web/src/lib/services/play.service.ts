@@ -12,6 +12,7 @@ import {
   CRATE_SOURCES,
   MISSION_OBJECTIVE_TYPES,
   ACHIEVEMENT_REQUIREMENT_TYPES,
+  TOKEN_CONFIG,
   type Tier,
   type CrateTier,
   type PlayEventDef,
@@ -27,6 +28,7 @@ import { NotificationService } from './notification.service'
 import { DiscordService } from './discord.service'
 import { BuffService } from './buff.service'
 import { ConsumableService } from './consumable.service'
+import { TokenService } from './token.service'
 
 // Note: Weapon durability is NOT affected by play events.
 // Durability only decays during robbery actions (attacker: -3, defender: -2).
@@ -62,6 +64,16 @@ export interface PlayResult {
   crateLost?: boolean
   usedCrateMagnet?: boolean  // True if crate_magnet consumable was used
 
+  // Token system (Phase 3)
+  tokenBonusApplied?: boolean      // True if player spent token for bonus
+  tokenBonusMultiplier?: number    // The multiplier applied (1.25 = 25% bonus)
+  tokenBonuses?: {
+    wealthBonus: number
+    xpBonus: number
+  }
+  tokenConsumed?: boolean          // True if token was consumed (Phase 3B)
+  tokensRemaining?: number         // Player's remaining tokens after play
+
   // Buffs applied
   consumableBuffBonuses?: {
     wealthBonus: number
@@ -92,6 +104,11 @@ export interface PlayPreCheck {
   reason?: string
   isJailed: boolean
   jailTimeRemaining?: string
+  // Token system (Phase 3)
+  tokensRequired: boolean          // True if tokens are required to play (Phase 3B)
+  hasEnoughTokens: boolean         // True if player has tokens to play
+  tokenBalance: number             // Current token balance
+  tokenCost: number                // Tokens required to play (when required)
 }
 
 // =============================================================================
@@ -106,25 +123,54 @@ export const PlayService = {
     // Check jail status
     const jailStatus = await JailService.getJailStatus(user_id)
 
+    // Get token status for Phase 3
+    const tokenStatus = await TokenService.getTokenStatus(user_id)
+    const tokensRequired = TOKEN_CONFIG.REQUIRE_TOKEN_FOR_PLAY
+    const tokenCost = TOKEN_CONFIG.PLAY_TOKEN_COST
+    const hasEnoughTokens = tokenStatus.tokens >= tokenCost
+
     if (jailStatus.isJailed) {
       return {
         canPlay: false,
         reason: `You're in jail! ${jailStatus.remainingFormatted} remaining. Use bail to escape early.`,
         isJailed: true,
         jailTimeRemaining: jailStatus.remainingFormatted ?? undefined,
+        tokensRequired,
+        hasEnoughTokens,
+        tokenBalance: tokenStatus.tokens,
+        tokenCost,
+      }
+    }
+
+    // Phase 3B: Check token requirement
+    if (tokensRequired && !hasEnoughTokens) {
+      return {
+        canPlay: false,
+        reason: `You need ${tokenCost} token(s) to play! You have ${tokenStatus.tokens}. Earn tokens from channel points or buy with !buytoken.`,
+        isJailed: false,
+        tokensRequired,
+        hasEnoughTokens,
+        tokenBalance: tokenStatus.tokens,
+        tokenCost,
       }
     }
 
     return {
       canPlay: true,
       isJailed: false,
+      tokensRequired,
+      hasEnoughTokens,
+      tokenBalance: tokenStatus.tokens,
+      tokenCost,
     }
   },
 
   /**
    * Execute play action
+   * @param user_id - The user's ID
+   * @param useToken - Phase 3A: If true, spend a token for 25% bonus rewards (optional)
    */
-  async executePlay(user_id: number): Promise<PlayResult> {
+  async executePlay(user_id: number, useToken: boolean = false): Promise<PlayResult> {
     // Pre-check
     const preCheck = await this.canPlay(user_id)
     if (!preCheck.canPlay) {
@@ -137,6 +183,40 @@ export const PlayService = {
         levelUp: false,
         tierPromotion: false,
         crateDropped: false,
+        tokensRemaining: preCheck.tokenBalance,
+      }
+    }
+
+    // Phase 3: Token handling
+    let tokenBonusApplied = false
+    let tokenBonusMultiplier = 1.0
+    let tokenConsumed = false
+    let currentTokenBalance = preCheck.tokenBalance
+
+    // Phase 3B: If tokens are required, consume one
+    if (TOKEN_CONFIG.REQUIRE_TOKEN_FOR_PLAY) {
+      await prisma.users.update({
+        where: { id: user_id },
+        data: { tokens: { decrement: TOKEN_CONFIG.PLAY_TOKEN_COST } },
+      })
+      await prisma.token_transactions.create({
+        data: {
+          user_id,
+          amount: -TOKEN_CONFIG.PLAY_TOKEN_COST,
+          type: 'PLAY_COST',
+          description: 'Token consumed for !play',
+        },
+      })
+      tokenConsumed = true
+      currentTokenBalance -= TOKEN_CONFIG.PLAY_TOKEN_COST
+    }
+    // Phase 3A: Optional token bonus (only if tokens NOT required, or as additional bonus)
+    else if (useToken && preCheck.tokenBalance >= TOKEN_CONFIG.PLAY_BONUS_COST) {
+      const bonusResult = await TokenService.spendTokenForPlayBonus(user_id)
+      if (bonusResult.success) {
+        tokenBonusApplied = true
+        tokenBonusMultiplier = bonusResult.bonusMultiplier
+        currentTokenBalance -= TOKEN_CONFIG.PLAY_BONUS_COST
       }
     }
 
@@ -274,6 +354,19 @@ export const PlayService = {
           xpBonus: factionXpBonus,
           buffsApplied,
         }
+      }
+    }
+
+    // Apply token bonus (Phase 3A) - applied last so it stacks with all other buffs
+    let tokenBonuses: { wealthBonus: number; xpBonus: number } | undefined
+    if (tokenBonusApplied && tokenBonusMultiplier > 1) {
+      const tokenWealthBonus = Math.floor(wealth_earned * (tokenBonusMultiplier - 1))
+      const tokenXpBonus = Math.floor(xp_earned * (tokenBonusMultiplier - 1))
+      wealth_earned += tokenWealthBonus
+      xp_earned += tokenXpBonus
+      tokenBonuses = {
+        wealthBonus: tokenWealthBonus,
+        xpBonus: tokenXpBonus,
       }
     }
 
@@ -462,6 +555,13 @@ export const PlayService = {
       crateToEscrow,
       crateLost,
       usedCrateMagnet: magnetUsedForDrop,
+      // Token system (Phase 3)
+      tokenBonusApplied,
+      tokenBonusMultiplier: tokenBonusApplied ? tokenBonusMultiplier : undefined,
+      tokenBonuses,
+      tokenConsumed,
+      tokensRemaining: currentTokenBalance,
+      // Buffs
       consumableBuffBonuses,
       juicernautBonuses,
       factionBonuses,

@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { checkRateLimit, getRateLimitHeaders, type RateLimitType } from './rate-limit';
+import { validateAdminSession, getAdminSessionInfo, extendAdminSession } from './session';
 
 // =============================================================================
 // Types
@@ -46,6 +48,13 @@ export async function getAdminSession(): Promise<AdminSession | null> {
 
   // Check if user is admin and not revoked
   if (!adminUser || adminUser.revoked_at) {
+    return null;
+  }
+
+  // Validate admin session timeout (8 hours)
+  const sessionValidation = await validateAdminSession(userId);
+  if (!sessionValidation.valid) {
+    // Session expired
     return null;
   }
 
@@ -183,6 +192,7 @@ type AdminHandler = (
 interface WithAdminAuthOptions {
   minRole?: AdminRole;
   requiredPermission?: string;
+  rateLimit?: RateLimitType;
 }
 
 /**
@@ -222,8 +232,41 @@ export function withAdminAuth(
         }
       }
 
+      // Apply rate limiting
+      const rateLimitType = options?.rateLimit ?? inferRateLimitType(req.method);
+      let rateLimitResult = null;
+
+      if (rateLimitType) {
+        rateLimitResult = checkRateLimit(adminContext.admin.userId, rateLimitType);
+
+        if (!rateLimitResult.allowed) {
+          const headers = getRateLimitHeaders(rateLimitResult, rateLimitType);
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'RATE_LIMITED',
+                message: `Rate limit exceeded. Try again in ${rateLimitResult.retryAfter} seconds.`,
+                retryAfter: rateLimitResult.retryAfter,
+              },
+            },
+            { status: 429, headers }
+          );
+        }
+      }
+
       // Call the actual handler
-      return await handler(req, adminContext);
+      const response = await handler(req, adminContext);
+
+      // Add rate limit headers to successful responses
+      if (rateLimitType && rateLimitResult) {
+        const headers = getRateLimitHeaders(rateLimitResult, rateLimitType);
+        for (const [key, value] of Object.entries(headers)) {
+          response.headers.set(key, value);
+        }
+      }
+
+      return response;
     } catch (error) {
       if (error instanceof AdminAuthError) {
         const status = error.code === 'UNAUTHORIZED' ? 401 : 403;
@@ -240,6 +283,27 @@ export function withAdminAuth(
       );
     }
   };
+}
+
+/**
+ * Infer rate limit type from HTTP method
+ */
+function inferRateLimitType(method: string | undefined): RateLimitType | null {
+  if (!method) return null;
+
+  switch (method.toUpperCase()) {
+    case 'GET':
+    case 'HEAD':
+    case 'OPTIONS':
+      return 'read';
+    case 'POST':
+    case 'PATCH':
+    case 'PUT':
+    case 'DELETE':
+      return 'write';
+    default:
+      return null;
+  }
 }
 
 // =============================================================================

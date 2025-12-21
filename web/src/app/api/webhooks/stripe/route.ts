@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { MonetizationService } from '@/lib/services'
+import { BondService } from '@/lib/services/bond.service'
 
 // =============================================================================
 // STRIPE WEBHOOK HANDLER
@@ -24,6 +25,19 @@ interface DonationMetadata {
   discord_user_id?: string
   username?: string
   platform?: string
+}
+
+// Bond purchase metadata (from checkout session)
+interface BondPurchaseMetadata {
+  purchase_type: 'bonds'
+  bundle_id: string
+  user_id: string
+  username: string
+  platform: string
+  platform_user_id: string
+  bonds_base: string
+  bonds_bonus: string
+  bonds_total: string
 }
 
 /**
@@ -156,9 +170,66 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Extract user from metadata
-        const metadata = (session.metadata || {}) as DonationMetadata
-        const userInfo = extractUserFromMetadata(metadata)
+        const metadata = session.metadata || {}
+
+        // =================================================================
+        // BOND PURCHASE FLOW
+        // =================================================================
+        if (metadata.purchase_type === 'bonds') {
+          const bondMetadata = metadata as unknown as BondPurchaseMetadata
+
+          const user_id = parseInt(bondMetadata.user_id, 10)
+          const bonds_total = parseInt(bondMetadata.bonds_total, 10)
+
+          if (isNaN(user_id) || isNaN(bonds_total)) {
+            console.error('Invalid bond purchase metadata:', bondMetadata)
+            return NextResponse.json({
+              success: false,
+              error: 'Invalid bond purchase metadata',
+            }, { status: 400 })
+          }
+
+          // Grant bonds to user
+          const result = await BondService.grantStripePurchase(
+            user_id,
+            bondMetadata.bundle_id,
+            bonds_total,
+            session.id,
+            amount_usd
+          )
+
+          if (!result.success) {
+            console.error('Failed to grant bonds:', result.error)
+            return NextResponse.json({
+              success: false,
+              error: result.error,
+            }, { status: 500 })
+          }
+
+          console.log(
+            `Bond purchase processed: ${bondMetadata.username} bought ${bonds_total} bonds ($${amount_usd})`
+          )
+
+          return NextResponse.json({
+            success: true,
+            type: 'bond_purchase',
+            user_id,
+            username: bondMetadata.username,
+            amount_usd,
+            bonds: {
+              total: bonds_total,
+              base: parseInt(bondMetadata.bonds_base, 10),
+              bonus: parseInt(bondMetadata.bonds_bonus, 10),
+            },
+            newBalance: result.newBalance,
+          })
+        }
+
+        // =================================================================
+        // DONATION FLOW (existing logic)
+        // =================================================================
+        const donationMetadata = metadata as DonationMetadata
+        const userInfo = extractUserFromMetadata(donationMetadata)
 
         if (!userInfo) {
           console.warn(
@@ -181,7 +252,7 @@ export async function POST(request: NextRequest) {
             stripeSessionId: session.id,
             customerEmail: session.customer_email,
             platform: userInfo.platform,
-            ...metadata,
+            ...donationMetadata,
           }
         )
 
@@ -191,6 +262,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
+          type: 'donation',
           eventId: result.eventId,
           user_id: result.user_id,
           amount_usd,

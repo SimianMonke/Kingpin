@@ -8,6 +8,7 @@ import {
   Tier,
   TIER_LEVELS,
   TIER_MULTIPLIERS,
+  PLAY_WEALTH_CAPS,
   ROB_CONFIG,
   CHECKIN_CONFIG,
   PLAY_EVENTS,
@@ -19,6 +20,7 @@ import {
   ItemTier,
   JUICERNAUT_BUFFS,
   JAIL_CONFIG,
+  BAIL_TIER_MULTIPLIERS,
   DURABILITY_CONFIG,
   SLOTS_CONFIG,
   GAMBLING_CONFIG,
@@ -200,6 +202,7 @@ export function selectPlayEvent(): PlayEventType {
 
 /**
  * Calculate play rewards with tier multiplier
+ * Phase 1 Economy Rebalance: Now applies tier-based wealth caps
  */
 export function calculatePlayRewards(
   event_type: PlayEventType,
@@ -215,6 +218,10 @@ export function calculatePlayRewards(
   let xp = Math.floor(
     (event.xp.min + Math.random() * (event.xp.max - event.xp.min)) * tier_multiplier
   )
+
+  // Phase 1: Apply tier-based wealth cap (before Juicernaut buff)
+  const wealthCap = PLAY_WEALTH_CAPS[tier]
+  wealth = Math.min(wealth, wealthCap)
 
   // Apply Juicernaut buffs
   if (isJuicernaut) {
@@ -294,10 +301,18 @@ export function getStreakMilestoneReward(streak: number): CrateTier | null {
 // =============================================================================
 
 /**
- * Calculate bail cost
+ * Calculate bail cost with tier-based scaling
+ * Phase 1: Base 15% rate with min $500, max $100k
+ * Phase 2: Tier multipliers (Rookie 0.5x → Kingpin 2.0x)
  */
-export function calculateBailCost(wealth: number): number {
-  return Math.max(JAIL_CONFIG.MIN_BAIL, Math.floor(wealth * JAIL_CONFIG.BAIL_COST_PERCENT))
+export function calculateBailCost(wealth: number, tier: Tier): number {
+  const tierMultiplier = BAIL_TIER_MULTIPLIERS[tier]
+  const effectivePercent = JAIL_CONFIG.BAIL_COST_PERCENT * tierMultiplier
+  const bail = Math.floor(wealth * effectivePercent)
+  return Math.min(
+    JAIL_CONFIG.MAX_BAIL,
+    Math.max(JAIL_CONFIG.MIN_BAIL, bail)
+  )
 }
 
 // =============================================================================

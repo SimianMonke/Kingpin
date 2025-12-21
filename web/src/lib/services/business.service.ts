@@ -2,6 +2,13 @@ import { prisma } from '../db'
 import { BUSINESS_REVENUE_CONFIG } from '../game'
 import { BuffService } from './buff.service'
 
+// Helper function for date manipulation (avoiding external dependencies)
+function startOfDay(date: Date): Date {
+  const result = new Date(date)
+  result.setHours(0, 0, 0, 0)
+  return result
+}
+
 // =============================================================================
 // BUSINESS SERVICE TYPES
 // =============================================================================
@@ -74,6 +81,7 @@ export const BusinessService = {
 
   /**
    * Collect revenue for a specific user's business
+   * Phase 1 Economy Rebalance: Now enforces daily cap of $50k across all businesses
    */
   async collectRevenue(user_id: number): Promise<BusinessRevenueResult | null> {
     // Find user's equipped business
@@ -96,6 +104,34 @@ export const BusinessService = {
       return null
     }
 
+    // Phase 1: Check daily cap before collecting
+    const todayStart = startOfDay(new Date())
+    const todaysCollections = await prisma.business_revenue_history.aggregate({
+      where: {
+        user_id: user_id,
+        collected_at: { gte: todayStart },
+        net_revenue: { gt: 0 },
+      },
+      _sum: { net_revenue: true },
+    })
+
+    const todayTotal = todaysCollections._sum.net_revenue || 0
+    const dailyCap = BUSINESS_REVENUE_CONFIG.DAILY_TOTAL_CAP
+    const remainingCap = dailyCap - todayTotal
+
+    if (remainingCap <= 0) {
+      // Daily cap reached - still record the collection attempt but with 0 revenue
+      return {
+        user_id,
+        businessName: equippedBusiness.items.name,
+        baseRevenue: 0,
+        variance: 0,
+        totalRevenue: 0,
+        operatingCost: 0,
+        netRevenue: 0,
+      }
+    }
+
     const dailyRevenue = equippedBusiness.items.daily_revenue_potential
     const operatingCost = Math.floor((equippedBusiness.items.operating_cost || 0) / BUSINESS_REVENUE_CONFIG.CALCULATIONS_PER_DAY)
 
@@ -104,7 +140,10 @@ export const BusinessService = {
 
     // Apply consumable buff (business_revenue multiplier from Supply Depot)
     const revenueMultiplier = await BuffService.getMultiplier(user_id, 'business_revenue')
-    const netRevenue = Math.floor(baseNetRevenue * revenueMultiplier)
+    let netRevenue = Math.floor(baseNetRevenue * revenueMultiplier)
+
+    // Phase 1: Cap to remaining daily allowance
+    netRevenue = Math.min(netRevenue, remainingCap)
 
     // Add wealth to user and record P&L history
     await prisma.$transaction([

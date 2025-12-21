@@ -36,6 +36,17 @@ export const TIER_MULTIPLIERS: Record<Tier, number> = {
   [TIERS.KINGPIN]: 1.5,
 }
 
+// Phase 1 Economy Rebalance: Tier-based wealth caps for play command
+// Prevents runaway inflation at high tiers while preserving new player experience
+export const PLAY_WEALTH_CAPS: Record<Tier, number> = {
+  [TIERS.ROOKIE]: 500,
+  [TIERS.ASSOCIATE]: 1500,
+  [TIERS.SOLDIER]: 3500,
+  [TIERS.CAPTAIN]: 7500,
+  [TIERS.UNDERBOSS]: 15000,
+  [TIERS.KINGPIN]: 30000,
+}
+
 // =============================================================================
 // ITEM TYPES & SLOTS
 // =============================================================================
@@ -72,22 +83,25 @@ export const STOLEN_ITEM_ESCROW_HOURS = 48 // HIGH-02: 48 hours for stolen items
 
 export const MAX_BUSINESSES_OWNED = 3  // Players can own up to 3 businesses
 
+// Phase 1 Economy Rebalance: Reduced business revenue rates (~50-62% reduction)
+// Added daily cap to prevent runaway passive income from multiple legendary businesses
 export const BUSINESS_REVENUE_CONFIG = {
   INTERVAL_HOURS: 3,          // Revenue collected every 3 hours
   CALCULATIONS_PER_DAY: 8,    // 24 / 3 = 8 collections per day
   VARIANCE_PERCENT: 20,       // ±20% random variance on revenue
   DAILY_REVENUE_BY_TIER: {
-    common: { min: 2000, max: 5000 },
-    uncommon: { min: 6000, max: 15000 },
-    rare: { min: 18000, max: 35000 },
-    legendary: { min: 40000, max: 80000 },
+    common: { min: 1000, max: 2500 },       // Was $2k-$5k (-50%)
+    uncommon: { min: 3000, max: 7500 },     // Was $6k-$15k (-50%)
+    rare: { min: 8000, max: 15000 },        // Was $18k-$35k (-55%)
+    legendary: { min: 15000, max: 30000 },  // Was $40k-$80k (-62%)
   },
   OPERATING_COST_BY_TIER: {
-    common: { min: 200, max: 500 },
-    uncommon: { min: 600, max: 1500 },
-    rare: { min: 1800, max: 3500 },
-    legendary: { min: 4000, max: 8000 },
+    common: { min: 500, max: 1000 },        // Increased 2.5x
+    uncommon: { min: 1500, max: 3000 },     // Increased 2x
+    rare: { min: 4000, max: 7500 },         // Increased 2x
+    legendary: { min: 8000, max: 15000 },   // Increased 2x
   },
+  DAILY_TOTAL_CAP: 50000,     // Max $50k/day from all businesses combined (was $240k max)
 } as const
 
 // =============================================================================
@@ -656,11 +670,165 @@ export const ROB_CONFIG = {
 // JAIL SYSTEM
 // =============================================================================
 
+// Phase 1 Economy Rebalance: Increased bail cost (was 10%, now 15%)
+// Added max bail cap to prevent catastrophic loss for wealthy players
 export const JAIL_CONFIG = {
   BUST_CHANCE: 0.05,            // 5% chance to get busted on !play
   DURATION_MINUTES: 60,         // 1 hour sentence
-  BAIL_COST_PERCENT: 0.10,      // 10% of wealth
-  MIN_BAIL: 100,                // Minimum bail amount
+  BAIL_COST_PERCENT: 0.15,      // 15% of wealth (was 10%)
+  MIN_BAIL: 500,                // Minimum bail amount (was $100)
+  MAX_BAIL: 100000,             // Maximum bail cap ($100k)
+}
+
+// Phase 2 Economy Rebalance: Tier-scaled bail multipliers
+// Higher tiers pay more as a percentage of wealth (aggressive sink for wealthy)
+export const BAIL_TIER_MULTIPLIERS: Record<Tier, number> = {
+  [TIERS.ROOKIE]: 0.5,       // 7.5% effective (helps new players)
+  [TIERS.ASSOCIATE]: 0.75,   // 11.25%
+  [TIERS.SOLDIER]: 1.0,      // 15% (base)
+  [TIERS.CAPTAIN]: 1.25,     // 18.75%
+  [TIERS.UNDERBOSS]: 1.5,    // 22.5%
+  [TIERS.KINGPIN]: 2.0,      // 30% (aggressive sink for wealthy)
+}
+
+// =============================================================================
+// INSURANCE SYSTEM (Phase 2 Economy Rebalance)
+// Robbery protection with recurring daily costs
+// =============================================================================
+
+export const INSURANCE_TIERS = {
+  NONE: 'none',
+  BASIC: 'basic',
+  STANDARD: 'standard',
+  PREMIUM: 'premium',
+  PLATINUM: 'platinum',
+} as const
+
+export type InsuranceTier = typeof INSURANCE_TIERS[keyof typeof INSURANCE_TIERS]
+
+export const INSURANCE_CONFIG = {
+  TIERS: {
+    none: {
+      protection: 0,           // No protection
+      dailyCost: 0,
+    },
+    basic: {
+      protection: 0.25,        // 25% of stolen wealth returned
+      dailyCost: 1000,         // $1,000/day
+    },
+    standard: {
+      protection: 0.50,        // 50%
+      dailyCost: 5000,         // $5,000/day
+    },
+    premium: {
+      protection: 0.75,        // 75%
+      dailyCost: 15000,        // $15,000/day
+    },
+    platinum: {
+      protection: 0.90,        // 90%
+      dailyCost: 50000,        // $50,000/day
+    },
+  } as Record<InsuranceTier, { protection: number; dailyCost: number }>,
+  AUTO_RENEW: true,            // Automatically deduct premium daily
+  GRACE_PERIOD_HOURS: 24,      // Hours before downgrade if can't afford
+}
+
+// =============================================================================
+// PHASE 3 ECONOMY REBALANCE: TOKEN SYSTEM
+// Gates wealth generation frequency by requiring tokens earned through engagement
+// =============================================================================
+
+export const TOKEN_CONFIG = {
+  // ===== EARNING =====
+  // Channel points conversion (primary earning method - ties to streamer engagement)
+  CHANNEL_POINT_RATE: 100,           // 100 channel points = 1 token
+
+  // Credit conversion (wealth sink - gets progressively more expensive)
+  CREDIT_CONVERSION_BASE: 1000,      // $1,000 = 1 token (base rate)
+  CREDIT_CONVERSION_SCALING: 1.15,   // 15% more expensive each purchase today
+  MAX_CREDIT_CONVERSIONS_PER_DAY: 50,
+
+  // ===== CAPS =====
+  SOFT_CAP: 100,                     // Comfortable holding amount (no decay below this)
+  HARD_CAP: 500,                     // Absolute maximum tokens
+
+  // ===== DECAY (above soft cap) =====
+  // Prevents token hoarding, encourages active spending
+  DECAY_RATE_ABOVE_SOFT: 0.05,       // 5% daily decay on tokens above soft cap
+  DECAY_RATE_AT_HARD: 0.10,          // 10% total decay if at hard cap
+
+  // ===== SPENDING (Phase 3A - optional bonus, not requirement) =====
+  // Start as optional bonuses to test adoption before making tokens required
+  PLAY_BONUS_COST: 1,                // 1 token for 25% bonus rewards on !play
+  PLAY_BONUS_MULTIPLIER: 1.25,       // 25% bonus when token is spent
+  BUSINESS_BOOST_COST: 2,            // 2 tokens for 50% bonus business collection
+  BUSINESS_BOOST_MULTIPLIER: 1.50,   // 50% bonus for boosted collection
+
+  // ===== PHASE 3B - Token Requirement Toggle =====
+  // When true, players MUST have tokens to play (tokens are consumed each play)
+  // When false, tokens are optional bonus only (Phase 3A behavior)
+  REQUIRE_TOKEN_FOR_PLAY: false,     // Set to true to enable Phase 3B
+  PLAY_TOKEN_COST: 1,                // Tokens consumed per play when required
+}
+
+// =============================================================================
+// PHASE 4: BOND SYSTEM (Premium Currency)
+// =============================================================================
+// Bonds are the end-game premium currency serving as:
+// 1. A massive wealth sink for top players ($2.5M per conversion)
+// 2. A monetization path (real money purchases)
+// 3. A reward for achievements
+
+export const BOND_CONFIG = {
+  // ===== CREDIT CONVERSION (The "Golden Sink") =====
+  // Extremely expensive conversion for wealthy players
+  CREDIT_CONVERSION: {
+    COST: 2_500_000,              // $2.5M credits per conversion
+    BONDS_RECEIVED: 100,          // 100 bonds per conversion
+    COOLDOWN_DAYS: 7,             // 1 week cooldown between conversions
+    MIN_LEVEL: 60,                // Captain tier required (prevents newbie mistakes)
+  },
+
+  // ===== REAL MONEY BUNDLES (Stripe Integration) =====
+  // Defer implementation until core system is stable
+  PURCHASE_BUNDLES: [
+    { id: 'starter', bonds: 500, usd: 4.99, bonus: 0 },
+    { id: 'popular', bonds: 1100, usd: 9.99, bonus: 100 },     // Best value badge
+    { id: 'premium', bonds: 2400, usd: 19.99, bonus: 400 },
+    { id: 'whale', bonds: 6500, usd: 49.99, bonus: 1500 },
+  ],
+
+  // ===== ACHIEVEMENT REWARDS (One-Time Grants) =====
+  ACHIEVEMENTS: {
+    FIRST_KINGPIN: 500,           // Reaching Kingpin tier for first time
+    FIRST_MILLION: 100,           // First $1M wealth milestone
+    FIRST_TEN_MILLION: 250,       // First $10M wealth milestone
+    SEASON_COMPLETION: 200,       // Completing a season pass
+    PERFECT_HEIST_STREAK: 50,     // 10 heist wins in a row
+  },
+
+  // Maps achievement database keys to bond reward amounts
+  // When an achievement with a matching key is completed, bonds are auto-granted
+  ACHIEVEMENT_BOND_MAP: {
+    'experience_legend': 500,       // Level 100 (Kingpin tier) → FIRST_KINGPIN
+    'wealth_six_figures': 100,      // $1M total wealth → FIRST_MILLION
+    'wealth_made_it': 250,          // $10M total wealth → FIRST_TEN_MILLION
+    'wealth_kingpin_fortune': 500,  // $100M total wealth (bonus)
+  } as Record<string, number>,
+
+  // ===== SPENDING OPTIONS =====
+  // What bonds can be spent on (cosmetic/convenience only, no pay-to-win)
+  COSMETICS: {
+    CUSTOM_TITLE: 100,            // Create a custom title
+    PROFILE_FRAME: 50,            // Animated profile frame
+    NAME_COLOR: 75,               // Custom name color
+    CHAT_BADGE: 150,              // Exclusive chat badge
+  },
+
+  SEASON_PASS: {
+    COST: 500,                    // Season pass unlock
+    DURATION_DAYS: 90,            // 3-month season
+  },
 }
 
 // =============================================================================
@@ -744,6 +912,9 @@ export const MISSION_CONFIG = {
   WEEKLY_BONUS_MULTIPLIER: 2.0,   // 100% bonus for completing all weeklies
   DAILY_CRATE_REWARD: CRATE_TIERS.UNCOMMON,
   WEEKLY_CRATE_REWARD: CRATE_TIERS.RARE,
+  // Phase 2 Economy Rebalance: Mission reward caps
+  DAILY_WEALTH_CAP: 15000,        // Max $15k/day from daily missions
+  WEEKLY_WEALTH_CAP: 50000,       // Max $50k/week from weekly missions
 }
 
 // =============================================================================

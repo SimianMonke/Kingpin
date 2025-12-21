@@ -776,6 +776,20 @@ model users {
   factions                                                            factions?                  @relation(fields: [faction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   admin_user                                                          admin_users?
   player_bans                                                         player_bans[]
+  // Phase 2 Economy Rebalance: Insurance system
+  insurance_tier                                                      String?                    @default("none") @db.VarChar(20)
+  insurance_paid_at                                                   DateTime?                  @db.Timestamp(6)
+
+  // Phase 3 Economy Rebalance: Token system
+  tokens                                                              Int?                       @default(0)
+  tokens_earned_today                                                 Int?                       @default(0)
+  last_token_reset                                                    DateTime?                  @db.Timestamp(6)
+  token_transactions                                                  token_transactions[]
+
+  // Phase 4 Economy Rebalance: Bond system (premium currency)
+  bonds                                                               Int?                       @default(0)
+  last_bond_conversion                                                DateTime?                  @db.Timestamp(6)
+  bond_transactions                                                   bond_transactions[]
 }
 
 model business_revenue_history {
@@ -977,4 +991,42 @@ model player_bans {
 
   @@index([user_id])
   @@index([is_active])
+}
+
+// =============================================================================
+// PHASE 3 ECONOMY REBALANCE: Token System
+// =============================================================================
+
+/// Token transaction audit trail
+/// Tracks all token earning, spending, and decay events
+model token_transactions {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  amount      Int                                 // Positive = earned, negative = spent/decayed
+  type        String    @db.VarChar(30)           // 'CHANNEL_POINTS', 'CREDIT_CONVERSION', 'PLAY_BONUS', 'DECAY', 'ADMIN_GRANT'
+  description String?
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([type])
+}
+
+// =============================================================================
+// PHASE 4 ECONOMY REBALANCE: Bond System (Premium Currency)
+// =============================================================================
+
+/// Bond transaction audit trail
+/// Tracks all bond purchases, conversions, and spending
+model bond_transactions {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  amount      Int                                 // Positive = earned, negative = spent
+  type        String    @db.VarChar(30)           // 'PURCHASE', 'CREDIT_CONVERSION', 'COSMETIC', 'SEASON_PASS', 'ACHIEVEMENT'
+  description String?
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([type])
 }

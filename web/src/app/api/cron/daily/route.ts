@@ -12,6 +12,8 @@ import { NotificationService } from '@/lib/services/notification.service'
 import { DiscordService } from '@/lib/services/discord.service'
 import { OAuthLinkService } from '@/lib/services/oauth-link.service'
 import { HousingService } from '@/lib/services/housing.service'
+import { InsuranceService } from '@/lib/services/insurance.service'
+import { TokenService } from '@/lib/services/token.service'
 
 /**
  * GET /api/cron/daily
@@ -24,6 +26,9 @@ import { HousingService } from '@/lib/services/housing.service'
  * 4. Cleanup expired notifications
  * 5. Cleanup expired OAuth link states (SEC-01)
  * 6. Process housing upkeep (Design Drift Remediation)
+ * 7. Process insurance premiums (Phase 2 Economy Rebalance)
+ * 8. Process token decay (Phase 3 Economy Rebalance)
+ * 9. Reset daily token counters (Phase 3 Economy Rebalance)
  *
  * Protected by CRON_SECRET (Vercel Cron) or ADMIN_API_KEY
  */
@@ -181,6 +186,72 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     results.jobs = {
       ...results.jobs as object,
       housingUpkeep: {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+    }
+  }
+
+  // 7. Process insurance premiums (Phase 2 Economy Rebalance)
+  try {
+    const insuranceSummary = await InsuranceService.processAllPremiums()
+    results.jobs = {
+      ...results.jobs as object,
+      insurancePremiums: {
+        success: true,
+        usersProcessed: insuranceSummary.processed,
+        totalDeducted: insuranceSummary.totalDeducted,
+        downgrades: insuranceSummary.downgrades,
+      },
+    }
+  } catch (error) {
+    console.error('Insurance premium processing failed:', error)
+    results.jobs = {
+      ...results.jobs as object,
+      insurancePremiums: {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+    }
+  }
+
+  // 8. Process token decay (Phase 3 Economy Rebalance)
+  try {
+    const decaySummary = await TokenService.processAllDecay()
+    results.jobs = {
+      ...results.jobs as object,
+      tokenDecay: {
+        success: true,
+        usersProcessed: decaySummary.processed,
+        totalDecayed: decaySummary.totalDecayed,
+      },
+    }
+  } catch (error) {
+    console.error('Token decay processing failed:', error)
+    results.jobs = {
+      ...results.jobs as object,
+      tokenDecay: {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+    }
+  }
+
+  // 9. Reset daily token counters (Phase 3 Economy Rebalance)
+  try {
+    const resetSummary = await TokenService.resetDailyCounters()
+    results.jobs = {
+      ...results.jobs as object,
+      tokenDailyReset: {
+        success: true,
+        usersReset: resetSummary.usersReset,
+      },
+    }
+  } catch (error) {
+    console.error('Token daily reset failed:', error)
+    results.jobs = {
+      ...results.jobs as object,
+      tokenDailyReset: {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       },

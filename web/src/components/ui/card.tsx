@@ -49,6 +49,7 @@ const cardVariants = cva(
         primary: "shadow-[0_0_20px_rgba(0,255,241,0.3)]",
         secondary: "shadow-[0_0_20px_rgba(255,0,141,0.3)]",
         success: "shadow-[0_0_20px_rgba(0,255,159,0.3)]",
+        warning: "shadow-[0_0_20px_rgba(255,193,7,0.3)]",
         destructive: "shadow-[0_0_20px_rgba(255,42,109,0.3)]",
       },
       scanlines: {

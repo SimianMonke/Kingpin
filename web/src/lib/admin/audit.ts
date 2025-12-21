@@ -186,27 +186,171 @@ export async function getTargetAuditHistory(
 // =============================================================================
 
 /**
+ * Sensitive field patterns - keys containing these will be masked
+ */
+const SENSITIVE_KEY_PATTERNS = [
+  'password',
+  'secret',
+  'token',
+  'api_key',
+  'apikey',
+  'private',
+  'credential',
+  'auth',
+  'bearer',
+  'session',
+  'cookie',
+  'ssn',
+  'social_security',
+];
+
+/**
+ * PII field patterns - personally identifiable information
+ */
+const PII_KEY_PATTERNS = [
+  'email',
+  'phone',
+  'address',
+  'ip_address',
+  'user_agent',
+  'birth',
+  'dob',
+  'ssn',
+];
+
+/**
+ * Fields that should show partial masking (last 4 chars visible)
+ */
+const PARTIAL_MASK_KEYS = [
+  'card',
+  'account',
+  'bank',
+];
+
+/**
+ * Check if a key matches any sensitive patterns
+ */
+function isSensitiveKey(key: string): boolean {
+  const lowerKey = key.toLowerCase();
+  return SENSITIVE_KEY_PATTERNS.some(pattern => lowerKey.includes(pattern));
+}
+
+/**
+ * Check if a key matches any PII patterns
+ */
+function isPIIKey(key: string): boolean {
+  const lowerKey = key.toLowerCase();
+  return PII_KEY_PATTERNS.some(pattern => lowerKey.includes(pattern));
+}
+
+/**
+ * Check if a key should be partially masked
+ */
+function isPartialMaskKey(key: string): boolean {
+  const lowerKey = key.toLowerCase();
+  return PARTIAL_MASK_KEYS.some(pattern => lowerKey.includes(pattern));
+}
+
+/**
+ * Mask a string value based on type
+ */
+function maskValue(value: unknown, maskType: 'full' | 'partial' | 'pii'): unknown {
+  if (value === null || value === undefined) return value;
+
+  if (typeof value === 'string') {
+    if (value.length === 0) return value;
+
+    switch (maskType) {
+      case 'full':
+        return '[REDACTED]';
+      case 'partial':
+        // Show last 4 characters
+        if (value.length <= 4) return '****';
+        return '*'.repeat(value.length - 4) + value.slice(-4);
+      case 'pii':
+        // Mask email: show first char and domain
+        if (value.includes('@')) {
+          const [local, domain] = value.split('@');
+          if (local.length > 1) {
+            return local[0] + '***@' + domain;
+          }
+          return '***@' + domain;
+        }
+        // Mask IP: show first octet
+        if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(value)) {
+          const parts = value.split('.');
+          return parts[0] + '.***.***.***';
+        }
+        // Default PII mask
+        if (value.length <= 2) return '**';
+        return value[0] + '*'.repeat(value.length - 2) + value[value.length - 1];
+      default:
+        return value;
+    }
+  }
+
+  if (typeof value === 'number') {
+    if (maskType === 'full') return 0;
+    return value;
+  }
+
+  return value;
+}
+
+/**
+ * Deep sanitize an object, masking sensitive fields
+ */
+function sanitizeObject(obj: Record<string, unknown>, depth = 0): Record<string, unknown> {
+  // Prevent infinite recursion
+  if (depth > 10) return { '[TRUNCATED]': 'Object too deep' };
+
+  const sanitized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    // Check what type of masking needed
+    if (isSensitiveKey(key)) {
+      sanitized[key] = maskValue(value, 'full');
+    } else if (isPIIKey(key)) {
+      sanitized[key] = maskValue(value, 'pii');
+    } else if (isPartialMaskKey(key)) {
+      sanitized[key] = maskValue(value, 'partial');
+    } else if (value !== null && typeof value === 'object') {
+      if (Array.isArray(value)) {
+        sanitized[key] = value.map(item =>
+          item !== null && typeof item === 'object'
+            ? sanitizeObject(item as Record<string, unknown>, depth + 1)
+            : item
+        );
+      } else {
+        sanitized[key] = sanitizeObject(value as Record<string, unknown>, depth + 1);
+      }
+    } else {
+      sanitized[key] = value;
+    }
+  }
+
+  return sanitized;
+}
+
+/**
  * Sanitize values before logging to remove sensitive data
  */
 function sanitizeForLog(value: unknown, category: AuditCategory): unknown {
   if (value === null || value === undefined) return null;
 
-  // For settings category, mask certain sensitive keys
-  if (category === 'setting' && typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    const sensitiveKeys = ['password', 'secret', 'token', 'api_key', 'private'];
-
-    const sanitized: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(obj)) {
-      if (sensitiveKeys.some(sk => key.toLowerCase().includes(sk))) {
-        sanitized[key] = '[REDACTED]';
-      } else {
-        sanitized[key] = val;
-      }
+  // Handle objects
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return value.map(item =>
+        item !== null && typeof item === 'object'
+          ? sanitizeObject(item as Record<string, unknown>)
+          : item
+      );
     }
-    return sanitized;
+    return sanitizeObject(value as Record<string, unknown>);
   }
 
+  // Primitive values pass through
   return value;
 }
 
@@ -282,6 +426,9 @@ export const AUDIT_ACTIONS = {
   HEIST_RIDDLE_CREATE: 'HEIST_RIDDLE_CREATE',
   HEIST_RIDDLE_UPDATE: 'HEIST_RIDDLE_UPDATE',
   HEIST_RIDDLE_DELETE: 'HEIST_RIDDLE_DELETE',
+  HEIST_QUICKGRAB_CREATE: 'HEIST_QUICKGRAB_CREATE',
+  HEIST_QUICKGRAB_UPDATE: 'HEIST_QUICKGRAB_UPDATE',
+  HEIST_QUICKGRAB_DELETE: 'HEIST_QUICKGRAB_DELETE',
 
   // System actions
   ADMIN_GRANT: 'ADMIN_GRANT',

@@ -439,11 +439,37 @@ export const MissionService = {
       }
     }
 
-    // Calculate rewards
-    const totalWealth = missions.reduce((sum, m) => sum + m.reward_wealth, 0)
+    // Calculate base rewards
+    const baseWealth = missions.reduce((sum, m) => sum + m.reward_wealth, 0)
     const totalXp = missions.reduce((sum, m) => sum + m.reward_xp, 0)
     const bonus = MISSION_COMPLETION_BONUS[type]
     const crateAwarded = bonus.crate
+
+    // Phase 2 Economy Rebalance: Apply daily/weekly wealth cap
+    const wealthCap = type === MISSION_TYPES.DAILY
+      ? MISSION_CONFIG.DAILY_WEALTH_CAP
+      : MISSION_CONFIG.WEEKLY_WEALTH_CAP
+
+    // Get previous claims in current period
+    const periodStart = type === MISSION_TYPES.DAILY
+      ? this.getDailyResetTime()
+      : this.getWeeklyResetTime()
+
+    const previousClaims = await prisma.mission_completions.aggregate({
+      where: {
+        user_id,
+        completion_type: type,
+        completed_date: { gte: periodStart },
+      },
+      _sum: { total_wealth: true },
+    })
+
+    const alreadyClaimed = previousClaims._sum.total_wealth || 0
+    const remainingCap = Math.max(0, wealthCap - alreadyClaimed)
+
+    // Cap the total wealth (base + bonus) to remaining allowance
+    const uncappedWealth = baseWealth + bonus.wealth
+    const totalWealth = Math.min(uncappedWealth, remainingCap)
 
     // Get user tier for completion record
     const user = await prisma.users.findUnique({
@@ -451,13 +477,17 @@ export const MissionService = {
       select: { status_tier: true },
     })
 
+    // Calculate actual bonus after cap (for return value)
+    const actualBonusWealth = totalWealth > baseWealth ? Math.min(bonus.wealth, totalWealth - baseWealth) : 0
+    const actualBaseWealth = totalWealth - actualBonusWealth
+
     // Process rewards in transaction
     await prisma.$transaction(async (tx) => {
-      // Award wealth and XP
+      // Award wealth and XP (totalWealth already includes capped base + bonus)
       await tx.users.update({
         where: { id: user_id },
         data: {
-          wealth: { increment: totalWealth + bonus.wealth },
+          wealth: { increment: totalWealth },
           xp: { increment: totalXp + bonus.xp },
         },
       })
@@ -468,16 +498,16 @@ export const MissionService = {
         data: { status: 'claimed' },
       })
 
-      // Record completion
+      // Record completion (store actual capped values)
       await tx.mission_completions.create({
         data: {
           user_id,
           completion_type: type,
           completed_date: new Date(),
           mission_ids: missions.map(m => m.id),
-          total_wealth: totalWealth,
+          total_wealth: actualBaseWealth,
           total_xp: totalXp,
-          bonus_wealth: bonus.wealth,
+          bonus_wealth: actualBonusWealth,
           bonus_xp: bonus.xp,
           crate_awarded: crateAwarded,
           player_tier: user?.status_tier ?? 'Rookie',
@@ -495,9 +525,9 @@ export const MissionService = {
 
     return {
       success: true,
-      totalWealth,
+      totalWealth: actualBaseWealth,
       totalXp,
-      bonusWealth: bonus.wealth,
+      bonusWealth: actualBonusWealth,
       bonusXp: bonus.xp,
       crateAwarded,
       completedMissions: expectedCount,

@@ -1,5 +1,5 @@
 import { prisma } from '../db'
-import { ACHIEVEMENT_CATEGORIES, ACHIEVEMENT_TIERS } from '../game'
+import { ACHIEVEMENT_CATEGORIES, ACHIEVEMENT_TIERS, BOND_CONFIG } from '../game'
 import { TitleService } from './title.service'
 
 // =============================================================================
@@ -40,6 +40,7 @@ export interface AchievementUnlockResult {
     tier: string
     reward_wealth: number
     reward_xp: number
+    reward_bonds?: number
     titleUnlocked?: string
   }
 }
@@ -415,19 +416,45 @@ export const AchievementService = {
         })
       }
 
+      // Check for bond reward (Phase 4: Achievement Bond Grants)
+      const bondReward = BOND_CONFIG.ACHIEVEMENT_BOND_MAP[achievement.key]
+      if (bondReward && bondReward > 0) {
+        // Grant bonds
+        await tx.users.update({
+          where: { id: user_id },
+          data: {
+            bonds: { increment: bondReward },
+          },
+        })
+
+        // Record bond transaction
+        await tx.bond_transactions.create({
+          data: {
+            user_id,
+            amount: bondReward,
+            type: 'ACHIEVEMENT',
+            description: `Achievement: ${achievement.name}`,
+          },
+        })
+      }
+
       // Create notification
+      const bondMessage = bondReward ? ` and +${bondReward} bonds` : ''
       await tx.user_notifications.create({
         data: {
           user_id,
           notification_type: 'achievement_unlocked',
           title: 'Achievement Unlocked!',
-          message: `You earned "${achievement.name}" - +$${(achievement.reward_wealth ?? 0).toLocaleString()} and +${achievement.reward_xp ?? 0} XP`,
+          message: `You earned "${achievement.name}" - +$${(achievement.reward_wealth ?? 0).toLocaleString()} and +${achievement.reward_xp ?? 0} XP${bondMessage}`,
           icon: this.getTierIcon(achievement.tier),
           link_type: 'achievement',
           link_id: achievement.key,
         },
       })
     })
+
+    // Get bond reward for return value
+    const bondReward = BOND_CONFIG.ACHIEVEMENT_BOND_MAP[achievement.key] ?? 0
 
     return {
       unlocked: true,
@@ -436,6 +463,7 @@ export const AchievementService = {
         tier: achievement.tier,
         reward_wealth: achievement.reward_wealth ?? 0,
         reward_xp: achievement.reward_xp ?? 0,
+        reward_bonds: bondReward,
         titleUnlocked: achievement.reward_title ?? undefined,
       },
     }

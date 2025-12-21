@@ -1086,3 +1086,17 @@ body {
     animation: none;
   }
 }
+
+/* =============================================================================
+   8. ADMIN ALERT ANIMATIONS
+   ============================================================================= */
+
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes slide-out-to-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}

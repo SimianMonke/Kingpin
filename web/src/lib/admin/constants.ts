@@ -91,6 +91,11 @@ export const AUDIT_ACTION_STYLES: Record<string, { icon: string; color: string }
   ADMIN_GRANT: { icon: 'Shield', color: 'text-amber-500' },
   ADMIN_REVOKE: { icon: 'ShieldOff', color: 'text-red-500' },
   MAINTENANCE_TOGGLE: { icon: 'Construction', color: 'text-orange-500' },
+
+  // Session actions
+  ADMIN_SESSION_START: { icon: 'LogIn', color: 'text-green-500' },
+  ADMIN_SESSION_END: { icon: 'LogOut', color: 'text-gray-500' },
+  ADMIN_SESSION_EXTEND: { icon: 'Timer', color: 'text-blue-500' },
 };
 
 /**
@@ -121,6 +126,13 @@ export const ADMIN_NAV_ITEMS = [
     label: 'Players',
     description: 'Search and manage players',
     ownerOnly: false,
+  },
+  {
+    href: '/admin/analytics',
+    icon: 'BarChart3',
+    label: 'Analytics',
+    description: 'User growth and economy metrics',
+    ownerOnly: true,
   },
   {
     href: '/admin/settings',

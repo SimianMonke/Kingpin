@@ -24,6 +24,13 @@ const NAV_ITEMS = [
     ownerOnly: false,
   },
   {
+    href: '/admin/analytics',
+    icon: BarChartIcon,
+    label: 'Analytics',
+    description: 'Metrics & growth',
+    ownerOnly: true,
+  },
+  {
     href: '/admin/settings',
     icon: SettingsIcon,
     label: 'Settings',
@@ -143,6 +150,14 @@ function UsersIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  );
+}
+
+function BarChartIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M9 17V9m4 8v-5m4 5v-8" />
     </svg>
   );
 }

@@ -16,6 +16,10 @@ import { EconomyModeService, ECONOMY_MODE_ERROR } from '@/lib/services/economy-m
  * This endpoint can be called:
  * 1. From the website directly (authenticated user) - only when OFFLINE
  * 2. From the bot via webhook (with bot API key + user_id) - always allowed
+ *
+ * Body parameters:
+ * - user_id: (required for bot requests) The user's database ID
+ * - useToken: (optional) If true, spend a token for 25% bonus rewards (Phase 3A)
  */
 export const POST = withErrorHandling(async (request: NextRequest) => {
   // Check for bot API key first (for webhook integration)
@@ -24,6 +28,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const isBotRequest = EconomyModeService.isBotRequest(apiKey, botKey)
 
   let user_id: number
+  let useToken = false
 
   if (isBotRequest) {
     // Bot request - get user_id from body (bypasses economy mode check)
@@ -32,6 +37,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       return errorResponse('user_id required for bot requests')
     }
     user_id = body.user_id
+    useToken = body.useToken === true
   } else {
     // Website request - use session
     const session = await getAuthSession()
@@ -40,6 +46,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
     user_id = session.user.id
 
+    // Parse body for useToken parameter
+    try {
+      const body = await request.json()
+      useToken = body.useToken === true
+    } catch {
+      // No body or invalid JSON is fine, defaults to false
+    }
+
     // Check economy mode - webapp only allowed when offline
     const canExecuteFree = await EconomyModeService.canExecuteFree()
     if (!canExecuteFree) {
@@ -47,11 +61,11 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
   }
 
-  // Execute play
-  const result = await PlayService.executePlay(user_id)
+  // Execute play with optional token bonus (Phase 3A)
+  const result = await PlayService.executePlay(user_id, useToken)
 
   if (!result.success && !result.busted) {
-    // Player couldn't play (likely jailed)
+    // Player couldn't play (jailed or no tokens when required)
     return errorResponse(
       result.jailed ? 'You are in jail! Use bail to escape.' : 'Unable to play',
       400

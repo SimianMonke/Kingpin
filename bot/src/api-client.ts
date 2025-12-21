@@ -1055,6 +1055,150 @@ class ApiClient {
   }
 
   // ===========================================================================
+  // TOKENS (Phase 3 - Play Gating Currency)
+  // ===========================================================================
+
+  async getTokenStatus(userId: number): Promise<ApiResponse<{
+    tokens: number
+    tokensEarnedToday: number
+    softCap: number
+    hardCap: number
+    aboveSoftCap: boolean
+    atHardCap: boolean
+    nextConversionCost: number
+  }>> {
+    try {
+      const response = await this.client.get('/api/tokens', {
+        params: { userId },
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async convertCreditsToTokens(userId: number): Promise<ApiResponse<{
+    success: boolean
+    tokensGained: number
+    cost: number
+    newBalance: number
+    message: string
+  }>> {
+    try {
+      const response = await this.client.post('/api/tokens', { userId })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  // ===========================================================================
+  // BONDS (Phase 4 - Premium Currency)
+  // ===========================================================================
+
+  async getBondStatus(userId: number): Promise<ApiResponse<{
+    bonds: number
+    lastBondConversion: string | null
+    daysUntilNextConversion: number
+    canConvert: boolean
+    conversionCost: number
+    conversionReward: number
+    requiredLevel: number
+  }>> {
+    try {
+      const response = await this.client.get('/api/bonds', {
+        params: { userId },
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async convertCreditsToBonds(userId: number): Promise<ApiResponse<{
+    success: boolean
+    bondsGained: number
+    cost: number
+    newBalance: number
+    message: string
+  }>> {
+    try {
+      const response = await this.client.post('/api/bonds', { userId })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async getBondPurchaseOptions(userId: number): Promise<ApiResponse<{
+    currentBonds: number
+    cosmetics: Array<{
+      type: string
+      cost: number
+      canAfford: boolean
+    }>
+    seasonPass: {
+      cost: number
+      durationDays: number
+      canAfford: boolean
+    }
+  }>> {
+    try {
+      const response = await this.client.get('/api/bonds/purchase', {
+        params: { userId },
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async purchaseWithBonds(
+    userId: number,
+    type: 'cosmetic' | 'season_pass',
+    cosmeticType?: string,
+    cosmeticName?: string
+  ): Promise<ApiResponse<{
+    success: boolean
+    type: string
+    cost: number
+    remainingBonds: number
+    message: string
+  }>> {
+    try {
+      const response = await this.client.post('/api/bonds/purchase', {
+        userId,
+        type,
+        cosmetic_type: cosmeticType,
+        cosmetic_name: cosmeticName,
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  async getBondHistory(userId: number, limit: number = 10): Promise<ApiResponse<{
+    currentBonds: number
+    transactions: Array<{
+      amount: number
+      type: string
+      description: string | null
+      createdAt: string
+      isCredit: boolean
+    }>
+  }>> {
+    try {
+      const response = await this.client.get('/api/bonds/history', {
+        params: { userId, limit },
+      })
+      return response.data
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  // ===========================================================================
   // ERROR HANDLING
   // ===========================================================================
 

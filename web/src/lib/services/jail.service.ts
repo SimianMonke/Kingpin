@@ -1,6 +1,6 @@
 import { prisma } from '../db'
-import { JAIL_CONFIG } from '../game'
-import { formatTimeRemaining } from '../game/formulas'
+import { JAIL_CONFIG, type Tier } from '../game'
+import { formatTimeRemaining, calculateBailCost, getTierFromLevel } from '../game/formulas'
 import type { PrismaTransactionClient } from './inventory.service'
 import { ConsumableService } from './consumable.service'
 
@@ -113,10 +113,10 @@ export const JailService = {
       }
     }
 
-    // Get user's current wealth
+    // Get user's current wealth and tier info
     const user = await prisma.users.findUnique({
       where: { id: user_id },
-      select: { wealth: true },
+      select: { wealth: true, level: true, status_tier: true },
     })
 
     if (!user) {
@@ -127,12 +127,10 @@ export const JailService = {
     const hasBailBond = await ConsumableService.hasConsumable(user_id, 'bail_bond')
     let usedBailBond = false
 
-    // Calculate bail cost (10% of wealth, minimum from config)
+    // Phase 2: Calculate tier-scaled bail cost
     const wealthNum = Number(user.wealth)
-    const bailCost = Math.max(
-      JAIL_CONFIG.MIN_BAIL,
-      Math.floor(wealthNum * JAIL_CONFIG.BAIL_COST_PERCENT)
-    )
+    const tier = (user.status_tier as Tier) || getTierFromLevel(user.level ?? 1)
+    const bailCost = calculateBailCost(wealthNum, tier)
 
     // If player has bail_bond, use it and skip cost
     // If player has less than minimum bail, they can still bail for free

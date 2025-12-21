@@ -259,17 +259,39 @@ describe('Robbery Calculations', () => {
 
 // =============================================================================
 // BAIL CALCULATION TESTS - Critical for jail economy
+// Phase 2: Tier-scaled bail (base 15%, multiplied by tier factor)
 // =============================================================================
 describe('Bail Calculations', () => {
   describe('calculateBailCost', () => {
-    it('returns minimum bail (100) for low wealth', () => {
-      expect(calculateBailCost(100)).toBe(100)
-      expect(calculateBailCost(500)).toBe(100)
+    it('returns minimum bail ($500) for low wealth regardless of tier', () => {
+      // Min bail is $500, low wealth should hit floor
+      expect(calculateBailCost(1000, TIERS.ROOKIE)).toBe(500)
+      expect(calculateBailCost(1000, TIERS.SOLDIER)).toBe(500)
+      expect(calculateBailCost(1000, TIERS.KINGPIN)).toBe(500)
     })
 
-    it('calculates 10% of wealth for higher amounts', () => {
-      expect(calculateBailCost(10000)).toBe(1000)
-      expect(calculateBailCost(50000)).toBe(5000)
+    it('applies tier multipliers correctly (base 15%)', () => {
+      const wealth = 100000
+      // Soldier = 1.0x multiplier → 15% = $15,000
+      expect(calculateBailCost(wealth, TIERS.SOLDIER)).toBe(15000)
+      // Rookie = 0.5x multiplier → 7.5% = $7,500
+      expect(calculateBailCost(wealth, TIERS.ROOKIE)).toBe(7500)
+      // Associate = 0.75x multiplier → 11.25% = $11,250
+      expect(calculateBailCost(wealth, TIERS.ASSOCIATE)).toBe(11250)
+      // Captain = 1.25x multiplier → 18.75% = $18,750
+      expect(calculateBailCost(wealth, TIERS.CAPTAIN)).toBe(18750)
+      // Underboss = 1.5x multiplier → 22.5% = $22,500
+      expect(calculateBailCost(wealth, TIERS.UNDERBOSS)).toBe(22500)
+      // Kingpin = 2.0x multiplier → 30% = $30,000
+      expect(calculateBailCost(wealth, TIERS.KINGPIN)).toBe(30000)
+    })
+
+    it('caps bail at $100,000 max', () => {
+      // Even Kingpin at 30% of $1M = $300k should cap at $100k
+      expect(calculateBailCost(1000000, TIERS.KINGPIN)).toBe(100000)
+      expect(calculateBailCost(500000, TIERS.KINGPIN)).toBe(100000)
+      // Soldier at 15% of $1M = $150k should also cap
+      expect(calculateBailCost(1000000, TIERS.SOLDIER)).toBe(100000)
     })
   })
 })

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { AdminHeader } from '@/components/admin/admin-header';
+import { AdminAlertProvider, AdminAlertContainer } from '@/components/admin/admin-alerts';
 
 interface AdminStatus {
   isAdmin: boolean;
@@ -51,20 +52,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-void)] flex">
-      {/* Sidebar */}
-      <AdminSidebar role={adminStatus.role!} />
+    <AdminAlertProvider>
+      <div className="min-h-screen bg-[var(--color-void)] flex">
+        {/* Sidebar */}
+        <AdminSidebar role={adminStatus.role!} />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col ml-64">
-        {/* Header */}
-        <AdminHeader username={adminStatus.username || 'Admin'} role={adminStatus.role!} />
+        {/* Main content */}
+        <div className="flex-1 flex flex-col ml-64">
+          {/* Header */}
+          <AdminHeader username={adminStatus.username || 'Admin'} role={adminStatus.role!} />
 
-        {/* Page content */}
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
-        </main>
+          {/* Page content */}
+          <main className="flex-1 p-6 overflow-auto">
+            {children}
+          </main>
+        </div>
+
+        {/* Alert notifications */}
+        <AdminAlertContainer position="top-right" />
       </div>
-    </div>
+    </AdminAlertProvider>
   );
 }

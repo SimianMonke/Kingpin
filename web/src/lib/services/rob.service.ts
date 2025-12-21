@@ -11,6 +11,7 @@ import { FactionService } from './faction.service'
 import { NotificationService } from './notification.service'
 import { DiscordService } from './discord.service'
 import { BuffService } from './buff.service'
+import { InsuranceService } from './insurance.service'
 
 // =============================================================================
 // ROB SERVICE TYPES
@@ -272,9 +273,17 @@ export const RobService = {
         Math.random() * (ROB_CONFIG.STEAL_PERCENTAGE.max - ROB_CONFIG.STEAL_PERCENTAGE.min)
       const baseSteal = Math.floor(Number(target.wealth) * stealPercent)
 
-      // Apply housing insurance
-      const insurance_percent = defenderEquipped.housing?.insurance_percent || 0
-      insuranceSaved = Math.floor(baseSteal * insurance_percent)
+      // Phase 2 Economy Rebalance: Calculate insurance protection
+      // Use the higher of housing insurance (legacy) or tier-based insurance
+      const housingInsurance = defenderEquipped.housing?.insurance_percent || 0
+      const { payout: tierInsurancePayout, tier: insuranceTier } =
+        await InsuranceService.calculateInsurancePayout(targetId, baseSteal)
+
+      // Calculate housing insurance payout for comparison
+      const housingInsurancePayout = Math.floor(baseSteal * housingInsurance)
+
+      // Use the higher protection
+      insuranceSaved = Math.max(housingInsurancePayout, tierInsurancePayout)
       wealthStolen = baseSteal - insuranceSaved
 
       // Roll for item theft (5% chance)

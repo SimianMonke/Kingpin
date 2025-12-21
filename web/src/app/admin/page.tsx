@@ -55,7 +55,7 @@ interface DashboardData {
 }
 
 export default function AdminDashboard() {
-  const { data, isLoading, error } = useQuery<{ success: boolean; data: DashboardData }>({
+  const { data, isLoading, error, dataUpdatedAt, isFetching } = useQuery<{ success: boolean; data: DashboardData }>({
     queryKey: ['admin-dashboard'],
     queryFn: async () => {
       const res = await fetch('/api/admin/dashboard');
@@ -99,9 +99,20 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl uppercase tracking-widest text-amber-500">
-          Dashboard
-        </h1>
+        <div className="flex items-center gap-4">
+          <h1 className="font-display text-2xl uppercase tracking-widest text-amber-500">
+            Dashboard
+          </h1>
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              'w-2 h-2 rounded-full transition-colors',
+              isFetching ? 'bg-amber-500 animate-pulse' : 'bg-green-500'
+            )} />
+            <span className="font-mono text-[10px] text-[var(--color-muted)]">
+              {isFetching ? 'Updating...' : `Updated ${formatTimeAgo(new Date(dataUpdatedAt).toISOString())}`}
+            </span>
+          </div>
+        </div>
         {streaming.isLive && (
           <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/50 rounded">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />

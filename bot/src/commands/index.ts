@@ -15,6 +15,8 @@ import { adminCommands } from './admin'
 import { heistCommands } from './heist'
 import { gamblingCommands } from './gambling'
 import { suppliesCommands } from './supplies'
+import { tokensCommands } from './tokens'
+import { bondsCommands } from './bonds'
 
 // =============================================================================
 // COMMAND REGISTRY
@@ -240,6 +242,51 @@ registerCommand('buysupply', {
 registerCommand('myitems', {
   aliases: ['myconsumables', 'consumables'],
   handler: suppliesCommands.myitems,
+})
+
+// Token commands (Phase 3 - Play Gating Currency)
+registerCommand('tokens', {
+  aliases: ['token', 'mytokens'],
+  handler: tokensCommands.tokens,
+})
+
+registerCommand('buytoken', {
+  aliases: ['purchasetoken', 'gettoken'],
+  handler: tokensCommands.buytoken,
+  cooldown: 5000,
+})
+
+registerCommand('tokenboost', {
+  aliases: ['boostinfo', 'tokeninfo'],
+  handler: tokensCommands.tokenboost,
+})
+
+// Bond commands (Phase 4 - Premium Currency)
+registerCommand('bonds', {
+  aliases: ['bond', 'mybonds'],
+  handler: bondsCommands.bonds,
+})
+
+registerCommand('convertbonds', {
+  aliases: ['buybonds', 'creditstobonds'],
+  handler: bondsCommands.convertbonds,
+  cooldown: 10000,
+})
+
+registerCommand('bondshop', {
+  aliases: ['bondstore'],
+  handler: bondsCommands.bondshop,
+})
+
+registerCommand('buybond', {
+  aliases: ['purchasebond'],
+  handler: bondsCommands.buybond,
+  cooldown: 5000,
+})
+
+registerCommand('bondhistory', {
+  aliases: ['bondhist'],
+  handler: bondsCommands.bondhistory,
 })
 
 // Admin commands

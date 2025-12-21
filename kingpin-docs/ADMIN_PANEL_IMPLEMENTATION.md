@@ -1,8 +1,8 @@
 # Admin Panel Implementation Specification
 
 > Complete implementation guide for the Kingpin Admin Control Panel.
-> **Version:** 1.1
-> **Status:** Phase 1 Complete - Ready for Phase 2
+> **Version:** 1.4
+> **Status:** Phase 3 Complete + Security Hardening
 > **Created:** December 18, 2024
 > **Last Updated:** December 18, 2024
 
@@ -25,6 +25,109 @@
 ---
 
 ## Change Log
+
+### v1.4 - Security Hardening (December 18, 2024)
+
+**ConfirmDialog Component (`web/src/components/admin/confirm-dialog.tsx`):**
+- Type-to-confirm functionality for dangerous actions
+- Support for warning, danger, and destructive variants
+- `useConfirmDialog` hook for easy integration
+- Async confirmation handling with loading states
+
+**Alert/Notification System (`web/src/components/admin/admin-alerts.tsx`):**
+- `AdminAlertProvider` context for managing notifications
+- `AdminAlertContainer` for rendering toast-style alerts
+- `useAlert` hook with success/error/warning/info methods
+- Auto-dismiss with configurable duration
+- Progress bar animation for timed alerts
+- Error alerts persist until dismissed
+- `AlertBell` component for header integration
+
+**Rate Limiting (`web/src/lib/admin/rate-limit.ts`):**
+- Sliding window rate limiter with progressive backoff
+- Separate limits: read (100/min), write (20/min), bulk (5/min)
+- Automatic rate limit type inference from HTTP method
+- Rate limit headers on all responses (X-RateLimit-*)
+- 429 responses with Retry-After header when limited
+- Integrated into `withAdminAuth` wrapper
+
+**Sensitive Data Masking (`web/src/lib/admin/audit.ts`):**
+- Comprehensive PII masking (emails, IPs, phones)
+- Sensitive key patterns (passwords, tokens, secrets)
+- Partial masking for financial data (last 4 chars visible)
+- Deep object sanitization with recursion protection
+- Email format: `j***@domain.com`
+- IP format: `192.***.***.***`
+
+**Admin Session Timeout (`web/src/lib/admin/session.ts`):**
+- 8-hour admin session timeout
+- Session start/end audit logging
+- `validateAdminSession()` integrated into auth flow
+- `getAdminSessionInfo()` for UI display
+- `extendAdminSession()` for last-2-hour extension
+- Cookie-based session tracking
+- In-memory session store with cleanup
+
+**Updated Constants:**
+- Added `ADMIN_SESSION_START`, `ADMIN_SESSION_END`, `ADMIN_SESSION_EXTEND` audit actions
+
+**Admin Layout Updates:**
+- Integrated `AdminAlertProvider` and `AdminAlertContainer`
+- Added CSS keyframes for alert animations (`shrink`, `slide-out-to-right`)
+
+---
+
+### v1.3 - Phase 3 Complete (December 18, 2024)
+
+**Analytics System (`web/src/app/api/admin/analytics/`):**
+- `route.ts` - GET comprehensive analytics including user growth, platform breakdown, economy health, feature usage, gambling stats
+
+**Analytics Page (`web/src/app/admin/analytics/`):**
+- `page.tsx` - Full analytics dashboard with:
+  - User growth over time (7d/30d/90d ranges)
+  - Platform distribution (Kick, Twitch, Discord)
+  - Wealth distribution by tier
+  - Economy flow (gains/losses/net)
+  - Gini coefficient for wealth inequality
+  - Feature usage breakdown
+  - Gambling performance by game type
+  - Top gamblers by volume and profit
+
+**CSV Export (`web/src/app/api/admin/logs/export/`):**
+- `route.ts` - GET audit logs as CSV download with filtering
+
+**Dashboard Enhancements:**
+- Live update indicator showing polling status
+- "Last updated" timestamp display
+
+**Navigation Updates:**
+- Added Analytics page to sidebar (`BarChartIcon`)
+- Added Export CSV button to Audit Logs page
+
+---
+
+### v1.2 - Phase 2 Complete (December 18, 2024)
+
+**Economy Management (`web/src/app/api/admin/economy/`):**
+- `stats/route.ts` - GET economy overview (total wealth, distribution, gambling stats, jackpot/lottery)
+- `adjust/route.ts` - POST manual wealth/XP adjustments with audit logging
+- `jackpot/route.ts` - GET jackpot status, POST reset with reason
+- `lottery/route.ts` - GET active/recent draws, POST force draw
+
+**Content Management (`web/src/app/api/admin/content/heists/`):**
+- `trivia/route.ts` - Full CRUD for trivia questions (GET, POST, PATCH, DELETE)
+- `riddles/route.ts` - Full CRUD for riddles
+- `quickgrab/route.ts` - Full CRUD for quick-grab phrases
+
+**Admin Pages:**
+- `web/src/app/admin/economy/page.tsx` - Economy dashboard with stats, gambling activity, wealth distribution, adjustment forms
+- `web/src/app/admin/content/page.tsx` - Content hub with links to heist management
+- `web/src/app/admin/content/heists/page.tsx` - Tabbed interface for trivia/riddles/quick-grab CRUD
+
+**Audit Actions Added:**
+- `HEIST_QUICKGRAB_CREATE`, `HEIST_QUICKGRAB_UPDATE`, `HEIST_QUICKGRAB_DELETE`
+
+---
 
 ### v1.1 - Phase 1 Complete (December 18, 2024)
 
@@ -1320,24 +1423,24 @@ Follow existing Kingpin dark theme:
 - [x] Player editor page
 - [x] Settings page
 - [x] Audit logs page
-- [ ] Confirmation dialog component (deferred - basic confirm() used)
+- [x] Confirmation dialog component (v1.4)
 
-### Phase 2
+### Phase 2 - COMPLETE
 
-- [ ] Economy stats endpoints
-- [ ] Manual adjustment functionality
-- [ ] Jackpot management
-- [ ] Lottery administration
-- [ ] Heist content CRUD
-- [ ] Content management UI
+- [x] Economy stats endpoints (`/api/admin/economy/stats`)
+- [x] Manual adjustment functionality (`/api/admin/economy/adjust`)
+- [x] Jackpot management (`/api/admin/economy/jackpot`)
+- [x] Lottery administration (`/api/admin/economy/lottery`)
+- [x] Heist content CRUD (trivia, riddles, quickgrab)
+- [x] Content management UI (`/admin/economy`, `/admin/content`, `/admin/content/heists`)
 
-### Phase 3
+### Phase 3 - COMPLETE
 
-- [ ] Real-time dashboard updates
-- [ ] Analytics endpoints
-- [ ] Analytics visualizations
-- [ ] Alert system
-- [ ] CSV export functionality
+- [x] Real-time dashboard updates (30s polling with live indicator)
+- [x] Analytics endpoints (`/api/admin/analytics`)
+- [x] Analytics visualizations (`/admin/analytics` page)
+- [x] Alert system (v1.4)
+- [x] CSV export functionality (`/api/admin/logs/export`)
 
 ---
 
@@ -1467,13 +1570,13 @@ mkdir -p src/app/admin/content/heists
 - [x] All admin routes use `withAdminAuth` wrapper
 - [x] Permission checks before every write operation
 - [x] Audit log for every state change
-- [ ] Rate limiting on admin endpoints (use existing middleware)
+- [x] Rate limiting on admin endpoints (v1.4 - sliding window, progressive backoff)
 - [x] Input validation on all payloads
 - [x] SQL injection prevention (Prisma parameterized queries)
 - [x] XSS prevention (React auto-escaping)
 - [x] CSRF protection (NextAuth handles)
-- [ ] Sensitive data masked in audit logs
-- [ ] Admin session timeout (8 hours)
+- [x] Sensitive data masked in audit logs (v1.4 - PII, secrets, partial masking)
+- [x] Admin session timeout (v1.4 - 8 hours with cookie tracking)
 
 ---
 
