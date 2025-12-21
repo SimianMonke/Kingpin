@@ -238,7 +238,7 @@ export const PlayService = {
       throw new Error('User not found')
     }
 
-    const playerTier = user.status_tier as Tier
+    const playerTier = (user.status_tier || 'Rookie') as Tier
 
     // Check for Juicernaut buffs
     const juicernautBuffs = await this.getJuicernautBuffs(user_id)
@@ -665,7 +665,8 @@ export const PlayService = {
    * CRIT-07 fix: 15% chance of negative event, 85% positive
    */
   selectEvent(tier: Tier): PlayEventDef {
-    const events = TIER_PLAY_EVENTS[tier]
+    // Fallback to Rookie if tier is invalid/missing
+    const events = TIER_PLAY_EVENTS[tier] || TIER_PLAY_EVENTS['Rookie']
 
     // Split events into positive and negative
     const positiveEvents = events.filter(e => !e.isNegative)
