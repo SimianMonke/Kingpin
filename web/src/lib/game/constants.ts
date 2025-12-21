@@ -767,7 +767,7 @@ export const TOKEN_CONFIG = {
   // ===== PHASE 3B - Token Requirement Toggle =====
   // When true, players MUST have tokens to play (tokens are consumed each play)
   // When false, tokens are optional bonus only (Phase 3A behavior)
-  REQUIRE_TOKEN_FOR_PLAY: false,     // Set to true to enable Phase 3B
+  REQUIRE_TOKEN_FOR_PLAY: true,      // Phase 3B enabled - tokens required to play
   PLAY_TOKEN_COST: 1,                // Tokens consumed per play when required
 }
 
