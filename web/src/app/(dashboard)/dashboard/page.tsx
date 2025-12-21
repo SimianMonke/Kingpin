@@ -287,7 +287,7 @@ export default function DashboardPage() {
                   {profile?.kingpin_name || 'UNKNOWN'}
                 </h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <TierBadge tier={profile?.tier || 'Rookie'} />
+                  <TierBadge tier={profile?.tier || 'Punk'} />
                   <span className="font-mono text-sm text-[var(--color-muted)]">
                     LVL {profile?.level || 1}
                   </span>
@@ -503,10 +503,11 @@ export default function DashboardPage() {
 
 function TierBadge({ tier }: { tier: string }) {
   const tierColors: Record<string, string> = {
-    Rookie: 'var(--tier-common)',
-    Enforcer: 'var(--tier-uncommon)',
-    Capo: 'var(--tier-rare)',
-    Boss: 'var(--tier-rare)',
+    Punk: 'var(--tier-common)',
+    Associate: 'var(--tier-uncommon)',
+    Soldier: 'var(--tier-uncommon)',
+    Captain: 'var(--tier-rare)',
+    Underboss: 'var(--tier-rare)',
     Kingpin: 'var(--tier-legendary)',
   }
   const color = tierColors[tier] || 'var(--tier-common)'

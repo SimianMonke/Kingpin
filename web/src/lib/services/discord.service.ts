@@ -123,7 +123,7 @@ export const DiscordService = {
    */
   async postTierPromotion(username: string, tier: Tier): Promise<boolean> {
     // Only post Captain and above
-    const tierOrder = [TIERS.ROOKIE, TIERS.ASSOCIATE, TIERS.SOLDIER, TIERS.CAPTAIN, TIERS.UNDERBOSS, TIERS.KINGPIN]
+    const tierOrder = [TIERS.PUNK, TIERS.ASSOCIATE, TIERS.SOLDIER, TIERS.CAPTAIN, TIERS.UNDERBOSS, TIERS.KINGPIN]
     const tierIndex = tierOrder.indexOf(tier)
     const minTierIndex = tierOrder.indexOf(DISCORD_FEED_CONFIG.TIER_PROMOTION_MIN_TIER)
 
@@ -438,7 +438,7 @@ export const DiscordService = {
 
 function getTierEmoji(tier: Tier): string {
   const emojis: Record<Tier, string> = {
-    [TIERS.ROOKIE]: '🔰',
+    [TIERS.PUNK]: '🔰',
     [TIERS.ASSOCIATE]: '⭐',
     [TIERS.SOLDIER]: '🎖️',
     [TIERS.CAPTAIN]: '🏅',

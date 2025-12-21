@@ -127,7 +127,7 @@ describe('GamblingService', () => {
       expect(result.maxBet).toBeGreaterThan(0)
     })
 
-    it('Kingpin gets higher max bet than Rookie', async () => {
+    it('Kingpin gets higher max bet than Punk', async () => {
       mockFindUnique.mockResolvedValue({
         wealth: BigInt(1000000),
         level: 100,

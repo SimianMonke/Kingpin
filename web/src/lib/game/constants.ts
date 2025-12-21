@@ -8,7 +8,7 @@
 // =============================================================================
 
 export const TIERS = {
-  ROOKIE: 'Rookie',
+  PUNK: 'Punk',
   ASSOCIATE: 'Associate',
   SOLDIER: 'Soldier',
   CAPTAIN: 'Captain',
@@ -19,7 +19,7 @@ export const TIERS = {
 export type Tier = typeof TIERS[keyof typeof TIERS]
 
 export const TIER_LEVELS = {
-  [TIERS.ROOKIE]: { min: 1, max: 19 },
+  [TIERS.PUNK]: { min: 1, max: 19 },
   [TIERS.ASSOCIATE]: { min: 20, max: 39 },
   [TIERS.SOLDIER]: { min: 40, max: 59 },
   [TIERS.CAPTAIN]: { min: 60, max: 79 },
@@ -28,7 +28,7 @@ export const TIER_LEVELS = {
 } as const
 
 export const TIER_MULTIPLIERS: Record<Tier, number> = {
-  [TIERS.ROOKIE]: 1.0,
+  [TIERS.PUNK]: 1.0,
   [TIERS.ASSOCIATE]: 1.1,
   [TIERS.SOLDIER]: 1.2,
   [TIERS.CAPTAIN]: 1.3,
@@ -39,7 +39,7 @@ export const TIER_MULTIPLIERS: Record<Tier, number> = {
 // Phase 1 Economy Rebalance: Tier-based wealth caps for play command
 // Prevents runaway inflation at high tiers while preserving new player experience
 export const PLAY_WEALTH_CAPS: Record<Tier, number> = {
-  [TIERS.ROOKIE]: 500,
+  [TIERS.PUNK]: 500,
   [TIERS.ASSOCIATE]: 1500,
   [TIERS.SOLDIER]: 3500,
   [TIERS.CAPTAIN]: 7500,
@@ -250,14 +250,14 @@ export interface PlayEventDef {
 
 // Tier-specific play events (Phase 12: expanded to 50 events per tier)
 // Categories per tier:
-// Rookie: Petty Crime, Street Hustles, Scavenging, Information, Survival
+// Punk: Petty Crime, Street Hustles, Scavenging, Information, Survival
 // Associate: Protection, Drugs, Vehicles, Gambling, Blackmail
 // Soldier: Heists, Convoys, Enforcement, Data, Smuggling
 // Captain: Banks, Kidnapping, Arms, Territory, Cyber
 // Underboss: Corporate, Political, Syndicate, Markets, Intelligence
 // Kingpin: Acquisitions, Government, Manipulation, Power, Ascension
 export const TIER_PLAY_EVENTS: Record<Tier, PlayEventDef[]> = {
-  [TIERS.ROOKIE]: [
+  [TIERS.PUNK]: [
     // ===== PETTY CRIME (10 events) =====
     { name: 'Petty Theft', description: 'Grabbed a tourist\'s wallet in the crowd.', wealth: { min: 50, max: 150 }, xp: { min: 10, max: 20 } },
     { name: 'Alley Mugging', description: 'Cornered a corp drone in the back alleys.', wealth: { min: 80, max: 200 }, xp: { min: 12, max: 25 } },
@@ -609,7 +609,7 @@ export const TIER_PLAY_EVENTS: Record<Tier, PlayEventDef[]> = {
 
 // Crate drop weights by player tier (from spec)
 export const PLAY_CRATE_TIER_WEIGHTS: Record<Tier, { common: number; uncommon: number; rare: number; legendary: number }> = {
-  [TIERS.ROOKIE]: { common: 0.80, uncommon: 0.18, rare: 0.02, legendary: 0 },
+  [TIERS.PUNK]: { common: 0.80, uncommon: 0.18, rare: 0.02, legendary: 0 },
   [TIERS.ASSOCIATE]: { common: 0.70, uncommon: 0.25, rare: 0.05, legendary: 0 },
   [TIERS.SOLDIER]: { common: 0.55, uncommon: 0.35, rare: 0.09, legendary: 0.01 },
   [TIERS.CAPTAIN]: { common: 0.40, uncommon: 0.40, rare: 0.17, legendary: 0.03 },
@@ -683,7 +683,7 @@ export const JAIL_CONFIG = {
 // Phase 2 Economy Rebalance: Tier-scaled bail multipliers
 // Higher tiers pay more as a percentage of wealth (aggressive sink for wealthy)
 export const BAIL_TIER_MULTIPLIERS: Record<Tier, number> = {
-  [TIERS.ROOKIE]: 0.5,       // 7.5% effective (helps new players)
+  [TIERS.PUNK]: 0.5,       // 7.5% effective (helps new players)
   [TIERS.ASSOCIATE]: 0.75,   // 11.25%
   [TIERS.SOLDIER]: 1.0,      // 15% (base)
   [TIERS.CAPTAIN]: 1.25,     // 18.75%
@@ -892,7 +892,7 @@ export const PLAYER_SHOP_CONFIG = {
   ITEMS_COUNT: { min: 6, max: 10 },
   // Items available by tier
   TIER_ACCESS: {
-    [TIERS.ROOKIE]: [ITEM_TIERS.COMMON],
+    [TIERS.PUNK]: [ITEM_TIERS.COMMON],
     [TIERS.ASSOCIATE]: [ITEM_TIERS.COMMON, ITEM_TIERS.UNCOMMON],
     [TIERS.SOLDIER]: [ITEM_TIERS.COMMON, ITEM_TIERS.UNCOMMON, ITEM_TIERS.RARE],
     [TIERS.CAPTAIN]: [ITEM_TIERS.COMMON, ITEM_TIERS.UNCOMMON, ITEM_TIERS.RARE],
@@ -1415,7 +1415,7 @@ export const MISSION_DIFFICULTY_WEIGHTS = {
   },
 }
 
-// Base rewards by difficulty (Rookie baseline, scales with tier)
+// Base rewards by difficulty (Punk baseline, scales with tier)
 export const MISSION_REWARDS = {
   [MISSION_TYPES.DAILY]: {
     [MISSION_DIFFICULTIES.EASY]: { wealth: 500, xp: 50 },
@@ -1561,7 +1561,7 @@ export const BLACKJACK_CONFIG = {
 
 // Tier-based max bet scaling
 export const GAMBLING_MAX_BET_BY_TIER: Record<string, number> = {
-  [TIERS.ROOKIE]: 10000,
+  [TIERS.PUNK]: 10000,
   [TIERS.ASSOCIATE]: 20000,
   [TIERS.SOLDIER]: 35000,
   [TIERS.CAPTAIN]: 50000,
@@ -1571,7 +1571,7 @@ export const GAMBLING_MAX_BET_BY_TIER: Record<string, number> = {
 
 // Tier-based luck bonus (added to base odds)
 export const GAMBLING_LUCK_BY_TIER: Record<string, number> = {
-  [TIERS.ROOKIE]: 0,
+  [TIERS.PUNK]: 0,
   [TIERS.ASSOCIATE]: 0.01,
   [TIERS.SOLDIER]: 0.02,
   [TIERS.CAPTAIN]: 0.03,

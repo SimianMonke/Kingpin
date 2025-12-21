@@ -443,7 +443,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-1">
               <Label>CURRENT TIER</Label>
-              <TierBadge tier={profile?.tier || 'Rookie'} />
+              <TierBadge tier={profile?.tier || 'Punk'} />
             </div>
           </div>
         </CardContent>
@@ -614,10 +614,11 @@ export default function ProfilePage() {
 
 function TierBadge({ tier }: { tier: string }) {
   const tierColors: Record<string, string> = {
-    Rookie: 'var(--tier-common)',
-    Enforcer: 'var(--tier-uncommon)',
-    Capo: 'var(--tier-rare)',
-    Boss: 'var(--tier-rare)',
+    Punk: 'var(--tier-common)',
+    Associate: 'var(--tier-uncommon)',
+    Soldier: 'var(--tier-uncommon)',
+    Captain: 'var(--tier-rare)',
+    Underboss: 'var(--tier-rare)',
     Kingpin: 'var(--tier-legendary)',
   }
   const color = tierColors[tier] || 'var(--tier-common)'

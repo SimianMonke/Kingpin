@@ -720,7 +720,7 @@ model users {
   wealth                                                              BigInt?                    @default(0)
   xp                                                                  BigInt?                    @default(0)
   level                                                               Int?                       @default(1)
-  status_tier                                                         String?                    @default("Rookie") @db.VarChar(50)
+  status_tier                                                         String?                    @default("Punk") @db.VarChar(50)
   hp                                                                  Int?                       @default(100)
   checkin_streak                                                      Int?                       @default(0)
   last_checkin_date                                                   DateTime?                  @db.Date

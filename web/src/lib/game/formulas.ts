@@ -303,7 +303,7 @@ export function getStreakMilestoneReward(streak: number): CrateTier | null {
 /**
  * Calculate bail cost with tier-based scaling
  * Phase 1: Base 15% rate with min $500, max $100k
- * Phase 2: Tier multipliers (Rookie 0.5x → Kingpin 2.0x)
+ * Phase 2: Tier multipliers (Punk 0.5x → Kingpin 2.0x)
  */
 export function calculateBailCost(wealth: number, tier: Tier): number {
   const tierMultiplier = BAIL_TIER_MULTIPLIERS[tier]

@@ -64,7 +64,7 @@ const METRICS: { value: Metric; label: string; icon: string }[] = [
 ]
 
 const TIER_COLORS: Record<string, string> = {
-  Rookie: 'var(--tier-common)',
+  Punk: 'var(--tier-common)',
   Associate: 'var(--tier-uncommon)',
   Soldier: 'var(--tier-uncommon)',
   Captain: 'var(--tier-rare)',

@@ -516,7 +516,7 @@ export const MissionService = {
           bonus_wealth: actualBonusWealth,
           bonus_xp: bonus.xp,
           crate_awarded: crateAwarded,
-          player_tier: user?.status_tier ?? 'Rookie',
+          player_tier: user?.status_tier ?? 'Punk',
         },
       })
     })

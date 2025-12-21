@@ -122,8 +122,8 @@ describe('PlayService', () => {
   })
 
   describe('selectEvent', () => {
-    it('returns a valid event for Rookie tier', () => {
-      const event = PlayService.selectEvent('Rookie')
+    it('returns a valid event for Punk tier', () => {
+      const event = PlayService.selectEvent('Punk')
 
       expect(event).toBeDefined()
       expect(event.name).toBeDefined()
@@ -136,7 +136,7 @@ describe('PlayService', () => {
       let negativeCount = 0
 
       for (let i = 0; i < iterations; i++) {
-        const event = PlayService.selectEvent('Rookie')
+        const event = PlayService.selectEvent('Punk')
         if (event.isNegative) {
           negativeCount++
         }
@@ -152,17 +152,17 @@ describe('PlayService', () => {
   describe('rollCrateTier', () => {
     it('returns a valid crate tier', () => {
       const validTiers = ['common', 'uncommon', 'rare', 'legendary']
-      const tier = PlayService.rollCrateTier('Rookie')
+      const tier = PlayService.rollCrateTier('Punk')
 
       expect(validTiers).toContain(tier)
     })
 
-    it('weighted distribution favors common crates for Rookie', () => {
+    it('weighted distribution favors common crates for Punk', () => {
       const iterations = 1000
       const counts = { common: 0, uncommon: 0, rare: 0, legendary: 0 }
 
       for (let i = 0; i < iterations; i++) {
-        const tier = PlayService.rollCrateTier('Rookie')
+        const tier = PlayService.rollCrateTier('Punk')
         counts[tier as keyof typeof counts]++
       }
 
@@ -171,20 +171,20 @@ describe('PlayService', () => {
     })
 
     it('higher tier players get better crate distribution', () => {
-      const rookieCounts = { common: 0, uncommon: 0, rare: 0, legendary: 0 }
+      const punkCounts = { common: 0, uncommon: 0, rare: 0, legendary: 0 }
       const kingpinCounts = { common: 0, uncommon: 0, rare: 0, legendary: 0 }
       const iterations = 1000
 
       for (let i = 0; i < iterations; i++) {
-        const rookieTier = PlayService.rollCrateTier('Rookie')
+        const punkTier = PlayService.rollCrateTier('Punk')
         const kingpinTier = PlayService.rollCrateTier('Kingpin')
-        rookieCounts[rookieTier as keyof typeof rookieCounts]++
+        punkCounts[punkTier as keyof typeof punkCounts]++
         kingpinCounts[kingpinTier as keyof typeof kingpinCounts]++
       }
 
-      const rookieRarePlus = rookieCounts.rare + rookieCounts.legendary
+      const punkRarePlus = punkCounts.rare + punkCounts.legendary
       const kingpinRarePlus = kingpinCounts.rare + kingpinCounts.legendary
-      expect(kingpinRarePlus).toBeGreaterThan(rookieRarePlus)
+      expect(kingpinRarePlus).toBeGreaterThan(punkRarePlus)
     })
   })
 
@@ -203,7 +203,7 @@ describe('PlayService', () => {
         wealth: BigInt(10000),
         xp: BigInt(500),
         level: 10,
-        status_tier: 'Rookie',
+        status_tier: 'Punk',
         total_play_count: 50,
       })
 

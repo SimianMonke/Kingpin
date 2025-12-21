@@ -112,9 +112,9 @@ describe('XP & Leveling', () => {
 // =============================================================================
 describe('Tier System', () => {
   describe('getTierFromLevel', () => {
-    it('returns Rookie for levels 1-19', () => {
-      expect(getTierFromLevel(1)).toBe(TIERS.ROOKIE)
-      expect(getTierFromLevel(19)).toBe(TIERS.ROOKIE)
+    it('returns Punk for levels 1-19', () => {
+      expect(getTierFromLevel(1)).toBe(TIERS.PUNK)
+      expect(getTierFromLevel(19)).toBe(TIERS.PUNK)
     })
 
     it('returns Associate for levels 20-39', () => {
@@ -145,7 +145,7 @@ describe('Tier System', () => {
 
   describe('getTierMultiplier', () => {
     it('returns correct multipliers for each tier', () => {
-      expect(getTierMultiplier(TIERS.ROOKIE)).toBe(1.0)
+      expect(getTierMultiplier(TIERS.PUNK)).toBe(1.0)
       expect(getTierMultiplier(TIERS.ASSOCIATE)).toBe(1.1)
       expect(getTierMultiplier(TIERS.SOLDIER)).toBe(1.2)
       expect(getTierMultiplier(TIERS.CAPTAIN)).toBe(1.3)
@@ -156,7 +156,7 @@ describe('Tier System', () => {
 
   describe('meetsMinTierLevel', () => {
     it('correctly checks tier requirements', () => {
-      expect(meetsMinTierLevel(1, TIERS.ROOKIE)).toBe(true)
+      expect(meetsMinTierLevel(1, TIERS.PUNK)).toBe(true)
       expect(meetsMinTierLevel(19, TIERS.ASSOCIATE)).toBe(false)
       expect(meetsMinTierLevel(20, TIERS.ASSOCIATE)).toBe(true)
       expect(meetsMinTierLevel(100, TIERS.KINGPIN)).toBe(true)
@@ -265,7 +265,7 @@ describe('Bail Calculations', () => {
   describe('calculateBailCost', () => {
     it('returns minimum bail ($500) for low wealth regardless of tier', () => {
       // Min bail is $500, low wealth should hit floor
-      expect(calculateBailCost(1000, TIERS.ROOKIE)).toBe(500)
+      expect(calculateBailCost(1000, TIERS.PUNK)).toBe(500)
       expect(calculateBailCost(1000, TIERS.SOLDIER)).toBe(500)
       expect(calculateBailCost(1000, TIERS.KINGPIN)).toBe(500)
     })
@@ -274,8 +274,8 @@ describe('Bail Calculations', () => {
       const wealth = 100000
       // Soldier = 1.0x multiplier → 15% = $15,000
       expect(calculateBailCost(wealth, TIERS.SOLDIER)).toBe(15000)
-      // Rookie = 0.5x multiplier → 7.5% = $7,500
-      expect(calculateBailCost(wealth, TIERS.ROOKIE)).toBe(7500)
+      // Punk = 0.5x multiplier → 7.5% = $7,500
+      expect(calculateBailCost(wealth, TIERS.PUNK)).toBe(7500)
       // Associate = 0.75x multiplier → 11.25% = $11,250
       expect(calculateBailCost(wealth, TIERS.ASSOCIATE)).toBe(11250)
       // Captain = 1.25x multiplier → 18.75% = $18,750
@@ -367,7 +367,7 @@ describe('Durability System', () => {
 describe('Mission Rewards', () => {
   describe('calculateMissionRewards', () => {
     it('applies tier multiplier to rewards', () => {
-      const rookieRewards = calculateMissionRewards(1000, 100, TIERS.ROOKIE)
+      const rookieRewards = calculateMissionRewards(1000, 100, TIERS.PUNK)
       expect(rookieRewards.wealth).toBe(1000)
       expect(rookieRewards.xp).toBe(100)
 

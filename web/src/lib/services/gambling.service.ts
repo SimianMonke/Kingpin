@@ -142,7 +142,7 @@ export const GamblingService = {
     })
 
     if (!user) {
-      return { canGamble: false, reason: 'User not found', wealth: BigInt(0), maxBet: 0, tier: 'Rookie' }
+      return { canGamble: false, reason: 'User not found', wealth: BigInt(0), maxBet: 0, tier: 'Punk' }
     }
 
     // Check if jailed
