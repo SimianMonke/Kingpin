@@ -39,8 +39,14 @@ export const GET = withErrorHandling(async (
     return notFoundResponse('Username required')
   }
 
+  // Debug: log what we're searching for
+  console.log('[by-name] Searching for username:', username)
+
   // Look up user by username (case-insensitive, checks username, display_name, kingpin_name)
   const user = await UserService.findByUsername(username)
+
+  // Debug: log result
+  console.log('[by-name] Found user:', user ? { id: user.id, username: user.username } : null)
 
   if (!user) {
     return notFoundResponse('User not found')
