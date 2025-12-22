@@ -77,10 +77,10 @@ export function RobTab() {
 
     try {
       const res = await fetch(`/api/users/by-name/${encodeURIComponent(targetQuery)}`)
-      if (!res.ok) {
-        throw new Error('Player not found')
-      }
       const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Player not found')
+      }
       setTarget(data.data)
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : 'Search failed')
