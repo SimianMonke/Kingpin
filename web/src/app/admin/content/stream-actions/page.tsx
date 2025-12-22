@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -543,12 +543,16 @@ function SystemCommandsTab() {
       if (!res.ok) throw new Error('Failed to load settings');
       return res.json();
     },
-    onSuccess: (data) => {
+  });
+
+  // Initialize form state when data loads
+  useEffect(() => {
+    if (data?.data) {
       const settings = data.data as Record<string, { command?: string }>;
       setCrownCommand(settings?.['lumia.crown_change_command']?.command || '');
       setLeaderboardCommand(settings?.['lumia.leaderboard_command']?.command || '');
-    },
-  });
+    }
+  }, [data]);
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Record<string, unknown>) => {
