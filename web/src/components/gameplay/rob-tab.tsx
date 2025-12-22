@@ -97,7 +97,7 @@ export function RobTab() {
     const res = await fetch('/api/rob', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_id: target.id }),
+      body: JSON.stringify({ target: target.kingpin_name }),
     })
 
     const data = await res.json()
