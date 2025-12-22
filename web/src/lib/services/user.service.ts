@@ -529,6 +529,53 @@ export const UserService = {
 
     const xpProgress = xpProgressInLevel(Number(user.xp ?? BigInt(0)))
 
+    // Aggregate robbery stats from leaderboard_snapshots (lifetime totals across all periods)
+    const robStats = await prisma.leaderboard_snapshots.aggregate({
+      where: { user_id },
+      _sum: {
+        rob_count: true,
+        rob_success_count: true,
+      },
+    })
+
+    // Count times jailed from game_events (rob events where was_busted = true)
+    const timesJailed = await prisma.game_events.count({
+      where: {
+        user_id,
+        event_type: 'rob',
+        was_busted: true,
+      },
+    })
+
+    // Count achievements unlocked
+    const achievementsUnlocked = await prisma.user_achievements.count({
+      where: { user_id },
+    })
+
+    // Count missions completed
+    const missionsCompleted = await prisma.mission_completions.count({
+      where: { user_id },
+    })
+
+    const totalRobberies = robStats._sum.rob_count ?? 0
+    const successfulRobberies = robStats._sum.rob_success_count ?? 0
+
+    // Aggregate donations from leaderboard_snapshots
+    const donationStats = await prisma.leaderboard_snapshots.aggregate({
+      where: { user_id },
+      _sum: {
+        donations_usd: true,
+      },
+    })
+
+    // Count juicernaut wins from game_events
+    const juicernautWins = await prisma.game_events.count({
+      where: {
+        user_id,
+        event_type: 'juicernaut_win',
+      },
+    })
+
     return {
       wealth: user.wealth,
       formattedWealth: formatWealth(user.wealth ?? BigInt(0)),
@@ -541,6 +588,15 @@ export const UserService = {
       wins: user.wins,
       losses: user.losses,
       winRate: (user.total_play_count ?? 0) > 0 ? ((user.wins ?? 0) / (user.total_play_count ?? 1)) * 100 : 0,
+      // Criminal record stats
+      totalRobberies,
+      successfulRobberies,
+      timesJailed,
+      // Progress stats
+      achievementsUnlocked,
+      missionsCompleted,
+      totalDonated: Number(donationStats._sum.donations_usd ?? 0),
+      juicernautWins,
     }
   },
 

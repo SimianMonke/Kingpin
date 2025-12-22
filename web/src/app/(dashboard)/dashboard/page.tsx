@@ -32,10 +32,10 @@ interface UserProfile {
 }
 
 interface UserStats {
+  totalPlays: number
   totalRobberies: number
   successfulRobberies: number
-  timesRobbed: number
-  itemsOwned: number
+  timesJailed: number
   achievementsUnlocked: number
   missionsCompleted: number
   totalDonated: number
@@ -414,25 +414,25 @@ export default function DashboardPage() {
           <CardContent className="p-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <StatValue
+                label="OPERATIONS"
+                value={stats?.totalPlays || 0}
+                valueClassName="text-[var(--color-primary)]"
+              />
+              <StatValue
                 label="ROBBERIES"
                 value={stats?.totalRobberies || 0}
                 valueClassName="text-[var(--color-secondary)]"
               />
               <StatValue
-                label="SUCCESS RATE"
+                label="ROB SUCCESS"
                 value={stats?.totalRobberies ? Math.round((stats.successfulRobberies / stats.totalRobberies) * 100) : 0}
                 suffix="%"
                 valueClassName="text-[var(--color-success)]"
               />
               <StatValue
-                label="TIMES ROBBED"
-                value={stats?.timesRobbed || 0}
+                label="TIMES JAILED"
+                value={stats?.timesJailed || 0}
                 valueClassName="text-[var(--color-destructive)]"
-              />
-              <StatValue
-                label="ITEMS OWNED"
-                value={stats?.itemsOwned || 0}
-                valueClassName="text-[var(--color-primary)]"
               />
             </div>
           </CardContent>
