@@ -39,14 +39,8 @@ export const GET = withErrorHandling(async (
     return notFoundResponse('Username required')
   }
 
-  // Debug: log what we're searching for
-  console.log('[by-name] Searching for username:', username)
-
   // Look up user by username (case-insensitive, checks username, display_name, kingpin_name)
   const user = await UserService.findByUsername(username)
-
-  // Debug: log result
-  console.log('[by-name] Found user:', user ? { id: user.id, username: user.username } : null)
 
   if (!user) {
     return notFoundResponse('User not found')
@@ -59,8 +53,12 @@ export const GET = withErrorHandling(async (
   ])
 
   // Add rob-specific fields for target selection
+  // Convert BigInt fields to numbers for JSON serialization
   return successResponse({
     ...profile,
+    // Convert BigInt to number for JSON serialization
+    wealth: Number(profile?.wealth ?? 0),
+    xp: Number(profile?.xp ?? 0),
     // Map status_tier to tier for frontend compatibility
     tier: profile?.status_tier,
     // Include insurance info for rob target display
