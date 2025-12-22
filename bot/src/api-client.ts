@@ -336,9 +336,11 @@ class ApiClient {
   // JUICERNAUT
   // ===========================================================================
 
-  async getJuicernautSession(): Promise<ApiResponse<JuicernautSession | null>> {
+  async getJuicernautSession(announce = false): Promise<ApiResponse<JuicernautSession | null>> {
     try {
-      const response = await this.client.get('/api/juicernaut')
+      const response = await this.client.get('/api/juicernaut', {
+        params: announce ? { announce: 'true' } : {},
+      })
       return response.data
     } catch (error) {
       return this.handleError(error)

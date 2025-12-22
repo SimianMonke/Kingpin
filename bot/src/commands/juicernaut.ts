@@ -9,9 +9,11 @@ import type { CommandContext } from '../types'
 export const juicernautCommands = {
   /**
    * !juice - View current Juicernaut session standings
+   * Also triggers Lumia Stream leaderboard effect
    */
   async juice(ctx: CommandContext): Promise<void> {
-    const response = await apiClient.getJuicernautSession()
+    // Pass announce=true to trigger Lumia effect when posting to chat
+    const response = await apiClient.getJuicernautSession(true)
 
     if (!response.success || !response.data) {
       await ctx.reply(`No active Juicernaut session`)

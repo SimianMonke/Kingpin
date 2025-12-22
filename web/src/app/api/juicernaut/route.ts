@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { JuicernautService } from '@/lib/services'
+import { getLumiaSdkService } from '@/lib/services/lumia-sdk.service'
 
 // =============================================================================
 // GET /api/juicernaut - Get current session status and leaderboard
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10', 10)
     const includeHistory = searchParams.get('history') === 'true'
     const includeHallOfFame = searchParams.get('halloffame') === 'true'
+    const announceToStream = searchParams.get('announce') === 'true'
 
     // Get active session
     const session = await JuicernautService.getActiveSession()
@@ -51,6 +53,21 @@ export async function GET(request: NextRequest) {
     let hallOfFame = null
     if (includeHallOfFame) {
       hallOfFame = await JuicernautService.getHallOfFame(limit)
+    }
+
+    // Trigger Lumia leaderboard effect if announcing to stream
+    if (announceToStream && leaderboard.length > 0) {
+      const lumia = getLumiaSdkService()
+      // Fire and forget - don't block API response
+      lumia.init().then(() => {
+        const top3 = leaderboard.slice(0, 3).map((entry) => ({
+          name: entry.username,
+          totalUsd: entry.totalUsd,
+        }))
+        lumia.triggerLeaderboardAnnounce(top3, session.total_contributions_usd)
+      }).catch((err) => {
+        console.warn('[Lumia] Failed to trigger leaderboard announce:', err)
+      })
     }
 
     return NextResponse.json({

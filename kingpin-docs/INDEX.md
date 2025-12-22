@@ -5,7 +5,7 @@
 Kingpin is a multi-platform economy/gambling game with web dashboard integration. Players earn wealth and XP through various activities, compete on leaderboards, join factions, and participate in live stream events.
 
 **Documentation Generated:** December 15, 2024
-**Implementation Status:** Complete (All 15 Core Systems)
+**Implementation Status:** Complete (All 16 Core Systems)
 
 ---
 
@@ -28,6 +28,7 @@ Kingpin is a multi-platform economy/gambling game with web dashboard integration
 | [Communication System](./COMMUNICATION_SYSTEM.md) | ✅ Complete | Chat tracking, Discord, notifications |
 | [Heist System](./HEIST_SYSTEM.md) | ✅ Complete | Interactive stream events |
 | [Database Layer](./DATABASE_LAYER.md) | ✅ Complete | Prisma, PostgreSQL, schema |
+| [Lumia Stream System](./LUMIA_STREAM_SYSTEM.md) | ✅ Complete | Smart light integration via SDK |
 
 ---
 
@@ -35,16 +36,16 @@ Kingpin is a multi-platform economy/gambling game with web dashboard integration
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| [Shop Expansion](./SHOP_EXPANSION_IMPLEMENTATION.md) | 🔄 Phase 3/6 | Supply Depot (consumables) + Stream Actions (Lumia) |
+| [Shop Expansion](./SHOP_EXPANSION_IMPLEMENTATION.md) | ✅ Complete | Supply Depot (consumables) + Stream Actions (Lumia) |
 | [Admin Panel](./ADMIN_PANEL_IMPLEMENTATION.md) | 🔄 Phase 1/3 | Global settings, player management, audit logs |
 
 **Shop Expansion Progress:**
 - ✅ Phase 1: Database & BuffService
 - ✅ Phase 2: ConsumableService & API
 - ✅ Phase 3: Service Integrations (Play, Rob, Business, Jail, Shop)
-- ⬜ Phase 4: Stream Actions Core
-- ⬜ Phase 5: Stream Action Queue & Polish
-- ⬜ Phase 6: Admin & Chat Commands
+- ✅ Phase 4: Stream Actions Core (Lumia SDK integration)
+- ✅ Phase 5: Stream Action Queue & Polish
+- ✅ Phase 6: Admin Dashboard (Stream Actions CRUD, System Commands)
 
 ---
 
@@ -55,7 +56,7 @@ Kingpin is a multi-platform economy/gambling game with web dashboard integration
 | Metric | Count |
 |--------|-------|
 | Database Tables | 38 |
-| Service Files | 25 |
+| Service Files | 26 |
 | API Routes | 40+ |
 | Achievement Types | 30+ |
 | Play Events per Tier | 50 |
@@ -182,7 +183,7 @@ Kingpin is a multi-platform economy/gambling game with web dashboard integration
 | `STRIPE_SECRET_KEY` | Stripe API key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `BOT_API_KEY` | Chat bot authentication |
-| `LUMIA_API_KEY` | Lumia Stream integration |
+| `LUMIA_API_TOKEN` | Lumia Stream SDK token |
 
 ---
 
@@ -246,6 +247,7 @@ kingpin-docs/
 ├── COMMUNICATION_SYSTEM.md
 ├── HEIST_SYSTEM.md
 ├── DATABASE_LAYER.md
+├── LUMIA_STREAM_SYSTEM.md
 ├── SHOP_EXPANSION.md (original bootstrap)
 ├── SHOP_EXPANSION_IMPLEMENTATION.md (implementation spec)
 ├── ADMIN_PANEL_REFERENCE.md (architecture reference)
