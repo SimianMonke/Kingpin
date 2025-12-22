@@ -605,6 +605,7 @@ export const PlayService = {
         where: { id: user_id },
         data: {
           total_play_count: { increment: 1 },
+          times_jailed: { increment: 1 },
           last_seen: new Date(),
         },
       })

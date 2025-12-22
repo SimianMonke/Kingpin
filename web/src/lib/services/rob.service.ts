@@ -317,13 +317,22 @@ export const RobService = {
       // 2. Add XP to attacker (with level recalculation)
       await UserService.addXpInTransaction(attackerId, xpGained, tx)
 
-      // 3. Degrade equipment (NOW INSIDE transaction)
+      // 3. Update criminal record stats
+      await tx.users.update({
+        where: { id: attackerId },
+        data: {
+          rob_attempts: { increment: 1 },
+          rob_successes: isSuccess ? { increment: 1 } : undefined,
+        },
+      })
+
+      // 4. Degrade equipment (NOW INSIDE transaction)
       const [weaponDamage, armorDamage] = await Promise.all([
         InventoryService.degradeAttackerWeapon(attackerId, tx),
         InventoryService.degradeDefenderArmor(targetId, tx),
       ])
 
-      // 4. Set cooldown (NOW INSIDE transaction)
+      // 5. Set cooldown (NOW INSIDE transaction)
       await JailService.setCooldown(
         attackerId,
         'rob_target',
@@ -332,7 +341,7 @@ export const RobService = {
         tx
       )
 
-      // 5. Log event for attacker
+      // 6. Log event for attacker
       await tx.game_events.create({
         data: {
           user_id: attackerId,
@@ -347,7 +356,7 @@ export const RobService = {
         },
       })
 
-      // 6. Log event for defender
+      // 7. Log event for defender
       await tx.game_events.create({
         data: {
           user_id: targetId,

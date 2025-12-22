@@ -727,6 +727,10 @@ model users {
   total_play_count                                                    Int?                       @default(0)
   wins                                                                Int?                       @default(0)
   losses                                                              Int?                       @default(0)
+  // Criminal record stats
+  rob_attempts                                                        Int?                       @default(0)
+  rob_successes                                                       Int?                       @default(0)
+  times_jailed                                                        Int?                       @default(0)
   faction_id                                                          Int?
   joined_faction_at                                                   DateTime?                  @db.Timestamp(6)
   discord_username                                                    String?                    @db.VarChar(100)
