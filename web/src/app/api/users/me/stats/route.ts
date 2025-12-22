@@ -1,9 +1,8 @@
 import {
   successResponse,
   errorResponse,
-  unauthorizedResponse,
   withErrorHandling,
-  getAuthSession,
+  requireAuthUserId,
 } from '@/lib/api-utils'
 import { UserService } from '@/lib/services/user.service'
 
@@ -12,13 +11,9 @@ import { UserService } from '@/lib/services/user.service'
  * Get the current user's game stats
  */
 export const GET = withErrorHandling(async () => {
-  const session = await getAuthSession()
+  const user_id = await requireAuthUserId()
 
-  if (!session?.user?.id) {
-    return unauthorizedResponse()
-  }
-
-  const stats = await UserService.getStats(session.user.id)
+  const stats = await UserService.getStats(user_id)
 
   if (!stats) {
     return errorResponse('User not found', 404)
